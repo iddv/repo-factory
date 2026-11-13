@@ -142,3 +142,13 @@ def test_a_typed_task_is_never_refused_by_the_pitch(tmp_path):
     spec = (Path(out["task_dir"]) / "spec.md").read_text()
     assert spec.startswith("# Driftwatch") and "stability score" in spec
     assert idea["id"] == out["id"]
+
+
+def test_the_brief_asks_for_python_unless_the_task_names_a_language():
+    from pathlib import Path
+
+    import repo_factory.loop as loop_pkg
+
+    text = (Path(loop_pkg.__file__).parent / "prompts" / "pitch.md").read_text()
+    assert 'end the brief with "Write it in Python."' in text
+    assert "When the idea names a programming language, keep it in the brief" in text

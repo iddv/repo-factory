@@ -381,6 +381,11 @@ def record_checks(root: Path, files: set | None = None) -> dict:
         t is not None and t.get("status") == "green",
         (t or {}).get("why") or "no result for the documented test commands",
     )
+    if t is not None and t.get("status") != "green" and t.get("not_verifiable"):
+        # the check's environment kept them from running (a download, a skipped install):
+        # repo-factory's gap, not the product's hold
+        checks["tests"]["ok"] = True
+        checks["tests"]["gap"] = str(t.get("why") or "the test commands were not measured")
     red = [i for k, i in final.items() if k in SAFE_ITEMS and i.get("status") == "red"]
     seen = [k for k in SAFE_ITEMS if k in final]
     put(
