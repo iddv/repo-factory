@@ -69,7 +69,7 @@
 
 <div class="controls" id="build-controls">
   {#if canPublish}
-    <Press id="publish" label="Publish" primary run={publish} confirm="Create a private repository under your GitHub account and push this build to it?" />
+    <Press id="publish" label="Publish" primary run={publish} confirm="Create a private repository under your GitHub account and push this build to it? Its own CI then runs there, on your account's GitHub Actions minutes." />
   {/if}
   {#if canPublic}
     <Press id="make-public" label="Make public" run={makePublic} confirm="Make the repository public? Anyone can then read it." yes="Make public" />

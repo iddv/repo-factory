@@ -365,6 +365,11 @@ def finish(prep: dict, cfg, override: dict | None = None) -> dict:
         blocked.append(
             "secrets scan: " + "; ".join(f"{h['file']}:{h['line']} {h['kind']}" for h in sec[:10])
         )
+    from . import workflows
+
+    wf = workflows.scan(stage, skip=mine)  # the build's workflows, not repo-factory's
+    if wf:
+        blocked.append("workflow check: " + "; ".join(wf[:10]))
     # wording is never a hold: the review reworded what the jargon
     # scan found in README and AGENTS.md; the hits left are listed on the build page
     return {**prep, "blocked": blocked, "secrets": sec, "jargon": jar, "override": override}

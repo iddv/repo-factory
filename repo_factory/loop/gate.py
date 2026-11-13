@@ -451,6 +451,8 @@ NEVER = {
     "delivered": "nothing was delivered: there is nothing to publish",
     "security": "an open critical or high security finding is never overridden",
     "secrets": "secrets are never pushed",
+    "workflow": "a workflow that could run on your own runner, run a stranger's change with "
+    "secrets, or write to the repository is never pushed: Ask for changes to fix it",
     "bind_localhost": "it listens beyond loopback by default: a network exposure is "
     "never overridden",
 }
@@ -458,7 +460,12 @@ NEVER_UNREVIEWED = (
     "the security review did not run: a build is never published without it, whatever "
     "publish.anyway.may_override says"
 )
-PREPUSH = {"honesty check": "honesty", "jargon scan": "jargon", "secrets scan": "secrets"}
+PREPUSH = {
+    "honesty check": "honesty",
+    "jargon scan": "jargon",
+    "secrets scan": "secrets",
+    "workflow check": "workflow",
+}
 
 
 def prepush_holds(reason: str | None) -> list[str]:

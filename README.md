@@ -117,7 +117,7 @@ Releases page>`, `repo-factory doctor`, `repo-factory ui`. Then read
 
 | Setting | Default |
 |---|---|
-| Publish | **Asks first:** a ready build waits at "Ready: publish?" until you press |
+| Publish | **Asks first:** a ready build waits at "Ready: publish?" until you press. Publishing starts the product's own CI on your account (one Linux job; a workflow asking for a self-hosted runner, `pull_request_target` or a write token holds the publish) |
 | Visibility | **Private**; only you make a repository public |
 | Spend | **$25 a build, $50 a day**; either can be changed or set to none |
 | Maintenance | **Off** until you switch it on for a repository |
