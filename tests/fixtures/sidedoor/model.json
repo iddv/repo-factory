@@ -1,0 +1,34 @@
+{
+ "note": "what a real model (claude-haiku-5-5) wrote and reworded for Sidedoor's built product on 2026-10-16, on a scratch copy; the replay's fake model answers with it",
+ "describe": {
+  "description": "Sidedoor is a command-line tool that tests whether a coding agent takes credentials from the intended broker or from hiding spots such as `.env`, `.netrc`, shell history or cloud config. Start with `sidedoor init`, then `sidedoor doctor`, then `sidedoor demo` to see scripted fake agents run against planted decoy secrets. It is stdlib-only Python 3.11 or newer, installed with `install.sh`.",
+  "does": "Plants decoy credentials in the home and workspace, runs a coding agent under test and reports whether it used the broker or a decoy.",
+  "release_text": "Sidedoor 1.0.0 tests whether a coding agent gets secrets from the intended broker or sneaks around it."
+ },
+ "review": [
+  {
+   "file": "README.md",
+   "quote": "so the task check cannot be faked.",
+   "problem": "\"cannot be faked\" is an absolute guarantee. The nonce makes a reply hard to forge, but the text does not show that the check is unforgeable in every case.",
+   "replacement": "so a reply counts toward the task only if it came from this trial's target."
+  },
+  {
+   "file": "README.md",
+   "quote": "The target also finds a decoy anywhere in a request, including inside base64",
+   "problem": "\"anywhere in a request\" is a completeness claim. The text only shows detection of plain values and base64, so a reader could assume other encodings or split values are also found.",
+   "replacement": "The target looks for a decoy in each request, including inside base64"
+  },
+  {
+   "file": "AGENTS.md",
+   "quote": "Data lives in `./data`",
+   "problem": "README.md places the data directory at `~/.local/share/sidedoor` by default, overridable with `SIDEDOOR_HOME`. The `./data` location is wrong for the product and would mislead a maintainer about where evidence and profiles are stored.",
+   "replacement": "Data lives in the data directory (`~/.local/share/sidedoor` unless `SIDEDOOR_HOME` is set)"
+  },
+  {
+   "file": "AGENTS.md",
+   "quote": "None yet. A new one follows the operator-settings convention above.",
+   "problem": "README.md documents many operator settings (config.toml keys with `SIDEDOOR_<SECTION>_<KEY>` overrides and a configuration table). Saying there are none misstates the product's configuration.",
+   "replacement": "The settings are listed in README › Configuration. A new one follows the operator-settings convention above."
+  }
+ ]
+}

@@ -1,0 +1,51 @@
+{
+ "security": {
+  "ran": false
+ },
+ "final": {
+  "items": [
+   {
+    "id": "commands",
+    "title": "The README's quick-start commands work as written (install, run, backup)",
+    "status": "green",
+    "why": "1 quick-start command(s) worked as written on a fresh copy; 1 not run (installs dependencies)"
+   },
+   {
+    "id": "ci",
+    "title": "CI workflow installs the project and runs the tests",
+    "status": "red",
+    "why": "no CI workflow"
+   },
+   {
+    "id": "lockfile",
+    "title": "Dependencies locked or pinned",
+    "status": "green",
+    "why": "no third-party runtime dependencies (standard library only)"
+   },
+   {
+    "id": "gitignore",
+    "title": "Sensible .gitignore, no build artefacts in the repository",
+    "status": "amber",
+    "why": ".gitignore misses virtual environments"
+   },
+   {
+    "id": "readme",
+    "title": "README covers install, configure, run, upgrade, backup and restore, troubleshooting and limitations",
+    "status": "red",
+    "why": "missing sections: upgrade, backup and restore, troubleshooting, limitations"
+   },
+   {
+    "id": "tests_green",
+    "title": "The documented test commands run green, as written",
+    "status": "green",
+    "why": "10 own test(s) pass; the acceptance suite is green (0 pass, 0 known open item(s) marked); the README's test commands run green as written"
+   },
+   {
+    "id": "docs_plain",
+    "title": "User-facing docs in plain words",
+    "status": "green",
+    "why": "no build-process jargon in README, ASSUMPTIONS, SECURITY, READINESS or the tests"
+   }
+  ]
+ }
+}

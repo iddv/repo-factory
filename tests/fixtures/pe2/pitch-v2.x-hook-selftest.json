@@ -1,0 +1,94 @@
+{
+ "verdict": "accept",
+ "product": "Hookprobe",
+ "product_type": "cli",
+ "one_liner": "A command-line self-test that sends known-destructive tool calls through your own Claude Code guard hooks, without running them, and prints which ones your hooks blocked and which got through.",
+ "who": "A developer who has layered guard hooks into Claude Code from two plugins and is about to let the agent run unattended.",
+ "moment": "Before letting the agent run unattended, they want to know whether force-pushes and secret writes are actually blocked, and they do not want to find out on a real repo.",
+ "why_now": "Guard-hook plugins like skillkeel-starter are shipping now (v0.1.12 on 2026-10-11). A benchmark of harness security mechanisms, HarnessSecurity-Bench, appeared on 2026-10-06 and names the attack surfaces. A developer asked how to verify stacked hooks on 2026-10-12.",
+ "existing": [
+  {
+   "name": "skillkeel-starter",
+   "does": "MIT Claude Code plugin with three guard hooks blocking destructive commands, force-pushes and secret writes; its skills have fixture-repo evals",
+   "lacks": "A test of the user's whole installed hook stack across plugins, and a pass/fail report on what a given config lets through"
+  },
+  {
+   "name": "HarnessSecurity-Bench",
+   "does": "Research benchmark of 23 tasks across five attack surfaces, testing nine mechanisms across six harnesses including Claude Code",
+   "lacks": "A tool a user runs against their own local hook configuration"
+  }
+ ],
+ "buildability": 0.85,
+ "insight": 0.55,
+ "differentiation": 0.6,
+ "grounding_score": 0.7,
+ "score_reasons": {
+  "buildability": "Hooks are commands that read a JSON tool-call on stdin and answer with exit code or decision, so reading settings, piping synthetic payloads and tabulating results is a small, well-bounded CLI.",
+  "insight": "Treating hooks as a security control that needs a firewall-style self-test is a sensible connection the evidence supports, but it is not surprising.",
+  "differentiation": "Plugin authors test their own hooks and a benchmark exists for research, but nothing tests a user's stacked config locally; plugin authors could add this.",
+  "grounding": "The person, the moment, the blocked categories and the benchmark trace to evidence; the probe count and the dry-invocation mechanism do not."
+ },
+ "buildability_reasons": [
+  "Claude Code hooks are configured in local settings files and invoked with JSON on stdin, so they can be called directly without the agent.",
+  "Probes are only payloads handed to hooks; nothing destructive is ever executed.",
+  "Output is a pass/fail table, which needs no UI or external service.",
+  "Matcher semantics and multiple settings scopes (user, project, plugin) add some edge cases."
+ ],
+ "risks": [
+  "Hook pipelines may be hard to invoke dry: some hooks have side effects, need env vars, or depend on the plugin's runtime.",
+  "Plugin authors or Claude Code itself may add a built-in hook test.",
+  "The probes may be too generic and miss obfuscated variants, which would give users false confidence.",
+  "Hook config formats and plugin hook locations may change between Claude Code versions."
+ ],
+ "brief": "Developers who have stacked guard hooks from a couple of Claude Code plugins have no way to know whether force-pushes, destructive commands and secret writes are actually blocked before they let the agent run unattended, and they don't want to find out on a real repo. Build something they can run from the terminal that reads their own hook configuration, hands each hook a set of benchmark-style destructive tool calls without ever executing them, and prints a pass/fail table of which probes were blocked and which got through.",
+ "grounding": [
+  "A developer who installed guard hooks from two Claude Code plugins asks how to verify that force-pushes and secret writes are actually blocked before letting the agent run unattended; they do not want to find out on a real repo.",
+  "skillkeel-starter v0.1.12 is an MIT Claude Code plugin with three guard hooks that block destructive commands, force-pushes and secret writes; the author says it is a guard, not a sandbox.",
+  "HarnessSecurity-Bench introduces a benchmark of 23 tasks across five attack surfaces and tests nine mechanisms across six harnesses, including Claude Code.",
+  "Smallest useful v1: a script that runs twenty probes through the local hook pipeline and prints a pass/fail table.",
+  "Thesis: hooks are a security control and deserve a self-test; the benchmark supplies the probes.",
+  "Cheapest test: run it against five users' hook configs; it is real if it finds at least one unblocked destructive probe in two of them."
+ ],
+ "cheapest_test": "Run it against five users' Claude Code hook configs; it is real if it finds at least one unblocked destructive probe in two of them.",
+ "evidence_used": [
+  "E3"
+ ],
+ "claims": [
+  {
+   "claim": "fires destructive commands at your hook config",
+   "interpreted": "Sends synthetic tool-call payloads describing destructive commands to the hook commands only; the destructive commands themselves are never executed.",
+   "setting": null,
+   "keeps_spirit": true,
+   "why": "The hook's decision is the thing under test, so it can be measured without running anything dangerous."
+  },
+  {
+   "claim": "reports what got through",
+   "interpreted": "Reports which of its own probes the configured hooks did not block. That is a lower bound on exposure, not proof that everything else is blocked.",
+   "setting": null,
+   "keeps_spirit": true,
+   "why": "Finding even one unblocked force-push or secret write is the outcome the developer is asking for."
+  },
+  {
+   "claim": "benchmark-style probes / twenty probes",
+   "interpreted": "A built-in probe set covering destructive commands, force-pushes and secret writes, modelled on the benchmark's attack surfaces but not a reproduction of it, with room for user-added probes.",
+   "setting": {
+    "key": "probes.extra_file",
+    "default": "none",
+    "means": "Path to an optional file of additional user-defined probes"
+   },
+   "keeps_spirit": true,
+   "why": "The value is a known-bad input set to test against, not fidelity to a specific paper or count."
+  },
+  {
+   "claim": "runs through the local hook pipeline",
+   "interpreted": "Invokes each matching configured hook command with a per-hook time limit; a hook that times out or errors is reported as such, not as a pass.",
+   "setting": {
+    "key": "hooks.timeout_seconds",
+    "default": "10",
+    "means": "How long to wait for each hook before marking the probe as errored"
+   },
+   "keeps_spirit": true,
+   "why": "A hung or crashing hook is itself something the developer needs to see before going unattended."
+  }
+ ]
+}

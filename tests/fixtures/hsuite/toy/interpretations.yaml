@@ -1,0 +1,12 @@
+- id: T1
+  question: Does an increment at the limit fail, or stay at the limit?
+  readings: {literal: "it stays", expected: "it is refused and the value stays at 3"}
+  ruling: expected
+  ruled_by: owner
+  ruled_at: 2026-10-04
+  rows: ["s_count/limit_holds_at_3"]
+- id: T2
+  question: Unruled example.
+  readings: {literal: "a", expected: "b"}
+  ruling: unruled
+  rows: ["s_count/unruled_row"]

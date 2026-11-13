@@ -1,0 +1,10 @@
+{"scenarios": [
+  {"id": "c1", "file": "_verify/scenarios/test_c1.py", "claim": "c1", "status": "pass",
+   "repro": "wordtally notes.txt", "observed": "4", "expected": "4", "scope": "local"},
+  {"id": "c2", "file": "_verify/scenarios/test_c2.py", "claim": "c2", "status": "pass",
+   "repro": "wordtally a.txt b.txt", "observed": "3 total", "expected": "3 total", "scope": "local"},
+  {"id": "c3", "file": "_verify/scenarios/test_c3.py", "claim": "c3", "status": "pass",
+   "repro": "wordtally missing.txt", "observed": "exit 1", "expected": "exit 1", "scope": "local"}],
+ "blocked": [],
+ "ambiguities": [],
+ "self_estimate": {"p_hidden": 0.95, "least_trusted": ["unusual encodings"]}}

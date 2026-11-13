@@ -1,0 +1,37 @@
+# The lean flow (track LEAN, from EV7 and EV8): Brief → Build → Harden → Check → Fix once →
+# Publish. Selected with `repo-factory build --policy policies/lean`, or the loop's `build.flow: lean`;
+# today's flow (policies/v5) stays the default until the owner flips it. The stage list is
+# repo_factory/v5/stages.py's LEAN; the code is repo_factory/v5/lean.py over the same library.
+pipeline: v5
+flow: lean
+version: "6.3"
+# The prompts this policy doesn't have come from policies/v5, byte for byte, with the owner's
+# edits in Settings › Prompts: scope (the brief), study, build and security. Its own: harden,
+# fix, and two additions (LEAN2): scope_rules (EV8's two rules for the brief: the pitch's own
+# words are the definition of done; no settings, roles or workflows it didn't ask for) and
+# build_rules (the build's stopping rule: done when the definition of done holds). LEAN3 (6.3):
+# harden closes what the security review holds a release for, documents every interface the
+# product exposes (each command, screen, endpoint and file), and works economically (it reads
+# the code once, runs the tests it changes, and the whole suite once at the end).
+inherits: v5
+# The build's global cap when the caller gives none; null: no cap (the owner's rule). Every
+# other cap is optional and none is set.
+max_usd: null
+# Brief: today's scope step and prompt, plus prompts/scope_rules.md (scope and scope_size as
+# policies/v5's).
+scope: auto
+scope_size: {single_words: 1800, team_words: 2500, trim_max_usd: 1.0}
+# Build: one session on the pitch plus SCOPE.md. model null: the CLI default.
+build:  {max_turns: 250, max_usd: null, timeout_s: 7200, model: null, stage_caps: {}}
+# Harden: one session after the build (EV7's harden prompt, adapted): robustness, tests, CI and
+# the docs a user needs; no invented features or settings. model null: the builder's.
+harden: {max_turns: 120, max_usd: null, timeout_s: 3600, model: null}
+# Check: the objective gates. security: today's probe (false: none; the security check is
+# then a gap, never a hold). commands: the harness's timeouts for the README's commands.
+check:
+  security: {max_turns: 60, max_usd: null, timeout_s: 1200, model: null}
+  commands: {step_s: 60, test_s: 900, tests_total_s: 1500, start_s: 25, serve_s: 15}
+# Fix: one builder session on what a check found that holds; then the harness again. A fix
+# that makes a passing check fail is undone. What still fails holds at the gate.
+fix:    {max_turns: 120, max_usd: null, timeout_s: 3000, model: null}
+stages: [scope, build, harden, check, fix, deliver]

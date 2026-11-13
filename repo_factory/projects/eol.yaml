@@ -1,0 +1,34 @@
+# End-of-life dates of the language runtimes a project may promise or test against, read by
+# projects/drift.py (python_floor). Updated with repo-factory releases: when a runtime publishes a new
+# major or an end-of-life date, add or correct it here. Keys are quoted so "3.10" stays a string.
+python:
+  "3.7": 2023-06-27
+  "3.8": 2024-10-07
+  "3.9": 2025-10-31
+  "3.10": 2026-10-31
+  "3.11": 2027-10-31
+  "3.12": 2028-10-31
+  "3.13": 2029-10-31
+  "3.14": 2030-10-31
+node:
+  "16": 2023-09-11
+  "17": 2022-06-01
+  "18": 2025-04-30
+  "19": 2023-06-01
+  "20": 2026-04-30
+  "21": 2024-06-01
+  "22": 2027-04-30
+  "23": 2025-06-01
+  "24": 2028-04-30
+# Go supports the two newest majors: a version ends when the one two after it ships.
+go:
+  "1.21": 2024-08-13
+  "1.22": 2025-02-11
+  "1.23": 2025-08-12
+  "1.24": 2026-02-10
+ruby:
+  "3.0": 2024-04-23
+  "3.1": 2025-03-26
+  "3.2": 2026-03-31
+  "3.3": 2027-03-31
+  "3.4": 2028-03-31

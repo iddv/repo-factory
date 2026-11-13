@@ -1,0 +1,37 @@
+{
+ "verdict": "ready",
+ "reasons": [],
+ "round": 10,
+ "judged_by": "0.3.72",
+ "checks": {
+  "delivered": {
+   "ok": true,
+   "detail": "build ok, branch repo-factory/sidedoor"
+  },
+  "documents": {
+   "ok": true,
+   "detail": "the evidence (security and readiness reports, the checks) is in the den"
+  },
+  "security": {
+   "ok": true,
+   "detail": "no open critical or high finding"
+  },
+  "tests": {
+   "ok": true,
+   "detail": "1 documented test command(s) run green as written: `python3 -m unittest discover -s tests -t .`"
+  },
+  "safe_defaults": {
+   "ok": true,
+   "detail": "safe defaults and install: install green, bind_localhost green, empty_start green, first_admin n/a"
+  },
+  "completeness": {
+   "ok": true,
+   "detail": "7/7 flows work end to end"
+  },
+  "p_hidden": {
+   "ok": true,
+   "detail": "p_hidden 0.99 (minimum 0.85)"
+  }
+ },
+ "at": 1792183852.198
+}

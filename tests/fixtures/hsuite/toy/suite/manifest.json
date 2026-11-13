@@ -1,0 +1,11 @@
+[
+ {"id": "s_count/first_inc_ok", "scenario": "s_count", "class": "settled", "quote": "goes up by one", "interp": null, "needs": [], "on_unsupported": "fail"},
+ {"id": "s_count/value_is_1", "scenario": "s_count", "class": "settled", "quote": "goes up by one", "interp": null, "needs": [], "on_unsupported": "fail"},
+ {"id": "s_count/limit_holds_at_3", "scenario": "s_count", "class": "ruled", "quote": "never past 3", "interp": "T1", "reading": "expected", "needs": [], "on_unsupported": "fail"},
+ {"id": "s_count/unruled_row", "scenario": "s_count", "class": "ruled", "quote": "", "interp": "T2", "reading": "expected", "needs": [], "on_unsupported": "fail"},
+ {"id": "s_count/either_row", "scenario": "s_count", "class": "either", "quote": "", "interp": null, "needs": [], "on_unsupported": "fail"},
+ {"id": "s_crash/before_crash", "scenario": "s_crash", "class": "settled", "quote": "", "interp": null, "needs": [], "on_unsupported": "fail"},
+ {"id": "s_crash/after_crash", "scenario": "s_crash", "class": "settled", "quote": "", "interp": null, "needs": [], "on_unsupported": "fail"},
+ {"id": "s_reset/reset_zeroes", "scenario": "s_reset", "class": "settled", "quote": "It can be reset", "interp": null, "needs": ["counter.reset"], "on_unsupported": "pass"},
+ {"id": "s_reset_strict/reset_zeroes", "scenario": "s_reset_strict", "class": "settled", "quote": "It can be reset", "interp": null, "needs": ["counter.reset"], "on_unsupported": "fail"}
+]

@@ -1,0 +1,4 @@
+{"scenarios": [
+  {"id": "c3", "rule": "e4", "file": "_verify/scenarios/test_c3.py", "status": "pass"},
+  {"id": "x9", "rule": "x2", "file": "_verify/scenarios/test_x9.py", "status": "fail"}],
+ "settings": [{"id": "s2", "key": "ties.policy"}]}

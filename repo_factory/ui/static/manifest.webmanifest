@@ -1,0 +1,14 @@
+{
+  "name": "repo-factory",
+  "short_name": "repo-factory",
+  "description": "Watches the topics you choose, writes idea cards from what it reads, and builds the ones that hold up.",
+  "start_url": "../",
+  "scope": "../",
+  "display": "standalone",
+  "background_color": "#0b0b2a",
+  "theme_color": "#0b0b2a",
+  "icons": [
+    {"src": "brand/icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "brand/icon-512.png", "sizes": "512x512", "type": "image/png"}
+  ]
+}

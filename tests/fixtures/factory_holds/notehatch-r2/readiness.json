@@ -1,0 +1,65 @@
+{
+ "security": {
+  "ran": true,
+  "findings": [
+   {
+    "severity": "medium",
+    "status": "passes",
+    "title": "A crafted manifest makes a re-export delete files outside the export folder",
+    "rule": "e46"
+   },
+   {
+    "severity": "low",
+    "status": "open",
+    "title": "updated_at is written into the front matter without checks, so a note source can inject lines",
+    "rule": "e47"
+   },
+   {
+    "severity": "low",
+    "status": "open",
+    "title": "The sample database and its backup are created world-readable (mode 644)",
+    "rule": "e48"
+   },
+   {
+    "severity": "low",
+    "status": "open",
+    "title": "Undocumented, generically named environment variables silently override safety settings",
+    "rule": null
+   }
+  ]
+ },
+ "final": {
+  "items": [
+   {
+    "id": "install",
+    "status": "green",
+    "title": "Clean install from the README",
+    "why": "README command works and tests pass"
+   },
+   {
+    "id": "bind_localhost",
+    "status": "n/a",
+    "title": "Listens on localhost unless configured",
+    "why": "CLI, opens no port"
+   },
+   {
+    "id": "empty_start",
+    "status": "green",
+    "title": "Starts empty; demo data only on an explicit flag or command",
+    "why": "Nothing is created or loaded until a command asks; demo only via `demo <folder>`"
+   },
+   {
+    "id": "first_admin",
+    "status": "n/a",
+    "title": "First-run admin setup, no default password",
+    "why": "No accounts"
+   },
+   {
+    "id": "tests_green",
+    "status": "green",
+    "title": "The documented test commands run green, as written",
+    "why": "0 own test(s) pass; the acceptance suite is green (82 pass, 2 known open item(s) marked); the README's test commands run green as written"
+   }
+  ]
+ }
+}

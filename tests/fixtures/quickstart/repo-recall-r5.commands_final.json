@@ -1,0 +1,17 @@
+{
+ "source": "~/tasks/repo-recall/.den/v5/r5/readiness.json, commands_final (trimmed)",
+ "extract_quick": [
+  {"cmd": "pipx install .", "where": "README.md:16", "kind": "install",
+   "skip": "installs dependencies: the check's environment already has the declared ones (it has no network)"},
+  {"cmd": "export PATH=\"$HOME/.local/bin:$PATH\"", "where": "README.md:17", "kind": "install", "skip": null},
+  {"cmd": "recall --version", "where": "README.md:18", "kind": "install", "skip": null}
+ ],
+ "quick": [
+  {"cmd": "export PATH=\"$HOME/.local/bin:$PATH\"", "where": "README.md:17", "kind": "install",
+   "status": "ok", "rc": 0},
+  {"cmd": "recall --version", "where": "README.md:18", "kind": "install", "status": "failed",
+   "rc": 127}
+ ],
+ "item": {"id": "commands", "status": "red",
+          "why": "a README command fails as written: `recall --version` (README.md:18) exits 127: bash: line 1: recall: command not found"}
+}

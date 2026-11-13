@@ -1,0 +1,53 @@
+{
+ "security": {
+  "ran": true,
+  "findings": [
+   {
+    "severity": "low",
+    "status": "open",
+    "title": "Terminal escape codes in a URL or an unknown field are stored and printed raw",
+    "rule": "e55"
+   },
+   {
+    "severity": "low",
+    "status": "open",
+    "title": "CSV export does not neutralise spreadsheet formulas",
+    "rule": "e56"
+   }
+  ]
+ },
+ "final": {
+  "items": [
+   {
+    "id": "install",
+    "status": "green",
+    "title": "Clean install from the README",
+    "why": "README command installed `nextread`; first run created the list and printed the path"
+   },
+   {
+    "id": "bind_localhost",
+    "status": "n/a",
+    "title": "Listens on localhost unless configured",
+    "why": "Command-line tool; no network listener (no socket/http code in the package)"
+   },
+   {
+    "id": "empty_start",
+    "status": "green",
+    "title": "Starts empty; demo data only on an explicit flag or command",
+    "why": "A fresh install starts with an empty list; demo data only comes from `nextread demo`"
+   },
+   {
+    "id": "first_admin",
+    "status": "n/a",
+    "title": "First-run admin setup, no default password",
+    "why": "No accounts, login or passwords by design"
+   },
+   {
+    "id": "tests_green",
+    "status": "green",
+    "title": "The documented test commands run green, as written",
+    "why": "1 documented test command(s) run green as written: `python3 -m unittest discover -s tests -t . -v`"
+   }
+  ]
+ }
+}

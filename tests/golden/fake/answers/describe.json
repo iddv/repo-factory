@@ -1,0 +1,3 @@
+{"description": "wordtally counts the words in text files from the command line: each file's count, then a total.",
+ "does": "counts the words in text files",
+ "release_text": "A small command that counts the words in text files."}

@@ -1,0 +1,5 @@
+#!/bin/sh
+# tests/conftest.py puts this first on PATH: a test never runs the real model CLI.
+# A test that needs `claude` gives its own fake (earlier on PATH, or by path).
+echo "tests/_shims: the real claude was called from a test: claude $*" >&2
+exit 97

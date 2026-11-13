@@ -1,0 +1,22 @@
+name: Feature or change
+description: Something new in {{product}}, or a change to how it works
+labels: [triage, feature]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What you are trying to do, and what gets in the way today.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like
+    validations:
+      required: true
+  - type: textarea
+    id: who
+    attributes:
+      label: Who it is for
+      description: Which kind of user (see SCOPE.md › Users), and how often they would use it.

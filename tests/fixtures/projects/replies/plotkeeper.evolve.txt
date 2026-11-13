@@ -1,0 +1,138 @@
+```json
+{
+  "ideas": [
+    {
+      "rank": 1,
+      "title": "Make /health query the database and return 503 on failure",
+      "kind": "feature",
+      "class": "minor",
+      "scope_test": "Charter open direction 'a /health check that queries the database' makes running reliably easier for non-technical operators, with no promise changed and stdlib only.",
+      "what": "Make GET /health open the database, run a trivial query and read the schema version (PRAGMA user_version). Return {\"ok\": true} with 200 on success and 503 with {\"ok\": false} if the query fails. Keep it unauthenticated and free of internal detail in the response.",
+      "why_now": "READINESS.md marks the health endpoint amber because it always says ok without checking the database. It is a named open direction in the charter and a small change.",
+      "evidence": ["repo:READINESS.md › Health endpoint (services)", "repo:SECURITY.md › Entry points (GET /health returns {\"ok\": true})", "repo:charter open_directions › Graceful shutdown and a /health check"],
+      "duplicate_of": null,
+      "effort": "S",
+      "confidence": 0.85,
+      "test": "Acceptance test: /health returns 200 on a healthy install; after making the database unopenable (e.g. replace the file with a directory or point the data dir to an unreadable path), /health returns 503.",
+      "risk": "A supervisor that polls /health could restart the service on a transient lock; use a read-only query with a short timeout."
+    },
+    {
+      "rank": 2,
+      "title": "Create database, backups and data folder with owner-only permissions",
+      "kind": "maintenance",
+      "class": "patch",
+      "scope_test": "Fixing a tracked security finding keeps the record trusted and safe, the first open direction in the charter; no new behaviour.",
+      "what": "Create the data directory with mode 0700 and set plotkeeper.db and backup files to 0600 in store.py and the backup command. Also tighten existing files on start (chmod) so upgraded installs are fixed. Remove the xfail mark from the existing test, update the SECURITY.md S4 status and the acceptance README, and add a CHANGELOG line.",
+      "why_now": "S4 is open: the database holds password hashes, session tokens and gardeners' contact details, and is world-readable on shared machines.",
+      "evidence": ["repo:SECURITY.md › S4", "repo:tests/acceptance/README.md › Known open items", "repo:charter open_directions › Fix the open security findings"],
+      "duplicate_of": "SECURITY.md S4",
+      "effort": "S",
+      "confidence": 0.9,
+      "test": "tests/acceptance/test_database_backups_password_hashes_gardeners_contact_details.py with the xfail mark removed; it checks the mode of the db, a backup and the data dir.",
+      "risk": "Restore or backup run as a different user than the service could lose access; chmod only what the process owns and tolerate failures on foreign files."
+    },
+    {
+      "rank": 3,
+      "title": "Return 404 for out-of-range numeric ids in URLs",
+      "kind": "maintenance",
+      "class": "patch",
+      "scope_test": "Fixing a tracked security finding (500 error on hostile input) is upkeep, not new behaviour.",
+      "what": "Where web.py converts URL parameters with int(), reject values outside SQLite's signed 64-bit range (or handle OverflowError) and answer with the normal 404 page. Do it once in the route-parameter handling so every route benefits. Remove the xfail mark and update S5 in SECURITY.md.",
+      "why_now": "S5 is open and has a ready failing test; the server logs an OverflowError traceback on each request.",
+      "evidence": ["repo:SECURITY.md › S5 (plotkeeper/web.py:379)", "repo:tests/acceptance/README.md › test_huge_numeric_id_url_gets_404_not_server_error.py"],
+      "duplicate_of": "SECURITY.md S5",
+      "effort": "S",
+      "confidence": 0.9,
+      "test": "tests/acceptance/test_huge_numeric_id_url_gets_404_not_server_error.py passes with the mark removed; also check /gardeners/<huge> and /plots/<huge>/... return 404.",
+      "risk": "Fixing only one route and leaving others; handle it centrally."
+    },
+    {
+      "rank": 4,
+      "title": "Handle SIGTERM with a graceful shutdown and a log line",
+      "kind": "feature",
+      "class": "minor",
+      "scope_test": "Charter open direction 'graceful shutdown' makes the app easier to run reliably; single process and stdlib only are kept.",
+      "what": "Install a SIGTERM handler in the start command that stops accepting connections, lets in-flight requests finish (bounded by a short timeout), closes the database and logs the shutdown. Make sure systemd stop and restart use it.",
+      "why_now": "READINESS.md marks graceful shutdown amber: SIGTERM cuts off in-flight requests and logs nothing. Data stays safe thanks to SQLite transactions, but a payment submit can get a dropped response and be resubmitted.",
+      "evidence": ["repo:READINESS.md › Graceful shutdown", "repo:charter open_directions", "repo:README › Run as a background service"],
+      "duplicate_of": null,
+      "effort": "M",
+      "confidence": 0.75,
+      "test": "Acceptance test: start the service, send a slow in-flight request, send SIGTERM, assert the request completes, the process exits 0 and the log contains a shutdown line.",
+      "risk": "A hung connection could block exit; enforce a hard deadline."
+    },
+    {
+      "rank": 5,
+      "title": "Confirm and close S6 by hand-testing non-numeric Content-Length",
+      "kind": "maintenance",
+      "class": "patch",
+      "scope_test": "Closing a tracked security finding is upkeep with no new behaviour.",
+      "what": "Reproduce S6 with the documented nc command on current main. If the handler still raises ValueError, parse Content-Length defensively at web.py:1208 and return 400; either way, add an assertion to the existing test that the response is a 400 status line and that no traceback appears in the server log. Then set S6 to fixed in SECURITY.md.",
+      "why_now": "SECURITY.md says the test passes only because of other fixes and that the finding itself was never repaired; the log-noise bug may remain.",
+      "evidence": ["repo:SECURITY.md › S6", "repo:SECURITY.md › hostile HTTP: non-numeric Content-Length fail"],
+      "duplicate_of": "SECURITY.md S6",
+      "effort": "S",
+      "confidence": 0.7,
+      "test": "Extend test_non_numeric_content_length_gets_400_response_instead_dropped.py to read the raw response and check for 'HTTP/1.1 400' and no ValueError in the captured log.",
+      "risk": "Low; the change is confined to header parsing."
+    },
+    {
+      "rank": 6,
+      "title": "Raise the minimum Python to 3.10 and update CI matrix",
+      "kind": "maintenance",
+      "class": "scope",
+      "scope_test": "The promise 'needs only Python 3.9+' would change, so the owner must decide.",
+      "what": "Python 3.9 has been end of life since October 2025, and 3.10 ends this month. Propose a decision on the support floor: either keep 3.9 explicitly (older distro installs still ship it) and add the current supported versions (3.13, 3.14) to the CI matrix, or raise the floor in the README, launcher, AGENTS.md and CI. The low-risk part is adding newer Python versions to the matrix.",
+      "why_now": "The README and CI promise 3.9, which gets no security fixes, and 3.10 follows in October 2026; the matrix tests only 3.9 and 3.12.",
+      "evidence": ["world:Python 3.9 reached end of life on 31 October 2025", "world:Python 3.10 reaches end of life in October 2026", "repo:.github/workflows/ci.yml matrix [3.9, 3.12]", "repo:charter promises › Python 3.9+"],
+      "duplicate_of": null,
+      "effort": "S",
+      "confidence": 0.6,
+      "test": "CI matrix run on the chosen versions; ./plotkeeper.sh test and the acceptance suite pass on each.",
+      "risk": "Raising the floor can leave volunteers on older distros unable to install; fix PRs cannot change .github/workflows/, so the matrix change needs the owner."
+    },
+    {
+      "rank": 7,
+      "title": "Add an occupancy and income summary CSV computed from the ledger",
+      "kind": "feature",
+      "class": "minor",
+      "scope_test": "Charter open direction 'more CSV exports or report views computed from the ledger' helps coordinators see who has paid without storing new data.",
+      "what": "Add a fifth CSV export (e.g. season summary): per season, plots by status, charged, paid, outstanding and count per fee status, all computed from ledger rows. Reuse the existing dues and dashboard queries so totals match them exactly. Document it in the README and SCOPE export list.",
+      "why_now": "Similar tools and council reports list committee reports on occupancy and income as a common need. The charter allows more exports from the ledger.",
+      "evidence": ["world:Reports for the council or committee: occupancy, income, waiting-list length", "repo:charter open_directions › More CSV exports or report views", "repo:SCOPE.md › F7 four CSV exports"],
+      "duplicate_of": null,
+      "effort": "M",
+      "confidence": 0.5,
+      "test": "Acceptance test with demo data: the summary's charged, paid and outstanding equal the Dues page headline and the sum of the dues export; an empty season gives headers only.",
+      "risk": "The evidence comes from vendor pages, not from users of this project; the format might not match what coordinators need."
+    }
+  ],
+  "considered_and_dropped": [
+    {
+      "title": "Bump pytest from 8.3.3 to 9.x",
+      "why": "Maintenance, but the pin is in CI and AGENTS.md, and fix PRs cannot change workflows; Dependabot does not cover pip pins here. Low value without an observed failure."
+    },
+    {
+      "title": "Half plots, shared plots, multiple plots per tenant",
+      "why": "A listed non-goal ('complicate list rules'); it would need the owner and change a promise."
+    },
+    {
+      "title": "Renewal emails or letters to every tenant, inspection notices",
+      "why": "Email or SMS is a non-goal and would have the app contact people instead of the coordinator."
+    },
+    {
+      "title": "Plot map, online applications, self-service waiting list",
+      "why": "All explicit non-goals (plot map, gardener portal)."
+    },
+    {
+      "title": "Spreadsheet import helper",
+      "why": "An open direction, but there are no issues or observations asking for it and the design (ordinary entries, backdated dates) is large; propose later when someone asks."
+    },
+    {
+      "title": "Secure flag on the session cookie behind HTTPS",
+      "why": "SECURITY.md notes it only matters behind a proxy; no evidence of a problem, and it would need a new setting."
+    }
+  ],
+  "notes": "The sources are thin on demand: the project is 7 days old, with no issues, no stars and no repo-factory observations for this topic. The world facts come from a manual web search and are about vendors and councils, not Plotkeeper users. Most of the ideas therefore come from the repository's own tracked items (SECURITY.md, READINESS.md, the charter's open directions). I could not run the code, so I did not verify S6 or the line numbers cited in SECURITY.md. READINESS.md mentions .github/workflows/test.yml while the repository has ci.yml; that small documentation drift is worth fixing in the next PR that touches READINESS.md."
+}
+```

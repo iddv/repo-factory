@@ -1,0 +1,47 @@
+{
+ "security": {
+  "ran": true,
+  "findings": [
+   {
+    "severity": "high",
+    "status": "fixed",
+    "title": "A shared config.toml can make `recall sync` write outside the repository",
+    "rule": "e51"
+   }
+  ]
+ },
+ "final": {
+  "items": [
+   {
+    "id": "install",
+    "status": "green",
+    "title": "Clean install from the README",
+    "why": "README install and first-run commands all worked as written"
+   },
+   {
+    "id": "bind_localhost",
+    "status": "n/a",
+    "title": "Listens on localhost unless configured",
+    "why": "local CLI, listens on no port"
+   },
+   {
+    "id": "empty_start",
+    "status": "green",
+    "title": "Starts empty; demo data only on an explicit flag or command",
+    "why": "init creates empty project/state/decisions; demo only via recall demo <dir>"
+   },
+   {
+    "id": "first_admin",
+    "status": "n/a",
+    "title": "First-run admin setup, no default password",
+    "why": "no accounts or passwords"
+   },
+   {
+    "id": "tests_green",
+    "status": "green",
+    "title": "The documented test commands run green, as written",
+    "why": "1 documented test command(s) run green as written: `python3 -m unittest discover -s tests -t .`"
+   }
+  ]
+ }
+}

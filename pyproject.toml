@@ -1,26 +1,124 @@
 [project]
 name = "repo-factory"
-version = "0.0.0"
+# From the git tag (vX.Y.Z); a release sets it exactly (SETUPTOOLS_SCM_PRETEND_VERSION).
+dynamic = ["version"]
 description = "Give it a task; it designs, builds, checks, hardens and publishes a small software project, then keeps maintaining it. An experiment."
 readme = "README.md"
 license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
 authors = [{ name = "the repo-factory authors" }]
 requires-python = ">=3.12"
-dependencies = []
+dependencies = ["pyyaml>=6"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3.12",
+]
+
+[project.urls]
+Homepage = "https://github.com/iddv/repo-factory"
+Issues = "https://github.com/iddv/repo-factory/issues"
+
+[project.scripts]
+repo-factory = "repo_factory.cli:main"
 
 [dependency-groups]
 dev = [
     "pytest>=8",
+    "pytest-randomly>=5.0.0",
+    "pytest-xdist>=3.8.0",
     "ruff==0.16.10",
+    # tests/fake_github.py signs and verifies JWTs with a key made at run time
+    "cryptography>=42",
+    "hypothesis>=6.100",
+    "mypy>=1.13",
 ]
+# the browser smoke (tests/test_browser_smoke.py): only its CI job installs it
+browser = ["playwright==1.63.0"]
 
-[tool.uv]
-# The package itself arrives with the import; until then this project only holds its checks.
-package = false
+[build-system]
+requires = ["hatchling>=1.24", "hatch-vcs>=0.4"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+fallback-version = "0.0.0+unknown"
+
+[tool.hatch.version.raw-options]
+local_scheme = "node-and-date"
+scm.git.describe_command = "git describe --dirty --tags --long --match v*.*.*"
+
+# The build policies live at the repo root; an installed wheel carries them inside the package,
+# where repo_factory.resources finds them.
+[tool.hatch.build.targets.wheel]
+packages = ["repo_factory"]
+# The page's build (git-ignored, made by scripts/build_ui.py before `uv build`) ships in the
+# wheel; its sources and node_modules never do. Users never need Node.
+artifacts = ["repo_factory/ui/static/app/**"]
+exclude = ["repo_factory/ui/web/**"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"policies" = "repo_factory/_data/policies"
+
+[tool.hatch.build.targets.sdist]
+exclude = ["repo_factory/ui/web/node_modules", "tests/golden/product/.venv"]
 
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+# inputs kept as they were written: the test fixtures (built products, exams), the golden build's
+# recorded answers, and the design record's code samples
+extend-exclude = ["repo_factory/ui/web", "tests/fixtures", "tests/golden/fake", "docs"]
+
+[tool.ruff.format]
+# a test reads this module's source literally (its comment markers)
+exclude = ["repo_factory/maintain/revise.py"]
 
 [tool.ruff.lint]
+# Ignored until each is fixed by hand (a fix that changes code, not a formatter's): long lines,
+# closures over loop variables (each a possible bug, each with a test), raise-from,
+# open-without-with, the ContextVar default, and the rules below them.
 select = ["E", "F", "I", "B", "UP", "SIM"]
+ignore = ["E501", "B023", "B904", "SIM115", "B039",
+          "B007", "B017", "B905", "E402", "E702", "E731", "E741", "F402", "F811", "F841",
+          "SIM102", "SIM105", "SIM108", "SIM201", "SIM222", "SIM401", "UP031"]
+
+[tool.ruff.lint.per-file-ignores]
+"repo_factory/stored/testing.py" = ["UP047"]
+
+# The type check: scripts/ci/typecheck.py runs mypy with this table and compares each file's
+# error count with scripts/ci/typecheck_baseline.json; a count that rises fails `lint`.
+[tool.mypy]
+python_version = "3.12"
+files = ["repo_factory"]
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+show_error_codes = true
+check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+# Strict where stored data is declared and read.
+module = ["repo_factory.stored", "repo_factory.stored.*", "repo_factory.loop.ledger"]
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_untyped_calls = true
+disallow_untyped_decorators = true
+disallow_any_generics = true
+disallow_subclassing_any = true
+check_untyped_defs = true
+warn_return_any = true
+no_implicit_reexport = true
+strict_equality = true
+extra_checks = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Random order is opt-in (`-p randomly`); by default tests run in file order.
+addopts = "-p no:randomly"
+markers = [
+    "slow: every test measured at 5 s or more (tests/conftest.py marks them from .test_durations); run before a release and by `make check-all`",
+    "sandbox: the sandbox's own tests in real bubblewrap; required in CI's `test` job",
+    "browser: the page in a real browser (Playwright); skipped where it is not installed, required in CI's browser job",
+    "built_ui: needs the page built (scripts/build_ui.py); skipped without a build, required in CI's browser job",
+]

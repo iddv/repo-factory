@@ -1,0 +1,29 @@
+# v5-revise: a maintenance fix of a published product (MAINTAIN.md §5.2). Run by
+# repo_factory/maintain/revise.py on a fresh clone of the product's main, one issue at a time.
+#
+# reproduce: one session writes the failing acceptance test (or names the open-item test that
+#   already checks the report); the tool runs it and keeps it only when it fails on main for the
+#   reason the session stated.
+# build: one session makes that test pass with the smallest change (the fix).
+# verify: no model; the whole acceptance suite on the fixed tree, sandboxed with the network off;
+#   the reproducing test must pass and no test that passed on main may fail.
+# repair + reverify: one more session when verify found something, then verify again.
+# readiness: no model; AGENTS.md's commands run exactly as written (the README's quick start, the
+#   product's own tests, the acceptance suite), as the product's CI does.
+# deliver: the scope check (nothing under .github/workflows, repo-factory.yml, LICENSE, NOTICE; no
+#   secret-shaped file), the secrets and jargon scans of the changed files, the push and the PR.
+#
+# No dollar cap by default (the owner's rule): the fix as a whole has none unless the repo's
+# revise.max_usd or the loop's maintain.max_usd is set (the smaller wins), and a session has
+# none unless its max_usd below is set (a number of dollars). max_turns and timeout_s stop a
+# runaway session. model null: the Claude Code default; the repo's revise.models overrides
+# per stage (reproduce, build, repair).
+pipeline: v5-revise
+version: "1.0"
+stages: [reproduce, build, verify, repair, reverify, readiness, deliver]
+
+reproduce: {max_usd: null, max_turns: 40, timeout_s: 1500, attempts: 2, model: null}
+build: {max_usd: null, max_turns: 120, timeout_s: 2700, model: null}
+repair: {max_usd: null, max_turns: 80, timeout_s: 1800, model: null}
+verify: {timeout_s: 1200}
+readiness: {timeout_s: 1800}

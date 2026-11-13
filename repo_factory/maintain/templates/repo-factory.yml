@@ -1,0 +1,47 @@
+# .github/repo-factory.yml — how this repository is maintained. Read by repo-factory on every poll;
+# followed by any agent that reads AGENTS.md. Change it in a PR like any other file.
+repo-factory: {{repo_factory}}                      # schema version
+
+status: {{status}}            # maintained | as-is | archived
+                              # as-is: triage still labels and answers; nothing is fixed.
+                              # archived: repo-factory only posts one comment pointing here, then
+                              # leaves the repo alone (and the owner archives it on GitHub).
+
+triage:
+  enabled: {{triage_enabled}}               # classify new issues and PRs, label them, post one comment
+  close_duplicates: {{triage_close_duplicates}}     # true: close an obvious duplicate as "not planned" with the link
+  answer_questions: {{triage_answer_questions}}      # reply to `question` issues from the docs (no code, no tools)
+
+revise:
+  trigger: {{revise_trigger}}                 # go: only issues labelled go | owner: also issues the owner
+                              #     opened once triaged (repo-factory adds go itself) | off
+  auto_go: {{revise_auto_go}}                # off | patch: repo-factory adds `go` to bug/security issues at p1 or p2
+                              #     opened by the owner or a collaborator with write access
+  kinds: {{revise_kinds}}   # what repo-factory may label go by itself; the owner's go starts any kind
+  max_attempts: {{revise_max_attempts}}             # failure comments before `needs-you`
+  lease_hours: {{revise_lease_hours}}
+  max_usd: {{revise_max_usd}}               # per revise; null = no cap; the loop's maintain.max_usd
+                              # applies as well when set (the smaller wins)
+  models: {{revise_models}}                  # per-stage overrides, same roles as Settings › Models; {} = default
+
+merge:
+  factory_patch: {{merge_factory_patch}}          # never | ci-green: repo-factory merges its own fix PR (squash), one
+                              #   per poll, oldest first, when every check on its head commit
+                              #   passed (at least one: no CI, no merge), it is up to date with
+                              #   main, its kind is in merge.kinds and its diff is at most
+                              #   merge.max_lines. Never merged by repo-factory, whatever this says: a
+                              #   `feature`; a PR touching .github/, LICENSE, NOTICE or a
+                              #   lockfile; one labelled `hold` or `needs-you`; one with changes
+                              #   requested; one you pushed commits to; anyone else's PR.
+  kinds: {{merge_kinds}}         # of bug | docs | security | dependency (feature: never)
+  max_lines: {{merge_max_lines}}
+  dependabot: {{merge_dependabot}}           # never | patch | minor: merge Dependabot PRs of that level
+                              #   when CI is green (Actions bumps are `patch`)
+
+release:
+  on_merge: {{release_on_merge}}             # patch | minor | off. bug/security/docs/dependency → patch;
+                              #   feature → minor. Tag + GitHub release with generated notes.
+  prefix: {{release_prefix}}
+
+spend:
+  note: {{spend_note}}                    # free text shown in the repo-factory UI next to this repo

@@ -1,0 +1,5 @@
+{"what": "a product with its own pytest suite and conftest.py; own and exam results told apart; the adoption check sees a fix commit with and without a test",
+ "own_green": true,
+ "own_tests": 2,
+ "scenarios": {"a1": "passed", "a2": "failed"},
+ "readme_tests": ["python -m pytest"]}

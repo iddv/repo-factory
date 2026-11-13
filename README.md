@@ -7,9 +7,8 @@ to a private GitHub repository on your own Linux machine, then keeps maintaining
 > GitHub account. It costs real money or plan usage: about $10 and an hour a build on our
 > record. Its own checks are not proof. Read what it builds.
 
-**Status:** this repository is being assembled in public. The engine arrives in the next pull
-requests; there is no release yet, so the install below does not work today. The
-[changelog](CHANGELOG.md) says what has landed.
+**Status:** the engine, the page and the checks are here; there is no release yet, so for
+now you install it from a checkout (below). The [changelog](CHANGELOG.md) says what has landed.
 
 ## What it does
 
@@ -76,13 +75,19 @@ the GitHub CLI (`gh`) logged in.
 
 ## Install
 
-There is no release yet. When there is, it will be three commands:
+There is no release yet. Until there is, from a checkout (it needs Node once, to build the
+page):
 
 ```
-uv tool install <the wheel's address on this repository's Releases page>
+git clone https://github.com/iddv/repo-factory && cd repo-factory
+python3 scripts/build_ui.py && uv tool install --python 3.12 .
 repo-factory doctor      # one line each: Claude Code, bubblewrap, git, gh
-repo-factory ui          # prints a sign-in link for the page on 127.0.0.1
+repo-factory ui          # the page on 127.0.0.1:8790, and a sign-in link
 ```
+
+With a release, it will be three commands: `uv tool install <the wheel's address on the
+Releases page>`, `repo-factory doctor`, `repo-factory ui`. Then read
+[docs/first-build.md](docs/first-build.md): what each stage does, the press, and spend.
 
 ## The defaults
 

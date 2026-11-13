@@ -1,0 +1,796 @@
+{
+ "GET /api/details": [
+  400,
+  "application/json",
+  "error: sel names the object: b<build key> or i<task id>"
+ ],
+ "GET /api/details?sel=bnope": [
+  404,
+  "application/json",
+  "error: no build 'nope'"
+ ],
+ "GET /api/github/app": [
+  200,
+  "application/json",
+  [
+   "app",
+   "attempt",
+   "available",
+   "job",
+   "never",
+   "pending",
+   "permissions",
+   "scopes",
+   "state",
+   "unavailable_reason",
+   "wait_s"
+  ]
+ ],
+ "GET /api/github/app/callback": [
+  200,
+  "text/html"
+ ],
+ "GET /api/github/app/callback?code=x&state=y": [
+  200,
+  "text/html"
+ ],
+ "GET /api/github/app/setup": [
+  200,
+  "text/html"
+ ],
+ "GET /api/github/app/setup?installation_id=1&setup_action=install": [
+  200,
+  "text/html"
+ ],
+ "GET /": [
+  200,
+  "text/html"
+ ],
+ "GET /index.html": [
+  200,
+  "text/html"
+ ],
+ "GET /classic": [
+  404,
+  "application/json",
+  "error: not found"
+ ],
+ "GET /classic/": [
+  404,
+  "application/json",
+  "error: not found"
+ ],
+ "GET /loop": [
+  404,
+  "application/json",
+  "error: not found"
+ ],
+ "GET /loop/": [
+  404,
+  "application/json",
+  "error: not found"
+ ],
+ "GET /static/theme.js": [
+  200,
+  "text/javascript"
+ ],
+ "GET /static/repo-factory.css": [
+  200,
+  "text/css"
+ ],
+ "GET /static/brand/favicon-16.png": [
+  200,
+  "image/png"
+ ],
+ "GET /static/nope.js": [
+  404,
+  "application/json",
+  "error: not found"
+ ],
+ "GET /static/../api.py": [
+  404,
+  "application/json",
+  "error: not found"
+ ],
+ "GET /static/": [
+  404,
+  "application/json",
+  "error: not found"
+ ],
+ "GET /history": [
+  404,
+  "application/json",
+  "error: not found"
+ ],
+ "GET /help": [
+  200,
+  "text/html"
+ ],
+ "GET /loop/feed.xml": [
+  404,
+  "application/json",
+  "error: not found"
+ ],
+ "GET /api/loop": [
+  200,
+  "application/json",
+  [
+   "history",
+   "ideas",
+   "status"
+  ]
+ ],
+ "GET /api/loop/settings": [
+  200,
+  "application/json",
+  [
+   "build",
+   "concurrency",
+   "daily_usd",
+   "exam",
+   "github",
+   "maintain",
+   "pitch",
+   "pitch_per_tick",
+   "projects",
+   "publish",
+   "revise",
+   "tasks_dir",
+   "tick_s"
+  ]
+ ],
+ "GET /api/models": [
+  200,
+  "application/json",
+  [
+   "catalog",
+   "file",
+   "policy",
+   "roles"
+  ]
+ ],
+ "GET /api/spend/breakdown": [
+  200,
+  "application/json",
+  [
+   "builds",
+   "caps",
+   "days",
+   "now",
+   "other",
+   "projects",
+   "summary",
+   "unattributed",
+   "week_start"
+  ]
+ ],
+ "GET /api/prompts": [
+  200,
+  "application/json",
+  [
+   "defaults_only",
+   "groups",
+   "house_rules",
+   "prompts",
+   "repos",
+   "settings",
+   "store"
+  ]
+ ],
+ "GET /api/prompts/": [
+  200,
+  "application/json",
+  [
+   "defaults_only",
+   "groups",
+   "house_rules",
+   "prompts",
+   "repos",
+   "settings",
+   "store"
+  ]
+ ],
+ "GET /api/prompts/house_rules": [
+  200,
+  "application/json",
+  [
+   "defaults_only",
+   "max_chars",
+   "max_note",
+   "settings",
+   "text",
+   "used_by",
+   "version",
+   "versions",
+   "wrapped_as"
+  ]
+ ],
+ "GET /api/prompts/house_rules/restore": [
+  405,
+  "application/json",
+  "error: POST only"
+ ],
+ "GET /api/prompts/house_rules/versions/1": [
+  404,
+  "application/json",
+  "error: no version 1"
+ ],
+ "GET /api/prompts/house_rules/versions/1/note": [
+  405,
+  "application/json",
+  "error: POST only"
+ ],
+ "GET /api/prompts/repo_factory/nosuch": [
+  404,
+  "application/json",
+  "error: no prompt 'nosuch' in repo_factory's registry"
+ ],
+ "GET /api/prompts/repo_factory/nosuch/reset": [
+  405,
+  "application/json",
+  "error: POST only"
+ ],
+ "GET /api/prompts/repo_factory/nosuch/versions/1": [
+  404,
+  "application/json",
+  "error: no prompt 'nosuch' in repo_factory's registry"
+ ],
+ "GET /api/prompts/license": [
+  404,
+  "application/json",
+  "error: not found"
+ ],
+ "GET /api/prompts/preview": [
+  404,
+  "application/json",
+  "error: not found"
+ ],
+ "GET /api/prompts/other": [
+  404,
+  "application/json",
+  "error: not found"
+ ],
+ "GET /api/spend/caps": [
+  200,
+  "application/json",
+  [
+   "build_max_usd",
+   "daily_usd",
+   "error",
+   "file",
+   "policy"
+  ]
+ ],
+ "GET /api/maintain/summary": [
+  200,
+  "application/json",
+  [
+   "file",
+   "identity",
+   "last_poll",
+   "repos",
+   "settings",
+   "spend"
+  ]
+ ],
+ "GET /api/maintain/lessons": [
+  200,
+  "application/json",
+  [
+   "by_kind",
+   "errors",
+   "file",
+   "issues",
+   "lessons",
+   "repos",
+   "version"
+  ]
+ ],
+ "GET /api/maintain/repos": [
+  404,
+  "application/json",
+  "error: not found"
+ ],
+ "GET /api/maintain/repo?repo=someone/thing": [
+  404,
+  "application/json",
+  "error: not found"
+ ],
+ "GET /api/maintain/repo": [
+  404,
+  "application/json",
+  "error: not found"
+ ],
+ "GET /api/maintain/repo/issues?repo=someone/thing": [
+  404,
+  "application/json",
+  "error: not found"
+ ],
+ "GET /api/maintain/i0123abcd": [
+  404,
+  "application/json",
+  "error: not a maintained repository"
+ ],
+ "GET /api/maintain/not-an-idea": [
+  404,
+  "application/json",
+  "error: not found"
+ ],
+ "GET /api/maintain/": [
+  404,
+  "application/json",
+  "error: not found"
+ ],
+ "GET /api/state": [
+  200,
+  "application/json",
+  [
+   "api_version",
+   "builds",
+   "harness",
+   "history",
+   "ideas",
+   "maintain",
+   "now",
+   "project_asks",
+   "root",
+   "status"
+  ]
+ ],
+ "GET /api/projects": [
+  200,
+  "application/json",
+  [
+   "archived",
+   "backfill",
+   "charters_by_you",
+   "counts",
+   "projects"
+  ]
+ ],
+ "GET /api/project?id=nope": [
+  404,
+  "application/json",
+  "error: no such project"
+ ],
+ "GET /api/project": [
+  404,
+  "application/json",
+  "error: no such project"
+ ],
+ "GET /api/projects/settings": [
+  200,
+  "application/json",
+  [
+   "autonomy",
+   "file",
+   "settings"
+  ]
+ ],
+ "GET /api/changes": [
+  200,
+  "application/json",
+  [
+   "changes"
+  ]
+ ],
+ "GET /api/projects/preview?key=autonomy.preset&value=%22quiet%22": [
+  200,
+  "application/json",
+  [
+   "ask",
+   "file",
+   "list",
+   "total"
+  ]
+ ],
+ "GET /api/projects/preview": [
+  200,
+  "application/json",
+  [
+   "ask",
+   "file",
+   "list",
+   "total"
+  ]
+ ],
+ "GET /api/project/charter?id=nope": [
+  404,
+  "application/json",
+  "error: no such project"
+ ],
+ "GET /api/actions": [
+  200,
+  "application/json",
+  [
+   "actions",
+   "subject"
+  ]
+ ],
+ "GET /api/actions?kind=idea&id=nope": [
+  404,
+  "application/json",
+  "error: no such idea: nope"
+ ],
+ "GET /api/outcomes": [
+  200,
+  "application/json",
+  [
+   "now",
+   "outcomes",
+   "reason",
+   "state",
+   "subject"
+  ]
+ ],
+ "GET /api/header": [
+  200,
+  "application/json",
+  [
+   "api_version",
+   "needs_you",
+   "onboarding",
+   "open_ideas",
+   "paused",
+   "queued",
+   "revising",
+   "running"
+  ]
+ ],
+ "GET /api/build?dir=nope": [
+  404,
+  "application/json",
+  "error: no such build under ROOT"
+ ],
+ "GET /api/build": [
+  404,
+  "application/json",
+  "error: no such build under ROOT"
+ ],
+ "GET /api/build/runs?dir=nope": [
+  404,
+  "application/json",
+  "error: no such build under ROOT"
+ ],
+ "GET /api/build/runs": [
+  404,
+  "application/json",
+  "error: no such build under ROOT"
+ ],
+ "GET /api/run?dir=nope&n=1": [
+  404,
+  "application/json",
+  "error: no such build under ROOT"
+ ],
+ "GET /api/run": [
+  404,
+  "application/json",
+  "error: no such build under ROOT"
+ ],
+ "GET /api/info": [
+  200,
+  "application/json",
+  [
+   "api_version",
+   "harness",
+   "policies",
+   "policy",
+   "root"
+  ]
+ ],
+ "GET /api/builds": [
+  200,
+  "application/json",
+  "list"
+ ],
+ "GET /api/events?dir=nope": [
+  404,
+  "application/json",
+  "error: no such build under ROOT"
+ ],
+ "GET /api/events": [
+  404,
+  "application/json",
+  "error: no such build under ROOT"
+ ],
+ "GET /api/text?dir=nope&what=report": [
+  404,
+  "application/json",
+  "error: no such build under ROOT"
+ ],
+ "GET /api/text?start=x": [
+  404,
+  "application/json",
+  "error: no such build under ROOT"
+ ],
+ "GET /api/nothing": [
+  404,
+  "application/json",
+  "error: not found"
+ ],
+ "GET /nothing": [
+  404,
+  "application/json",
+  "error: not found"
+ ],
+ "GET ": [
+  200,
+  "text/html"
+ ],
+ "GET /api/repo-factory": [
+  404,
+  "application/json",
+  "error: not found"
+ ],
+ "GET /api/term": [
+  404,
+  "application/json",
+  "error: not found"
+ ],
+ "GET /api/chat": [
+  404,
+  "application/json",
+  "error: not found"
+ ],
+ "GET /api/capabilities": [
+  404,
+  "application/json",
+  "error: not found"
+ ],
+ "GET /api/plugins": [
+  404,
+  "application/json",
+  "error: not found"
+ ],
+ "GET /api/traces": [
+  404,
+  "application/json",
+  "error: not found"
+ ],
+ "GET /api/trace": [
+  404,
+  "application/json",
+  "error: not found"
+ ],
+ "POST /api/github/app {}": [
+  405,
+  "application/json",
+  "error: writes go through api/act (github_app_create, github_app_refresh, github_app_key, github_app_remove)"
+ ],
+ "POST /api/prompts {}": [
+  405,
+  "application/json",
+  "error: GET only"
+ ],
+ "POST /api/prompts/house_rules/restore {}": [
+  400,
+  "application/json",
+  "error: version must be a version number (1 or more)"
+ ],
+ "POST /api/prompts/house_rules/versions/1 {}": [
+  405,
+  "application/json",
+  "error: GET only"
+ ],
+ "POST /api/prompts/house_rules/versions/1/note {}": [
+  404,
+  "application/json",
+  "error: no version 1"
+ ],
+ "POST /api/prompts/license {}": [
+  400,
+  "application/json",
+  "error: license must be one of MIT, Apache-2.0, none"
+ ],
+ "POST /api/prompts/license {\"license\": \"nope\"}": [
+  400,
+  "application/json",
+  "error: license must be one of MIT, Apache-2.0, none"
+ ],
+ "POST /api/prompts/preview {}": [
+  404,
+  "application/json",
+  "error: no prompt '' in repo_factory's registry"
+ ],
+ "POST /api/prompts/repo_factory/nosuch {}": [
+  404,
+  "application/json",
+  "error: no prompt 'nosuch' in repo_factory's registry"
+ ],
+ "POST /api/prompts/repo_factory/nosuch/versions/1 {}": [
+  405,
+  "application/json",
+  "error: GET only"
+ ],
+ "POST /api/prompts/other {}": [
+  404,
+  "application/json",
+  "error: not found"
+ ],
+ "POST /api/models {}": [
+  400,
+  "application/json",
+  "error: no such role: (none)"
+ ],
+ "POST /api/models {\"role\": \"nope\"}": [
+  400,
+  "application/json",
+  "error: no such role: nope"
+ ],
+ "POST /api/spend {\"daily_usd\": \"x\"}": [
+  400,
+  "application/json",
+  "error: daily_usd must be a number of USD above 0, or empty for no cap"
+ ],
+ "POST /api/maintain/settings {}": [
+  400,
+  "application/json",
+  "error: send one or more of: enabled, poll_s, cache_s, triage_max_per_poll, repos, concurrency, max_usd, net, lesson_label, doctor_days, identity, refresh_max"
+ ],
+ "POST /api/maintain/settings {\"nope\": 1}": [
+  400,
+  "application/json",
+  "error: send one or more of: enabled, poll_s, cache_s, triage_max_per_poll, repos, concurrency, max_usd, net, lesson_label, doctor_days, identity, refresh_max"
+ ],
+ "POST /api/projects/settings {}": [
+  400,
+  "application/json",
+  "error: projects. is not a setting this page writes"
+ ],
+ "POST /api/maintain/act {}": [
+  404,
+  "application/json",
+  "error: not a maintained repository"
+ ],
+ "POST /api/maintain/repo/nope {\"repo\": \"someone/thing\"}": [
+  404,
+  "application/json",
+  "error: no such build under ROOT"
+ ],
+ "POST /api/act {}": [
+  400,
+  "application/json",
+  "error: unknown action ''"
+ ],
+ "POST /api/act {\"kind\": \"nope\"}": [
+  400,
+  "application/json",
+  "error: unknown action 'nope'"
+ ],
+ "POST /api/loop/add {}": [
+  400,
+  "application/json",
+  "error: say what to build"
+ ],
+ "POST /api/loop/nope {}": [
+  400,
+  "application/json",
+  "error: no such task"
+ ],
+ "POST /api/loop/send {\"id\": \"--help\"}": [
+  400,
+  "application/json",
+  "error: no such task"
+ ],
+ "POST /api/new {}": [
+  400,
+  "application/json",
+  "error: describe what you want built"
+ ],
+ "POST /api/start {}": [
+  404,
+  "application/json",
+  "error: no such build under ROOT"
+ ],
+ "POST /api/start {\"dir\": \"nope\"}": [
+  404,
+  "application/json",
+  "error: no such build under ROOT"
+ ],
+ "POST /api/answer {\"dir\": \"nope\"}": [
+  404,
+  "application/json",
+  "error: no such build under ROOT"
+ ],
+ "POST /api/stop {\"dir\": \"nope\"}": [
+  404,
+  "application/json",
+  "error: no such build under ROOT"
+ ],
+ "POST /api/verdict {\"dir\": \"nope\"}": [
+  404,
+  "application/json",
+  "error: no such build under ROOT"
+ ],
+ "POST /api/nothing {}": [
+  404,
+  "application/json",
+  "error: no such build under ROOT"
+ ],
+ "POST /api/nothing {\"dir\": \"nope\"}": [
+  404,
+  "application/json",
+  "error: no such build under ROOT"
+ ],
+ "POST /nothing {}": [
+  404,
+  "application/json",
+  "error: no such build under ROOT"
+ ],
+ "POST /api/chat/send {}": [
+  404,
+  "application/json",
+  "error: no such build under ROOT"
+ ],
+ "POST /api/capabilities {}": [
+  404,
+  "application/json",
+  "error: no such build under ROOT"
+ ],
+ "POST /api/spend {\"daily_usd\": \"x\"} as agent:helper": [
+  403,
+  "application/json",
+  "error: the agent:helper token only runs actions (POST api/act)"
+ ],
+ "POST /api/act {\"kind\": \"nope\"} as agent:helper": [
+  400,
+  "application/json",
+  "error: unknown action 'nope'"
+ ],
+ "POST /api/act {\"kind\": \"nope\"} as mcp": [
+  403,
+  "application/json",
+  "error: that token does not act here"
+ ],
+ "POST /api/loop/add {} as cli": [
+  400,
+  "application/json",
+  "error: say what to build"
+ ],
+ "POST /api/models {} as chat": [
+  403,
+  "application/json",
+  "error: that token does not act here"
+ ],
+ "POST /api/nothing {} as ui": [
+  404,
+  "application/json",
+  "error: no such build under ROOT"
+ ],
+ "PUT /": [
+  405,
+  "application/json",
+  "error: method not allowed"
+ ],
+ "DELETE /api/act": [
+  405,
+  "application/json",
+  "error: method not allowed"
+ ],
+ "HEAD /api/info": [
+  200,
+  "application/json",
+  [
+   "api_version",
+   "harness",
+   "policies",
+   "policy",
+   "root"
+  ]
+ ],
+ "HEAD /nothing": [
+  404,
+  "application/json",
+  "error: not found"
+ ],
+ "POST /api/act (not JSON)": [
+  400,
+  "application/json",
+  "error: body must be JSON"
+ ],
+ "POST /api/act (a list)": [
+  400,
+  "application/json",
+  "error: body must be a JSON object"
+ ]
+}

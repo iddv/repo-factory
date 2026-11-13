@@ -1,0 +1,8 @@
+{"completeness": {"done": 7, "total": 7, "flows": [
+ {"id": "F1", "title": "Install and first run", "status": "works"},
+ {"id": "F2", "title": "Set up agent profiles and scenarios", "status": "works"},
+ {"id": "F3", "title": "Run a trial", "status": "works"},
+ {"id": "F4", "title": "Inspect trials", "status": "works"},
+ {"id": "F5", "title": "Batch runs and comparison", "status": "works"},
+ {"id": "F6", "title": "Export a report", "status": "works"},
+ {"id": "F7", "title": "Abort, clean up and delete", "status": "works"}]}}

@@ -1,0 +1,125 @@
+{
+ "build": {
+  "version": "4936550ac0d7",
+  "evaluated": "2026-10-18",
+  "scorecard": "repo-factory-evals:scorecards/2026-10-18-builds-baseline-0.3.88.md"
+ },
+ "change": {
+  "version": "6a6887d72b5f",
+  "evaluated": "skipped: its first scorecard is the build benchmark (repo-factory eval builds); the 2026-10-18 baseline ran 0.3.88 policies/v5 as shipped"
+ },
+ "charter": {
+  "version": "9031f18707da",
+  "evaluated": "skipped: locked when the lock began (EV-1); evolve has no scorecard yet"
+ },
+ "claims": {
+  "version": "4f9b8245b6f3",
+  "evaluated": "2026-10-18",
+  "scorecard": "repo-factory-evals:scorecards/2026-10-18-builds-baseline-0.3.88.md"
+ },
+ "describe": {
+  "version": "e13adba94496",
+  "evaluated": "skipped: locked when the lock began (EV-1); the pitch, editor and research have no scorecard yet"
+ },
+ "editor": {
+  "version": "98757517e5b3",
+  "evaluated": "skipped: locked when the lock began (EV-1); the pitch, editor and research have no scorecard yet"
+ },
+ "editor_final": {
+  "version": "15c5d69b26b3",
+  "evaluated": "skipped: changed or added by US-3 (#289) before the lock merged; the editor and the research desk have no eval stage yet (EV-3 next)"
+ },
+ "editor_shipped": {
+  "version": "1a52486997a7",
+  "evaluated": "skipped: changed or added by US-3 (#289) before the lock merged; the editor and the research desk have no eval stage yet (EV-3 next)"
+ },
+ "evolve": {
+  "version": "d8db11b44414",
+  "evaluated": "2026-10-18",
+  "scorecard": "repo-factory-evals:scorecards/2026-10-18-evolve-v1-claude-sonnet-5-5-shipped-0.4.0-candidate.md"
+ },
+ "fix": {
+  "version": "8ab72e4ff810",
+  "evaluated": "skipped: locked when the lock began (EV-1); evolve has no scorecard yet"
+ },
+ "honesty": {
+  "version": "70dbca3ad933",
+  "evaluated": "skipped: locked when the lock began (EV-1); the pitch, editor and research have no scorecard yet"
+ },
+ "lesson_issue": {
+  "version": "20d984f11b18",
+  "evaluated": "skipped: locked when the lock began (EV-1); the pitch, editor and research have no scorecard yet"
+ },
+ "oracle": {
+  "version": "1199dd46e1de",
+  "evaluated": "2026-10-18",
+  "scorecard": "repo-factory-evals:scorecards/2026-10-18-builds-baseline-0.3.88.md"
+ },
+ "pair": {
+  "version": "2d5d9673d30f",
+  "evaluated": "2026-10-18",
+  "scorecard": "repo-factory-evals:scorecards/2026-10-18-builds-baseline-0.3.88.md"
+ },
+ "pitch": {
+  "version": "40d5dd960959",
+  "evaluated": "2026-10-18",
+  "scorecard": "repo-factory-evals:scorecards/2026-10-18-pitch-v1-claude-opus-5-5-shipped-0.4.0-candidate.md"
+ },
+ "postmortem": {
+  "version": "a88d4e1ea5b0",
+  "evaluated": "2026-10-18",
+  "scorecard": "repo-factory-evals:scorecards/2026-10-18-builds-baseline-0.3.88.md"
+ },
+ "product": {
+  "version": "eec7a6acb25d",
+  "evaluated": "2026-10-18",
+  "scorecard": "repo-factory-evals:scorecards/2026-10-18-builds-baseline-0.3.88.md"
+ },
+ "readiness": {
+  "version": "58fd07a32e5b",
+  "evaluated": "2026-10-18",
+  "scorecard": "repo-factory-evals:scorecards/2026-10-18-builds-baseline-0.3.88.md"
+ },
+ "repair": {
+  "version": "ef459678c22d",
+  "evaluated": "2026-10-18",
+  "scorecard": "repo-factory-evals:scorecards/2026-10-18-builds-baseline-0.3.88.md"
+ },
+ "reproduce": {
+  "version": "deb7a75c6bca",
+  "evaluated": "skipped: locked when the lock began (EV-1); evolve has no scorecard yet"
+ },
+ "research": {
+  "version": "7e5e0c491f8c",
+  "evaluated": "skipped: changed or added by US-3 (#289) before the lock merged; the editor and the research desk have no eval stage yet (EV-3 next)"
+ },
+ "reverify": {
+  "version": "5b320e1ed35d",
+  "evaluated": "2026-10-18",
+  "scorecard": "repo-factory-evals:scorecards/2026-10-18-builds-baseline-0.3.88.md"
+ },
+ "scope": {
+  "version": "24b6236fb334",
+  "evaluated": "2026-10-18",
+  "scorecard": "repo-factory-evals:scorecards/2026-10-18-builds-baseline-0.3.88.md"
+ },
+ "security": {
+  "version": "2a3cc2795c3a",
+  "evaluated": "2026-10-18",
+  "scorecard": "repo-factory-evals:scorecards/2026-10-18-builds-baseline-0.3.88.md"
+ },
+ "study": {
+  "version": "4e9316e55fc9",
+  "evaluated": "2026-10-18",
+  "scorecard": "repo-factory-evals:scorecards/2026-10-18-builds-baseline-0.3.88.md"
+ },
+ "triage": {
+  "version": "f2d0a67fc7aa",
+  "evaluated": "skipped: locked when the lock began (EV-1); evolve has no scorecard yet"
+ },
+ "verifier": {
+  "version": "d19643c4ecf5",
+  "evaluated": "2026-10-18",
+  "scorecard": "repo-factory-evals:scorecards/2026-10-18-builds-ev7-beyond-the-spec.md"
+ }
+}

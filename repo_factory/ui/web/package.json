@@ -1,0 +1,26 @@
+{
+  "name": "repo-factory-ui",
+  "private": true,
+  "version": "0.0.0",
+  "description": "The repo-factory page's sources (Svelte 5, TypeScript, Vite). Built in CI and at release; the wheel ships only the output.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "check": "svelte-check --tsconfig ./tsconfig.json --fail-on-warnings",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "7.3.1",
+    "jsdom": "30.1.2",
+    "svelte": "5.57.2",
+    "svelte-check": "4.7.6",
+    "typescript": "6.0.3",
+    "vite": "8.3.4",
+    "vitest": "5.0.4"
+  }
+}

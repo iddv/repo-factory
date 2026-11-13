@@ -1,0 +1,105 @@
+{
+ "verdict": "accept",
+ "product": "Listing Beacon",
+ "product_type": "cli",
+ "one_liner": "A command-line tool that takes the JSON file a small site already publishes (jobs, events, products) and serves it as a public, read-only MCP server with list and search tools, then prints a copy-paste setup page for chat clients.",
+ "who": "A small-site operator who already publishes a nightly JSON listing (jobs, events, products) and wants chat clients to query it without running auth.",
+ "moment": "Making the listing reachable from Claude or ChatGPT means hand-building an MCP server, annotating tools as read-only, and writing per-client setup steps, as the frontierroles job board did by hand.",
+ "why_now": "One job board just shipped a public, unauthenticated Streamable HTTP MCP server over nightly static JSON and documented the setup steps (E1), and an ecosystem map finds 85% of MCP tools serve non-developer domains with many capabilities backed by a single tool (E2). There is no demand evidence beyond that one hand-built example.",
+ "existing": [
+  {
+   "name": "frontierroles MCP server (mcp.frontierroles.com/mcp)",
+   "does": "Exposes one job board's nightly static JSON listings as a public, unauthenticated, read-only annotated Streamable HTTP MCP server, with setup steps for Claude and ChatGPT",
+   "lacks": "It is hand-built for one site; nothing another operator can point at their own JSON file"
+  },
+  {
+   "name": "OpenAPI-to-MCP converters (e.g. FastMCP's OpenAPI import)",
+   "does": "Generate MCP tools from an existing HTTP API description",
+   "lacks": "Need an API rather than a static JSON file, give no search over listing records, and print no end-user setup page"
+  },
+  {
+   "name": "Generic JSON/filesystem MCP servers in community repos",
+   "does": "Let a local agent read or query JSON files",
+   "lacks": "Mostly local stdio tools for developers, not a public read-only HTTP endpoint with a visitor-facing setup page"
+  }
+ ],
+ "buildability": 0.85,
+ "insight": 0.5,
+ "differentiation": 0.4,
+ "grounding_score": 0.6,
+ "score_reasons": {
+  "buildability": "Serving one JSON file over Streamable HTTP with two read-only tools and rendering a setup page is small, well-scoped Python work with an official SDK.",
+  "insight": "The RSS analogy is a reasonable connection between one hand-built site and the non-developer long tail, but it is close to the obvious 'make X easy for MCP' trend.",
+  "differentiation": "Nobody packages this exact static-listing-to-public-MCP-plus-setup-page path, but JSON and OpenAPI wrappers sit close by and are easy to adapt.",
+  "grounding": "The transport, read-only annotations, no auth, nightly static JSON and the Claude/ChatGPT setup steps all trace to E1. That generalising it is wanted is inferred, with no demand evidence."
+ },
+ "buildability_reasons": [
+  "One input (a JSON file), two tools (list, search), one output page",
+  "The Python MCP SDK supports Streamable HTTP and tool annotations",
+  "No auth, no database, no third-party paid APIs",
+  "Field inference for arbitrary listing shapes is the only fiddly part"
+ ],
+ "risks": [
+  "json-to-MCP wrappers may already exist and be good enough",
+  "Clients' connection steps change, so the setup page goes stale",
+  "A listing may need auth after all",
+  "Arbitrary JSON shapes make sensible search fields hard to guess without configuration",
+  "Public unauthenticated endpoints invite scraping and load the operator did not plan for"
+ ],
+ "brief": "Small-site operators who already publish a nightly JSON listing of jobs, events or products want chat clients to query it, but today that means hand-building an MCP server the way one job board did. Build something they can install and point at their JSON file that serves it publicly with no auth, over Streamable HTTP, with read-only annotated list and search tools. It should pick up the file when the nightly export replaces it, and print a copy-paste setup page telling their visitors how to add it in Claude and ChatGPT.",
+ "grounding": [
+  "frontierroles, a job board for AI engineering roles, exposes its listings through a public, unauthenticated, Streamable HTTP MCP server at mcp.frontierroles.com/mcp",
+  "Tools are read-only and annotated as such",
+  "The post gives setup steps for Claude web/desktop (custom connector) and ChatGPT, and says the data is nightly static JSON",
+  "MCPacific maps 124K MCP servers and finds 85% of MCP tools serve non-developer domains; many capabilities have only one tool behind them",
+  "Smallest useful v1: A CLI that serves one JSON file read-only over MCP with list and search tools and prints the setup page",
+  "Cheapest test: publish the CLI with the job board's JSON as the demo; it is real if five operators connect a listing within a month without a support question"
+ ],
+ "cheapest_test": "Publish the CLI with the job board's JSON as the demo; it is real if five operators connect a listing within a month without a support question.",
+ "evidence_used": [
+  "E1"
+ ],
+ "claims": [
+  {
+   "claim": "chat clients can query it",
+   "interpreted": "Chat clients that support remote Streamable HTTP MCP servers, starting with Claude custom connectors and ChatGPT as in E1",
+   "setting": null,
+   "keeps_spirit": true,
+   "why": "Those are the clients the evidence names, and they cover the operator's audience."
+  },
+  {
+   "claim": "copy-paste setup page",
+   "interpreted": "A setup page generated from per-client templates that ship with the tool, dated with when they were last checked, and that operators can edit",
+   "setting": {
+    "key": "setup.clients",
+    "default": "claude,chatgpt",
+    "means": "Which clients' setup steps the generated page includes"
+   },
+   "keeps_spirit": true,
+   "why": "Client steps change, but a dated, editable template still saves the operator writing them by hand."
+  },
+  {
+   "claim": "nightly JSON listing served as-is",
+   "interpreted": "The server re-reads the file when it changes on disk, checking on an interval",
+   "setting": {
+    "key": "listing.reload_seconds",
+    "default": "300",
+    "means": "How often the server checks the JSON file for a new nightly export"
+   },
+   "keeps_spirit": true,
+   "why": "The operator keeps their existing export job and the MCP surface follows it without a restart."
+  },
+  {
+   "claim": "without running auth",
+   "interpreted": "Public and unauthenticated, read-only, with a per-client request cap so a public endpoint cannot be hammered",
+   "setting": {
+    "key": "server.rate_limit_per_minute",
+    "default": "60",
+    "means": "Maximum tool calls per client per minute"
+   },
+   "keeps_spirit": true,
+   "why": "No auth to run stays true, and the cap protects a small site's server."
+  }
+ ],
+ "reject_reason": ""
+}

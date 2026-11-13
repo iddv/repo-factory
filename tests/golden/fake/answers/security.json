@@ -1,0 +1,10 @@
+{"threat_model": {"summary": "A command that reads the files it is given; no network surface.",
+                  "entry_points": [{"name": "the command line", "reach": "local", "auth": "none",
+                                    "notes": "reads the named files only"}],
+                  "assets": [{"name": "none stored", "kind": "integrity", "where": "-"}]},
+ "checks": [{"area": "path handling", "what": "a missing file and a directory", "result": "pass",
+             "evidence": "named on stderr, exit 1"}],
+ "findings": [],
+ "dependency_audit": {"tool": "pip-audit", "status": "no_dependencies",
+                      "output": "no third-party dependencies"},
+ "limits": ["Only the command line was reviewed."]}

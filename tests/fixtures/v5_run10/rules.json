@@ -1,0 +1,22 @@
+[
+ {
+  "id": "q25",
+  "title": "fee accrues per started calendar day past the 23:59 due time",
+  "source": "\"Fee accrues per started calendar day past due date (due date at 23:59 local time), capped at \u20ac10 per loan, computed at return or at lookup time from the injected clock.\"",
+  "source_ref": "answer:assumptions",
+  "expect": "A copy returned before 23:59 on its due date carries no fee, and one returned at noon two calendar days after the due date carries 2 started days, i.e. 50 cents.",
+  "status": "active",
+  "visibility": "visible",
+  "reason": "validated (a: answer:assumptions; b: agree; failed on the current code)"
+ },
+ {
+  "id": "q27",
+  "title": "fees still apply to loans that were renewed or collected through a hold",
+  "source": "\"Is a late fee still charged on loans that were returned after the hold-expiry or renewal flows\"",
+  "source_ref": "answer:assumptions",
+  "expect": "A renewed loan returned two calendar days after its moved due date is charged 50 cents, and a loan created by collecting a hold after an expiry hand-off, returned three calendar days late, is charged 75 cents.",
+  "status": "active",
+  "visibility": "visible",
+  "reason": "validated (a: answer:assumptions; b: agree; failed on the current code)"
+ }
+]

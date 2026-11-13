@@ -1,0 +1,79 @@
+{
+ "verdict": "reject",
+ "product": "Ablation Gauge",
+ "product_type": "cli",
+ "one_liner": "A command-line tool that removes the supporting evidence from question–evidence pairs, runs them through a retrieval-grounded LLM pipeline with its grounding checks on and off, and reports how often the pipeline still answers instead of refusing.",
+ "who": "An engineer on a team shipping a retrieval-grounded LLM feature with citation-matching checks, who has just read that such checks refused none of 24 unsupported answers.",
+ "moment": "Their provenance and citation-matching checks pass, but a small test showed that with the supporting evidence removed the model invented answers and the team's checks refused 0 of 24.",
+ "why_now": "A practitioner write-up (2026-10-09) reported checks refusing 0 of 24 unsupported answers. Recent preprints on counterfactual evidence corpora and trajectory-level escalation metrics are background only and do not show this problem.",
+ "existing": [
+  {
+   "name": "RAGAS",
+   "does": "Scores RAG answers for faithfulness and context relevance against the retrieved context.",
+   "lacks": "Does not systematically strip the evidence and measure whether the pipeline and its guardrails refuse, as a per-release rate."
+  },
+  {
+   "name": "DeepEval",
+   "does": "Provides LLM-judged hallucination and faithfulness metrics inside a test runner.",
+   "lacks": "No evidence-ablation mutation step or guardrail-on/off refusal comparison."
+  },
+  {
+   "name": "promptfoo",
+   "does": "Runs prompt and RAG test suites with assertions, including red-team plugins.",
+   "lacks": "No built-in counterfactual removal of supporting evidence to count refusal-under-ablation."
+  },
+  {
+   "name": "TruLens",
+   "does": "Offers groundedness feedback functions on RAG traces.",
+   "lacks": "Measures groundedness of given answers, not whether answers are refused when grounding is removed."
+  }
+ ],
+ "buildability": 0.8,
+ "insight": 0.55,
+ "differentiation": 0.45,
+ "grounding_score": 0.3,
+ "score_reasons": {
+  "buildability": "An ablation script with a pluggable pipeline call and a refusal classifier is small. The main friction is adapting it to arbitrary pipelines and detecting refusals reliably.",
+  "insight": "Applying mutation testing to grounding checks, which verify provenance rather than support, is a fair connection. It mostly restates the single write-up's own thesis.",
+  "differentiation": "RAG eval frameworks are close and could add an ablation mode quickly. The specific refusal-under-ablation metric with guardrail on/off is a real but thin gap.",
+  "grounding": "Only E1 shows the problem, on 12 and 24 items. The card's status is unsupported because fewer than two citations survived checking. E2 and E3 are neighbouring research."
+ },
+ "buildability_reasons": [
+  "Core loop is simple: load pairs, remove evidence, call pipeline, classify refusal, print rate.",
+  "Needs an adapter so users can point it at their own pipeline, which is open-ended.",
+  "Refusal detection must be heuristic or model-judged, which adds configuration."
+ ],
+ "risks": [
+  "The one write-up has 12 and 24 items; the effect may not generalise.",
+  "Eval frameworks may add this quickly.",
+  "Teams may not have pairs to ablate.",
+  "Refusal classification errors could swamp the 20-point signal."
+ ],
+ "brief": "Engineers shipping a retrieval-grounded LLM feature trust citation-matching checks, but one team found that with the supporting evidence removed the model invented answers and their checks refused none of them. Build something they can point at their own question-and-evidence pairs and pipeline that strips the evidence on purpose, runs each pair with the guardrail on and off, and prints how often the pipeline still answers instead of refusing, as a number they can track per release.",
+ "grounding": [
+  "With supporting evidence removed, the model invented 4 of 12 answers; behind the team's own safety checks it invented 6, and the checks refused 0 of 24.",
+  "The checks verify where words come from (provenance/citation matching) rather than whether the answer is supported.",
+  "Evidence-removal is cheap to automate and gives a number a team can track per release, which a provenance check cannot.",
+  "Smallest useful v1: a script that ablates 50 pairs and prints the refusal-under-ablation rate.",
+  "Cheapest test: ablate 50 pairs on one pipeline with the guardrail on and off; it is real if the score moves by at least 20 points between the two.",
+  "Risks: teams may not have pairs to ablate; eval frameworks may add this quickly."
+ ],
+ "cheapest_test": "Ablate 50 pairs on one pipeline with the guardrail on and off; it is real if the refusal-under-ablation score moves by at least 20 points between the two.",
+ "evidence_used": [
+  "E1"
+ ],
+ "claims": [
+  {
+   "claim": "count how often a grounded pipeline still answers",
+   "interpreted": "Count answers versus refusals as judged by a configurable refusal detector (phrase rules or a judge model). Report the detector used alongside the rate.",
+   "setting": {
+    "key": "refusal.detector",
+    "default": "phrases",
+    "means": "How a response is classified as a refusal: built-in refusal phrases, or a user-supplied judge."
+   },
+   "keeps_spirit": true,
+   "why": "A trackable per-release rate only needs consistent classification across runs, not perfect refusal detection."
+  }
+ ],
+ "reject_reason": "Not grounded: the card's status is unsupported, with fewer than two citations surviving checking. Only E1, a single small write-up of 12 and 24 items, shows the problem; E2 and E3 are neighbouring research rather than evidence that teams have it."
+}

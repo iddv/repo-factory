@@ -1,0 +1,25 @@
+{
+ "p_hidden": 0.99,
+ "interval80": [
+  0.5,
+  0.99
+ ],
+ "expected_hidden_failures_per_100": 1,
+ "least_trusted": [],
+ "features": {
+  "claims": 0,
+  "found": 0,
+  "fixed": 0,
+  "unfixed": 0,
+  "n1": 0,
+  "n2": 0,
+  "both": 0,
+  "samples": 2,
+  "chapman_total": 0.0,
+  "unfound": 0.0,
+  "mutation_score": null,
+  "blocked": 0,
+  "self_estimate": null
+ },
+ "model": "v5.0"
+}

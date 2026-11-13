@@ -1,0 +1,104 @@
+{
+ "verdict": "reject",
+ "product": "Spanlet",
+ "product_type": "web app",
+ "one_liner": "A local trace viewer you start with one command that accepts OpenTelemetry traces on one port, keeps them in one SQLite file, and shows traces and their span trees in your browser.",
+ "who": "A developer of a small open-source or hobby Python project who adds OpenTelemetry instrumentation and wants to inspect traces on a laptop without a hosted service or a heavy backend.",
+ "moment": "After running `opentelemetry-instrument datasette fixtures.db`, they need a backend to see the traces. The documented recipe is Parseable: a ~171-180MB binary with default admin/admin credentials, ports 8000-8002, a Basic auth header and an X-P-Stream header.",
+ "why_now": "Datasette 1.0a41 added OTel support, and zero-code instrumentation now works for ordinary apps (E1). There is no evidence that anyone is asking for a lighter local viewer.",
+ "existing": [
+  {
+   "name": "Jaeger (all-in-one)",
+   "does": "A single binary or container that accepts OTLP and shows traces with span trees in a local web UI, using in-memory storage by default. It is the standard local trace viewer most practitioners name.",
+   "lacks": "SQLite-file persistence by default, and a pip/uv one-command Python install."
+  },
+  {
+   "name": "otel-desktop-viewer",
+   "does": "A single small binary that receives OTLP locally and shows traces and span trees in a browser, built for laptop use with zero config.",
+   "lacks": "Little beyond packaging; it already covers the proposed v1."
+  },
+  {
+   "name": ".NET Aspire dashboard (standalone)",
+   "does": "A one-container local OTLP receiver with a trace, span, log and metrics UI and no account.",
+   "lacks": "Persistence across restarts and a non-container install."
+  },
+  {
+   "name": "otel-tui",
+   "does": "A single binary that receives OTLP and lets you browse traces in the terminal.",
+   "lacks": "A web UI and persistent storage."
+  },
+  {
+   "name": "Parseable",
+   "does": "OTel-native ingestion with a traces view, in one binary.",
+   "lacks": "Smallness and zero setup: ~171-180MB, admin/admin, three ports, custom headers."
+  }
+ ],
+ "buildability": 0.85,
+ "insight": 0.25,
+ "differentiation": 0.15,
+ "grounding_score": 0.45,
+ "score_reasons": {
+  "buildability": "An OTLP/HTTP JSON and protobuf receiver, a SQLite span store and a trace list plus span-tree page are well within one session in Python.",
+  "insight": "The observation that Parseable is heavy for local use is real, but the conclusion that small local tools beat heavy ones is the pattern restated, not a new connection.",
+  "differentiation": "Jaeger all-in-one and otel-desktop-viewer already do exactly this smallest v1; only SQLite persistence and a Python install would differ.",
+  "grounding": "The problem traces to a single source (E1 and E2 are the same TIL). E3 and E4 are about session replay and tunnelling, not traces, and nobody in the evidence asks for this."
+ },
+ "buildability_reasons": [
+  "OTLP/HTTP is a documented protobuf/JSON schema with Python bindings available.",
+  "The storage model is a single spans table keyed by trace_id and parent_span_id.",
+  "The UI is a trace list plus a nested span waterfall, with no auth or multi-user features.",
+  "Python cannot ship as a static ~20MB binary as the idea proposes, but a one-command pip/uv install is equivalent."
+ ],
+ "risks": [
+  "Jaeger all-in-one and otel-desktop-viewer already serve this need well enough, so there is no reason to switch.",
+  "The idea has no demand evidence, and the owner graded it not_useful.",
+  "Developers may not inspect traces locally often enough to want a dedicated tool.",
+  "It would also need to accept OTLP/gRPC, or users of the default exporters will hit a dead port."
+ ],
+ "brief": "Developers of small Python projects who add OpenTelemetry instrumentation, say running Datasette under opentelemetry-instrument, currently have to stand up a big backend with default credentials, several ports and custom headers just to look at their traces. Build something they can install with one command and run on their laptop that accepts OTLP traces on one port with no account or headers, keeps the spans in one SQLite file, and serves a local page listing traces with their span trees.",
+ "grounding": [
+  "Simon Willison's TIL ran Parseable v3.2.4 as a local backend for OpenTelemetry traces from Datasette 1.0a41, which added OTel support.",
+  "Parseable is a single ~171-180MB binary started with `./parseable local-store`, with default admin/admin credentials and ports 8000-8002.",
+  "The working recipe: `opentelemetry-instrument datasette fixtures.db` via uvx, opentelemetry-exporter-otlp-json-http pinned to 0.66b1, OTEL_EXPORTER_OTLP_ENDPOINT set to the Parseable port, a Basic auth and X-P-Stream header, OTEL_TRACES_EXPORTER=otlp_json_http, and metrics and logs exporters disabled.",
+  "TraceUX fits session replay, feedback and announcements in a single ~20 MB Go binary with SQLite, on about 30 MB RAM.",
+  "Smallest useful v1: accept OTLP on a single port, store spans in SQLite, and serve a local web page listing traces and their span trees.",
+  "Cheapest test: run Datasette under `opentelemetry-instrument` against the prototype, then ask five developers who use OTel locally whether they would swap their current setup for it."
+ ],
+ "cheapest_test": "Point Datasette under `opentelemetry-instrument` at the prototype with only OTEL_EXPORTER_OTLP_ENDPOINT set, and show the span tree to five developers who already use OTel locally. It passes only if at least three would replace Jaeger all-in-one or otel-desktop-viewer with it, not just Parseable.",
+ "evidence_used": [
+  "E1",
+  "E2"
+ ],
+ "claims": [
+  {
+   "claim": "zero setup",
+   "interpreted": "No account, no credentials and no required headers; the only step is pointing OTEL_EXPORTER_OTLP_ENDPOINT at the local port.",
+   "setting": {
+    "key": "server.port",
+    "default": "4318",
+    "means": "The single local port that receives OTLP/HTTP and serves the web page."
+   },
+   "keeps_spirit": true,
+   "why": "The pain in the evidence is credentials, headers and three ports, and this reading removes all of them."
+  },
+  {
+   "claim": "one static binary of about 20 MB",
+   "interpreted": "One package installed with a single pip/uv command that starts a single process, since a Python build cannot be a static binary.",
+   "setting": null,
+   "keeps_spirit": true,
+   "why": "What matters to the user is one command and one process, not the file format of the executable."
+  },
+  {
+   "claim": "stores spans in SQLite (implicitly keeps them)",
+   "interpreted": "Spans are kept in one SQLite file for a configurable time, then pruned.",
+   "setting": {
+    "key": "storage.retention_days",
+    "default": "7",
+    "means": "How long spans are kept before deletion."
+   },
+   "keeps_spirit": true,
+   "why": "A laptop debugging tool needs recent traces, not an archive."
+  }
+ ],
+ "reject_reason": "Already exists: Jaeger all-in-one, plus otel-desktop-viewer. Both are widely used single-binary, no-account local OTLP receivers with a span-tree web UI, which is exactly the proposed v1. The grounding is also thin: the problem rests on one write-up (E1 and E2 are the same source), with no one asking for it."
+}

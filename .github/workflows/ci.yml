@@ -1,11 +1,18 @@
 name: ci
 # One workflow for pull requests, on GitHub's own runners only (tests/test_tree.py checks it).
-# Kept cheap on purpose: one OS, one Python, no matrix, a time limit on every job, and a newer
-# push to a pull request cancels its older run. No job calls a model or the network beyond
-# installing pinned tools, and no secret is available to any job.
+# Kept cheap on purpose: one OS, one Python, no matrix, a time limit on every job, caches for
+# uv, npm and Playwright, and a newer push to a pull request cancels its older run. A pull
+# request that changes only documentation runs `lint` and `gitleaks`; the other jobs report
+# "skipped". No job calls a model, and no secret is available to any job. `make check` runs the
+# same commands locally.
 on:
   pull_request:
   workflow_dispatch:
+    inputs:
+      full:
+        description: "Also run the slow tests (for releases)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -15,8 +22,28 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Ruff (lint and format) and the repository's own rules (tests/test_tree.py: no private
-  # names, no self-hosted runner, pinned actions).
+  # Does this pull request change anything but documentation?
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "$EVENT" != pull_request ]; then echo "code=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          python3 scripts/ci/docs_only.py "$BASE" "$HEAD" >> "$GITHUB_OUTPUT"
+
+  # Ruff (lint and format), mypy's per-file ratchet, and the repository's own rules
+  # (tests/test_tree.py: no private names, no self-hosted runner, pinned actions).
   lint:
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -27,10 +54,12 @@ jobs:
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           enable-cache: true
-      - run: uv sync --locked --only-group dev
+      - run: uv lock --check
+      - run: uv sync --locked
       - run: uv run --no-sync ruff check .
       - run: uv run --no-sync ruff format --check .
-      - run: uv run --no-sync pytest -q tests/test_tree.py
+      - run: uv run --no-sync python scripts/ci/typecheck.py
+      - run: uv run --no-sync pytest -q -p no:randomly tests/test_tree.py
 
   # What the pull request's commits and text say: no attribution line or private name, a DCO
   # sign-off on every commit, and no secret in the commits (gitleaks, pinned by checksum).
@@ -76,3 +105,110 @@ jobs:
           tar -xzf gitleaks.tar.gz gitleaks
           cd "$GITHUB_WORKSPACE"
           "$RUNNER_TEMP/gitleaks" git --redact --no-banner --log-opts="$RANGE" .
+
+  # The fast tests, the sandbox's own tests in real bubblewrap, and the golden build: the whole
+  # cycle (brief, build, verify, harden, gate, publish to a local bare repository) against a
+  # fake `claude` that plays recorded answers. No model, no network beyond installing packages.
+  test:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+      - name: bubblewrap, with unprivileged user namespaces allowed
+        run: |
+          sudo apt-get install -y --no-install-recommends bubblewrap
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          bwrap --unshare-all --die-with-parent --ro-bind / / --proc /proc true
+      - run: uv sync --locked
+      - name: fast tests
+        run: uv run --no-sync pytest -q -rs -m "not slow" -n 4 --dist loadfile
+      - name: the sandbox, required
+        run: REPO_FACTORY_BWRAP_REQUIRED=1 REPO_FACTORY_ALLOW_UNSANDBOXED=0 uv run --no-sync pytest -q -rs -m sandbox
+      - name: the golden build
+        run: REPO_FACTORY_BWRAP_REQUIRED=1 uv run --no-sync pytest -q -rs tests/golden
+      - name: slow tests (manual runs only)
+        if: github.event_name == 'workflow_dispatch' && inputs.full
+        run: uv run --no-sync pytest -q -rs -m slow -n 4 --dist loadfile
+
+  # The page's sources: type and accessibility checks, the unit tests, the build within its
+  # size budget, and the lockfile's audit. No install scripts run.
+  frontend:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    defaults:
+      run:
+        working-directory: repo_factory/ui/web
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: repo_factory/ui/web/package-lock.json
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run check
+      - run: npm test
+      - run: python3 ../../../scripts/build_ui.py --no-install
+      - run: npm audit --audit-level=high
+
+  # One browser walk of the page (Playwright's Chromium, cached): against the server with
+  # the fake harness, light and dark, desktop and phone widths, no page error.
+  browser:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: repo_factory/ui/web/package-lock.json
+      - run: python3 scripts/build_ui.py
+      - run: uv sync --locked --group browser
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ hashFiles('uv.lock') }}
+      - run: uv run --no-sync playwright install --with-deps chromium
+      - run: uv run --no-sync pytest -q -rs -p no:randomly tests/test_browser_smoke.py
+
+  # A stranger's first three commands, from the wheel: build it (with the page), install it into
+  # a clean environment, `repo-factory --version`, `repo-factory doctor`, and start the page.
+  install:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: repo_factory/ui/web/package-lock.json
+      - run: python3 scripts/build_ui.py
+      - run: uv build --wheel
+      - run: python3 scripts/ci/install_test.py dist/*.whl

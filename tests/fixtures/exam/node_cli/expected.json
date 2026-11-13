@@ -1,0 +1,5 @@
+{"what": "package.json with a lockfile, npm test with node:test; the install phase runs npm ci through the index proxy and nothing else reaches the network; the exam drives node bin/countcli.js",
+ "own_green": true,
+ "scenarios": {"n1": "passed"},
+ "readme_tests": ["npm test"],
+ "install": "no packages declared"}

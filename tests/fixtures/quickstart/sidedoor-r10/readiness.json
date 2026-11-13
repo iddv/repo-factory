@@ -1,0 +1,19 @@
+{
+ "source": "~/tasks/sidedoor/.den/v5/r10/readiness.json (trimmed): the gate said ready",
+ "security": {"ran": true, "findings": [
+  {"severity": "high", "status": "fixed", "title": "A hostile request body makes the target drop the connection"},
+  {"severity": "medium", "status": "fixed", "title": "A chunked request body is buffered without a limit"}]},
+ "final": {"items": [
+  {"id": "install", "title": "Clean install from the README", "status": "green",
+   "why": "./install.sh worked (uv tool path, no network needed beyond build); sidedoor on PATH after adding ~/.local/bin"},
+  {"id": "commands", "title": "The README's quick-start commands work as written (install, run, backup)", "status": "red",
+   "why": "a README command fails as written: `./install.sh` (README.md:22) exits 1: note: This error originates from a subprocess, and is likely not a problem with pip. / Cannot determine package name from spec '.'. / Check package spec for errors. (and 5 more)"},
+  {"id": "bind_localhost", "title": "Listens on localhost unless configured", "status": "green",
+   "why": "trial broker and target bind 127.0.0.1 on random ports; no long-running service"},
+  {"id": "empty_start", "title": "Starts empty; demo data only on an explicit flag or command", "status": "green",
+   "why": "fresh init has 0 profiles, 0 trials; demo only via sidedoor demo"},
+  {"id": "first_admin", "title": "First-run admin setup, no default password", "status": "n/a",
+   "why": "no accounts or login; owner is the OS user who ran init"},
+  {"id": "tests_green", "title": "The documented test commands run green, as written", "status": "green",
+   "why": "1 documented test command(s) run green as written: `python3 -m unittest discover -s tests -t .`"}]}
+}

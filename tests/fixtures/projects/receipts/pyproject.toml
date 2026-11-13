@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=84.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "receipts"
+version = "1.0.0"
+description = "An independent record of what your coding agent actually did, reconciled against what it says it did."
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+receipts = "receipts.cli:main"
+
+[tool.setuptools]
+packages = ["receipts"]

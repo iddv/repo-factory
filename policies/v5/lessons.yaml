@@ -1,0 +1,5 @@
+# The lessons file (docs/design/build-v5.md §5.1). Written by the post-mortem and promoted by
+# `repo-factory lessons promote` (track E); version 0 is empty: v5.0 runs without lessons.
+version: 0
+cap: 20
+lessons: []

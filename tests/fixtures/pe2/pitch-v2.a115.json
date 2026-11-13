@@ -1,0 +1,99 @@
+{
+ "verdict": "accept",
+ "product": "Stretchcheck",
+ "product_type": "library",
+ "one_liner": "A Python library that runs an agent-written numerical function and a trusted reference side by side over generated scale, shape, dimension and dtype perturbations, then returns a pass rate you can use as a reward gate or filter.",
+ "who": "A researcher building an agent search loop or RL environment that scores LLM-written numerical code, who needs to know whether 'passes the checks' means the code is actually valid.",
+ "moment": "Their loop accepts an agent-written kernel because it matched the reference on a few random inputs. Per the Kernaut preprint, 22-58% of such kernels then fail at different scales or dimensions.",
+ "why_now": "Coding agents now write kernels and configurations inside search and RL loops (Kernaut, LOCAA), and open RL environment frameworks like Karotte are being released. Only one preprint (E1) measures the verifier weakness, and no observation shows anyone asking for a tool.",
+ "existing": [
+  {
+   "name": "Hypothesis (with hypothesis.extra.numpy)",
+   "does": "Property-based testing with array strategies over shapes and dtypes, plus shrinking of failing cases",
+   "lacks": "A ready candidate-vs-reference differential harness that returns a pass rate for use as a reward or filter inside an agent loop; users must write strategies and properties for each function"
+  },
+  {
+   "name": "torch.testing / numpy.testing",
+   "does": "Tolerance-aware comparison of outputs",
+   "lacks": "Any input generation or perturbation over scale, dimension or edge cases"
+  },
+  {
+   "name": "KernelBench-style correctness checks",
+   "does": "Compare LLM-written kernels to a reference on random inputs",
+   "lacks": "Systematic scale, dimension and edge-case stress tests, which is the very check E1 says is weak"
+  },
+  {
+   "name": "Kernaut construction contracts",
+   "does": "Make accepted kernels valid by construction within one research system",
+   "lacks": "A reusable, drop-in gate for other loops"
+  }
+ ],
+ "buildability": 0.85,
+ "insight": 0.45,
+ "differentiation": 0.35,
+ "grounding_score": 0.45,
+ "score_reasons": {
+  "buildability": "A small differential-testing library over numpy/torch-style callables is well within one session. Generating perturbations from an example input is straightforward.",
+  "insight": "The point that random-input checks are weak verifiers is supported by E1 with a number. Applying fuzzing to generated code, though, is a fairly obvious move.",
+  "differentiation": "Hypothesis plus numpy/torch testing already covers most of the mechanism. The difference is packaging: a pass-rate output and loop-ready defaults.",
+  "grounding": "Only E1 shows the problem, and only for kernels. E2-E5 are background trend lines, and there is no demand evidence."
+ },
+ "buildability_reasons": [
+  "Pure Python with the numeric stack; no paid APIs or hardware needed for a CPU v1",
+  "Clear input and output: candidate, reference and example input in; pass rate and failing cases out",
+  "Shape, scale and dtype perturbation rules are a bounded set to implement",
+  "GPU kernel specifics can be left to user-supplied callables"
+ ],
+ "risks": [
+  "Hypothesis plus a few lines of user code may be enough, leaving little reason to adopt",
+  "The 22-58% figure comes from one preprint on kernels and may not generalise",
+  "Teams may prefer in-house, domain-specific verifiers",
+  "Generic perturbations may not hit the invariants that matter for a given kernel, giving false confidence",
+  "No observation shows anyone asking for this tool, and the owner graded the card not_useful"
+ ],
+ "brief": "Researchers running agent search loops or RL environments that score LLM-written numerical code accept candidates that match a reference on a few random inputs, but one preprint found 22-58% of those kernels break at other scales or dimensions. Build something they can drop into their loop that takes a candidate function, a reference and an example input, and runs both over generated scale, shape, dimension, dtype and edge-case perturbations. It should hand back a pass rate they can use as a reward gate or filter, plus the inputs where the candidate diverged.",
+ "grounding": [
+  "A Kernel Autoresearch preprint reports a measured failure rate of 22-58% for agent-written kernels that pass numerical checks on random inputs, and says such checks are a weak validity test.",
+  "In the authors' stress tests, LLM-generated kernels that pass numerical checks on random inputs fail when evaluated at different scales or dimensions.",
+  "Kernaut uses 'construction contracts' that make every accepted kernel valid, while unrestricted LLM-written programs lose validity guarantees.",
+  "Smallest useful v1: a Python package that takes a candidate function and a reference implementation, runs them over auto-generated scale, shape and dtype perturbations, and prints the fraction of candidates that diverge.",
+  "The pass rate should be usable as a reward gate or filter in agent-search and RL environment loops (e.g. Karotte, an MIT-licensed RL environment framework).",
+  "Cheapest test: collect about 20 agent-written kernels or numerical functions from open agent-search outputs, run scale and dimension perturbations against the reference, and count how many that passed basic checks now fail."
+ ],
+ "cheapest_test": "Collect about 20 agent-written kernels or numerical functions from open agent-search outputs that pass a basic random-input check against their reference. Run the perturbations against the reference. The idea passes if a meaningful share of them now fail on cases that a plain Hypothesis or torch.testing setup with default random inputs would not have caught. It fails if almost none fail, or if default Hypothesis array strategies catch the same ones.",
+ "evidence_used": [
+  "E1"
+ ],
+ "claims": [
+  {
+   "claim": "auto-generate scale, dimension and edge-case perturbations",
+   "interpreted": "Perturbations are derived from an example input the user provides (scaling sizes, adding or removing dimensions, changing dtypes, injecting zeros, infs, NaNs and extreme magnitudes). They are not inferred for an arbitrary function signature.",
+   "setting": {
+    "key": "perturb.max_cases",
+    "default": "200",
+    "means": "how many perturbed inputs are tried per candidate"
+   },
+   "keeps_spirit": true,
+   "why": "The researcher always has an example input, and the value lies in going beyond it systematically."
+  },
+  {
+   "claim": "diverge from the reference",
+   "interpreted": "Outputs differ beyond a configurable relative and absolute tolerance, or one side raises an error where the other does not",
+   "setting": {
+    "key": "compare.rtol",
+    "default": "1e-5",
+    "means": "relative tolerance before a candidate output counts as divergent"
+   },
+   "keeps_spirit": true,
+   "why": "Numerical code needs tolerance-aware comparison to be a usable gate."
+  },
+  {
+   "claim": "checks agent-written code beyond random-input numerical checks",
+   "interpreted": "Raises the bar with structured perturbations and reports a pass rate. It does not certify that code is valid.",
+   "setting": null,
+   "keeps_spirit": true,
+   "why": "A stronger filter is what the loop needs; a proof of validity was never on offer."
+  }
+ ],
+ "reject_reason": ""
+}

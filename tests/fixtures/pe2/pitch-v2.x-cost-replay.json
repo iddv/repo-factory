@@ -1,0 +1,95 @@
+{
+ "verdict": "accept",
+ "product": "Rerun Ledger",
+ "product_type": "cli",
+ "one_liner": "A command-line tool that takes a sample of an AI app's logged prompts, replays them against two models with your own API keys, and prints the cost gap for each call site next to a diff of the outputs.",
+ "who": "A solo developer running a free or cheap public AI app on pay-per-token APIs who keeps the logs of last week's generations.",
+ "moment": "They have hand-built cost controls (per-user and per-IP hourly limits, daily circuit breakers, hard spend caps) and only discover by accident, after a week in production, that one model cost about ten times another for the same work.",
+ "why_now": "From the evidence: new models keep arriving at listed prices well below their predecessors (gpt-6.1-sol at $2/$10 per 1M tokens, half of gpt-5.6-sol), and one developer saw a 10x gap between two cheap models over 7 days. Choosing a model is now a recurring decision, and a week of production is an expensive way to make it.",
+ "existing": [
+  {
+   "name": "promptfoo",
+   "does": "Runs a set of prompts or test cases against several providers side by side and reports outputs, latency and cost.",
+   "lacks": "It is built around hand-written eval suites rather than ingesting an app's own generation logs, and it does not group the cost gap by the app's call sites."
+  },
+  {
+   "name": "Langfuse / Helicone (LLM observability)",
+   "does": "Log production generations with token counts and cost, and offer datasets or experiments to rerun prompts.",
+   "lacks": "They need the app routed through their SDK or proxy before the week being analysed, and they are hosted or heavy services rather than a one-shot replay over logs the developer already has."
+  },
+  {
+   "name": "LiteLLM / OpenRouter",
+   "does": "Provide one API across many models with per-request cost tracking.",
+   "lacks": "They track cost for live traffic and do not replay past logs against a second model or compare outputs."
+  }
+ ],
+ "buildability": 0.75,
+ "insight": 0.4,
+ "differentiation": 0.3,
+ "grounding_score": 0.55,
+ "score_reasons": {
+  "buildability": "The tool is a small loop of log reading, two API calls per prompt, a price table and a report. The hard parts are the variety of log formats and needing the user's own provider keys to test it end to end.",
+  "insight": "Replaying logs as shadow traffic to choose a model is a fair transfer from web infrastructure, but anyone who has seen a price sheet would think of it. The 10x gap is a good hook, not a hidden connection.",
+  "differentiation": "promptfoo already compares prompts across models with cost, and observability tools already log cost. The only real difference is ingesting existing logs and breaking down by call site, which is a thin wedge.",
+  "grounding": "The person, the 10x gap and the cost-control pain trace to E1, and the price churn traces to E2. Per-call-site breakdown, output diffing and the 100-prompt replay are the idea's own mechanism and do not appear in the evidence."
+ },
+ "buildability_reasons": [
+  "Core scope is small: read a log file, sample prompts, call two models, multiply reported tokens by a price table, and print a table plus diffs.",
+  "Logs come in many shapes (JSONL, CSV, provider exports), so v1 must pick a simple input contract and a field mapping.",
+  "It needs the user's own API keys for two providers. That is fine for users but awkward for the builder to verify without a stub provider.",
+  "Prices change often, so a user-editable price table is needed instead of hard-coded rates."
+ ],
+ "risks": [
+  "Output equivalence is a judgement. The tool can show diffs but cannot say whether the cheaper model is good enough.",
+  "Gateways and observability tools (promptfoo, Langfuse, OpenRouter) may add log replay and make this redundant.",
+  "Small apps may not keep logs, or keep them without the full prompt and call-site tag.",
+  "Demand rests on a single developer's post. The signal score is very low and only one citation survived checking.",
+  "Replaying prompts that contain user data through a second provider may conflict with the app's privacy promises."
+ ],
+ "brief": "A developer running a free AI app on pay-per-token APIs hand-built rate limits and spend caps, and only found out by accident after a week that one model cost about ten times another for the same generations. Build something they can point at last week's logged prompts that replays a sample against two models with their own keys, then prints the cost gap per call site alongside a diff of the outputs, so they can judge whether the cheaper model is good enough before switching instead of after a week of production.",
+ "grounding": [
+  "A developer reports $3.81 for 478 generations on Gemini 3.1 Flash Lite versus $0.39 for 467 generations on GPT-6 Luna over 7 days.",
+  "The developer runs a free AI app (DX7 AI Studio, which uses LLMs to edit synthesizer patches) and describes per-user and per-IP hourly limits, daily circuit breakers, and hard spend caps at the API provider level.",
+  "A Mastodon post lists a price of $2/$10 per 1M tokens for gpt-6.1-sol, half the price of gpt-5.6-sol.",
+  "Thesis: The data to choose a model is already in the app's logs; replaying it is cheaper than a week of production.",
+  "Smallest useful v1: A script that replays 100 logged prompts against two models and prints the per-call-site cost and an output diff.",
+  "Cheapest test: Replay 100 prompts from one app; it is real if the report finds a gap of at least 2x on one call site with outputs the developer judges equivalent.",
+  "Risks: Output equivalence is a judgement; gateways may add this; apps may not keep logs."
+ ],
+ "cheapest_test": "Replay 100 prompts from one real app's logs against two models. The idea is real if the report finds a gap of at least 2x on one call site with outputs the developer judges equivalent.",
+ "evidence_used": [
+  "E1"
+ ],
+ "claims": [
+  {
+   "claim": "Replay a week of a small AI app's prompts",
+   "interpreted": "Replay a sample drawn from the logs the developer supplies (by default the most recent week), capped at a set number of prompts so cost stays bounded.",
+   "setting": {
+    "key": "replay.sample_size",
+    "default": "100",
+    "means": "Maximum number of logged prompts replayed per run"
+   },
+   "keeps_spirit": true,
+   "why": "A capped sample of last week's traffic still shows the cost gap, which is the point, without paying to rerun every call."
+  },
+  {
+   "claim": "print the cost gap per call site",
+   "interpreted": "Cost is computed from the token usage each provider reports, multiplied by a user-editable price table. Prompts are grouped by a call-site field the user names in the logs, or treated as one site when no such field exists.",
+   "setting": {
+    "key": "report.call_site_field",
+    "default": "call_site",
+    "means": "Log field used to group prompts into call sites"
+   },
+   "keeps_spirit": true,
+   "why": "Grouping by whatever tag the app already logs still shows where the money goes. Using reported tokens keeps the numbers honest as prices change."
+  },
+  {
+   "claim": "an output diff (outputs the developer judges equivalent)",
+   "interpreted": "The tool shows the two models' outputs side by side with a diff for the developer to judge. It does not decide equivalence itself.",
+   "setting": null,
+   "keeps_spirit": true,
+   "why": "The idea already says equivalence is the developer's judgement. Putting the evidence in front of them is the useful part."
+  }
+ ],
+ "reject_reason": ""
+}
