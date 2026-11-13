@@ -312,7 +312,7 @@ def record_checks(root: Path, files: set | None = None) -> dict:
         put(
             "documents",
             True,
-            "the evidence (security and readiness reports, the checks) is in the den",
+            "the evidence (security and readiness reports, the checks) is kept with the build",
         )
     else:
         missing = [n for n in ("SECURITY.md", "READINESS.md") if n not in files]

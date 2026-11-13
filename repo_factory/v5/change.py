@@ -157,6 +157,23 @@ def git(*args: str, cwd: Path, check: bool = True) -> str:
     return p.stdout
 
 
+def delivered_branch(out: Path, task_id: str) -> str:
+    """The branch a build of ``task_id`` was delivered on in ``out``: ``repo-factory/<id>``, or,
+    when the delivery repository has no such branch, its one branch named ``<prefix>/<id>``
+    (a build delivered under an earlier name). ``repo-factory/<id>`` when ``out`` is not a
+    repository yet."""
+    want = f"repo-factory/{task_id}"
+    if not (Path(out) / ".git").exists():
+        return want
+    have = git(
+        "for-each-ref", "--format=%(refname:short)", "refs/heads", cwd=out, check=False
+    ).split()
+    if want in have:
+        return want
+    others = [b for b in have if b.endswith(f"/{task_id}")]
+    return others[0] if len(others) == 1 else want
+
+
 def commit(root: Path, msg: str) -> None:
     who = (
         []
@@ -172,7 +189,7 @@ def add_commit(cfg, art: Path, out: Path, message: str) -> str:
     recreates the repo. Returns the new head."""
     from .workspace import _copy_tree, _strip_scaffold
 
-    branch = f"repo-factory/{cfg.id}"
+    branch = delivered_branch(out, cfg.id)
     report = Path(out) / "REPORT.md"
     report.unlink(missing_ok=True)  # rewritten after; never committed
     git("checkout", "-q", branch, cwd=out)
@@ -231,6 +248,8 @@ class ChangeRun(Run):
 
     def __init__(self, *a, change_rules: dict | None = None, tests=None, **kw):
         super().__init__(*a, fresh=False, **kw)
+        # the branch it revises is the one the build was delivered on
+        self.branch = delivered_branch(self.out, self.cfg.id)
         self.change: dict = {}
         self.crules = change_rules or {}
         self._tests = tests  # a test double for the suite runs

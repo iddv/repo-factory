@@ -19,6 +19,13 @@ README as a new user would, and repair what they find. A gate of facts decides w
 ready. On your press it becomes a private GitHub repository with a release; only you make it
 public. The page shows every stage, its log, its cost and what was held and why.
 
+<p>
+<img src="docs/images/build-ready-desktop-light.png" alt="A build waiting at Ready: publish?, with its six stages, their time and cost, and the checks it passed" width="68%">
+<img src="docs/images/build-ready-phone-dark.png" alt="The same build on a phone, in the dark theme" width="28%">
+</p>
+
+The pictures show a build from the test suite's recorded run, not a real one.
+
 ## The record so far
 
 Everything this pipeline built before it moved here: ten small products, built between 5 and
@@ -45,6 +52,16 @@ on a Claude plan that is usage, not a bill.
 - **Build runs: 37, of which 36 ended ok. Fix runs for maintenance: 32, of which 16 ended ok.**
 - **Money in all: about $185** ($142.63 in build sessions, $42.74 in the pipeline's own calls).
 - **Use by anyone else: none so far.** 0 stars and 0 forks on all ten.
+
+**This repository's own first builds** (13 November 2026, one machine, publishing only to a
+local test repository): three typed tasks. A command-line habit tracker built in an hour
+($10.16) and passed the gate. A small reading-list web page built in 49 minutes ($11.51) and
+was held for one open high-severity security finding; one "Ask for changes" fixed it in 3
+minutes ($0.43), its exploit test now passing, and it passed. A Markdown-notes-to-HTML tool hit
+its $12 cap before its security review and was held for two real problems (its tests needed a
+browser the sandbox could not download; its README used the command before installing it); its
+automatic repair round did not clear them. About $34 in all, including runs lost to a usage
+limit.
 
 ### Where it is weak
 

@@ -93,6 +93,8 @@ export function buildSaid(b: Build): Said {
     case "failed":
       return { word: "Failed", tone: "red" };
   }
+  // published to a private repository (whatever the server calls the state): say so
+  if (published(b)) return { word: "Published privately", tone: "green" };
   if (r?.outcome === "stopped") return { word: "Stopped", tone: "red" };
   if (r?.outcome === "failed") return { word: "Failed", tone: "red" };
   if (b.gate && b.gate.verdict !== "ready") return { word: "Held by the checks", tone: "red" };

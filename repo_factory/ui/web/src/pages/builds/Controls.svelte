@@ -37,6 +37,15 @@
   async function publish(): Promise<string> {
     return done(await act("publish", subject), "Publishing to a private repository under your account.");
   }
+  // offered by the server only: Resume continues a round you stopped; Build again a held build
+  const canResume = $derived(!running && !!offer(b, "resume_build"));
+  const canRetry = $derived(!running && !canResume && !!offer(b, "retry") && !published(b));
+  async function resume(): Promise<string> {
+    return done(await act("resume_build", subject), "Queued: it continues where it stopped when a build slot is free.");
+  }
+  async function retry(): Promise<string> {
+    return done(await act("retry", subject), "Queued: it builds again when a build slot is free.");
+  }
   async function makePublic(): Promise<string> {
     return done(await act(publicKind, subject), "Making it public.");
   }
@@ -67,6 +76,12 @@
   {/if}
   {#if running}
     <Press id="stop" label="Stop" danger run={stop} confirm="Stop this build? Its workers are killed; nothing else changes." />
+  {/if}
+  {#if canResume}
+    <Press id="resume" label="Resume" primary={!canPublish} run={resume} />
+  {/if}
+  {#if canRetry}
+    <Press id="retry" label="Build again" run={retry} confirm="Build it again? It spends again, up to the build's cap." yes="Build again" />
   {/if}
   {#if canAsk}
     <button type="button" class="btn" id="ask-changes" aria-expanded={asking} onclick={() => (asking = !asking)}>Ask for changes</button>
