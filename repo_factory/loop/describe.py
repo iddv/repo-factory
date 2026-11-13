@@ -166,13 +166,14 @@ def run_help(root: Path, argv: list[str], timeout: float = HELP_S) -> str | None
     import shutil
     import tempfile
 
+    from ..harness import links
     from ..harness.isolation import isolation, sandbox_cmd
 
     if isolation() != "bwrap":
         return None
     with tempfile.TemporaryDirectory(prefix="repo-factory-help-") as tmp:
         work = Path(tmp) / "product"
-        shutil.copytree(root, work, ignore=shutil.ignore_patterns(".git", "node_modules"))
+        links.copytree(root, work, ignore=shutil.ignore_patterns(".git", "node_modules"))
         cmd = sandbox_cmd(work, home="/tmp/home") + [*argv, "--help"]
         try:
             p = subprocess.run(

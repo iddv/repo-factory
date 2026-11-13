@@ -102,6 +102,11 @@ repo-factory doctor      # one line each: Claude Code, bubblewrap, git, gh
 repo-factory ui          # the page on 127.0.0.1:8790, and a sign-in link
 ```
 
+Before your first build, if you signed in to Claude Code with its own sign-in, run
+`claude setup-token` and keep the token it prints in Settings › Claude. Otherwise builds copy
+your sign-in file into each session, where a build's own commands can read it; `doctor`'s
+Claude line says which way builds sign in.
+
 With a release, it will be three commands: `uv tool install <the wheel's address on the
 Releases page>`, `repo-factory doctor`, `repo-factory ui`. Then read
 [docs/first-build.md](docs/first-build.md): what each stage does, the press, and spend.

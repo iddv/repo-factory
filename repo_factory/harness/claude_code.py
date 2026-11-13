@@ -22,7 +22,6 @@ import contextlib
 import json
 import os
 import re
-import shutil
 import subprocess
 import time
 from pathlib import Path
@@ -451,11 +450,15 @@ def prepare_resume(
                 continue
             for t in targets:
                 t.mkdir(parents=True, exist_ok=True)
+                # a session wrote these (its config dir is bound into its sandbox): links stay
+                # links, and one that leads out is not copied
+                from . import links
+
                 if not (t / src.name).exists():
-                    shutil.copy2(src, t / src.name)
+                    links.copy_file(src, t / src.name)
                 side = src.parent / sid  # per-session side files, when there are any
-                if side.is_dir() and not (t / sid).exists():
-                    shutil.copytree(side, t / sid)
+                if side.is_dir() and not side.is_symlink() and not (t / sid).exists():
+                    links.copytree(side, t / sid)
             copied.append(sid)
         except OSError:
             missing.append(sid)

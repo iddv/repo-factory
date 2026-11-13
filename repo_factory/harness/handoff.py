@@ -312,8 +312,8 @@ def doctor_line(token: bool | str) -> tuple[str, str]:
     if not token:
         return "warn", (
             "no token for repo-factory: builds copy your Claude login file into the "
-            "session, where a build's own commands can read it (run 'repo-factory setup "
-            "building' for a Claude login token, from 'claude setup-token')"
+            "session, where a build's own commands can read it (run 'claude setup-token' "
+            "and keep the token in Settings › Claude)"
         )
     text = (
         f"{token}, " if isinstance(token, str) else ""

@@ -1,7 +1,7 @@
 """The exam's install phase for Node products (EX-PLAN §5.1, decision 10).
 
-Python products keep ``candidate_venv`` (built on the host with uv, cached by requirement
-set) and get their build backends as wheels (``pyinstall.py``). A product with a
+Python products keep ``candidate_venv`` (installed inside a sandbox like this one, cached by
+requirement set) and get their build backends as wheels (``pyinstall.py``). A product with a
 ``package.json`` gets its packages from inside a sandbox of their own:
 
 - only ``package.json`` and the lockfile are copied in, never the product's code, and the

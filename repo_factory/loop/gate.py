@@ -37,6 +37,7 @@ from pathlib import Path
 
 from .. import gitcmd
 from ..events import load_state
+from ..harness import links
 
 GATE_FILE = "gate.json"  # the verdict beside its round (UXI-1): .den/v5/r<N>/gate.json
 # The scorecard items that hold a build when red: it listens on localhost unless configured
@@ -281,7 +282,7 @@ def with_item(rd: Path, files: set, item: dict, at: Path) -> dict:
         if (Path(rd) / name).is_file():
             shutil.copy2(Path(rd) / name, at / name)
     if (Path(rd) / "exam" / "evidence").is_dir():
-        shutil.copytree(Path(rd) / "exam" / "evidence", at / "exam" / "evidence")
+        links.copytree(Path(rd) / "exam" / "evidence", at / "exam" / "evidence")
     ready = _json(Path(rd) / "readiness.json") or {}
     final = ready.get("final") or {}
     ready["final"] = {

@@ -3,10 +3,12 @@
 does), and in every case the tests see
 only a throwaway copy of the candidate plus a venv (pytest, the task's ``requirements`` and
 the candidate's own declared dependencies, see ``candidate_venv``), never the den or the
-repo_factory package. Venvs are built once per requirement set, outside the sandbox."""
+repo_factory package. Venvs are built once per requirement set: the empty venv on the host, every
+install inside bubblewrap whose one way out is the index proxy (``install_sandboxed``)."""
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import os
 import re
@@ -18,6 +20,7 @@ import threading
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+from . import links
 from .isolation import base_python, isolation, sandbox_cmd
 
 TEST_TIMEOUT_S = 120
@@ -86,6 +89,107 @@ def relink(path: Path) -> list[str]:
     return done
 
 
+# -- installs, inside the sandbox ------------------------------------------------------------
+# A requirement set may name packages a model chose. Their install code (a source package's
+# build) and their start-up code (a wheel's ``.pth``) run only inside bubblewrap: its own
+# network namespace, its one way out the host's index proxy with the ``exam.indexes``
+# allow-list (``v5/nodeinstall.py`` does the same for npm). The host makes the empty venv and
+# never starts its interpreter.
+DEFAULT_INDEXES = ("pypi.org", "files.pythonhosted.org")
+EXAM_ENV = "REPO_FACTORY_EXAM"  # the loop's exam settings, as v5/exam.py reads them
+PROXY_DIR = "/run/repo_factory"
+NO_SANDBOX = (
+    "a product's packages install only inside bubblewrap, and bwrap is missing or does not "
+    "work here (repo-factory doctor says why)"
+)
+
+
+def indexes() -> list[str]:
+    """The names the install may reach: ``exam.indexes`` as the loop passes it
+    (``$REPO_FACTORY_EXAM``), else PyPI. An empty list: no network (the cache only)."""
+    import json
+
+    try:
+        got = json.loads(os.environ.get(EXAM_ENV) or "{}")
+    except ValueError:
+        got = {}
+    v = got.get("indexes") if isinstance(got, dict) else None
+    if isinstance(v, list) and all(isinstance(x, str) for x in v):
+        return list(v)
+    return list(DEFAULT_INDEXES)
+
+
+def build_cache() -> Path:
+    """The uv cache the sandboxed installs use: their own, beside the venvs."""
+    return Path(os.environ.get("REPO_FACTORY_VENV_UV_CACHE") or venv_root().parent / "venv-uv")
+
+
+def install_sandboxed(
+    venv: Path,
+    reqs: list[str],
+    hosts: list[str],
+    run,
+    offline: bool = False,
+    wheelhouse: Path | None = None,
+):
+    """``uv pip install reqs`` into ``venv`` inside bubblewrap. ``hosts``: the proxy's
+    allow-list (empty: no network at all). ``run(cmd) -> (rc, text)``. The venv is bound at
+    its own path (its scripts name it), uv and its cache too; nothing else of the home.
+    ``wheelhouse``: a local folder of packages to install from, read-only (the tests)."""
+    from . import netproxy
+
+    uv = os.path.realpath(shutil.which("uv") or "uv")
+    cache = build_cache()
+    cache.mkdir(parents=True, exist_ok=True)
+    line = [uv, "pip", "install", "-q", "--no-config", "--python", str(venv / "bin" / "python")]
+    line += ["--offline"] if offline or not hosts else []
+    if wheelhouse is not None:
+        line += ["--find-links", str(wheelhouse)]
+    line += list(reqs)
+    env = [
+        ("HOME", "/home/user"),
+        ("PATH", "/usr/local/bin:/usr/bin:/bin"),
+        ("LANG", "C.UTF-8"),
+        ("UV_CACHE_DIR", str(cache)),
+        ("UV_LINK_MODE", "copy"),
+        ("UV_NO_CONFIG", "1"),
+        ("UV_PYTHON_DOWNLOADS", "never"),
+        ("PIP_DISABLE_PIP_VERSION_CHECK", "1"),
+    ]
+    with (
+        tempfile.TemporaryDirectory(prefix="repo-factory-pip-") as tmp,
+        contextlib.ExitStack() as st,
+    ):
+        work, bindir = Path(tmp) / "work", Path(tmp) / "bin"
+        work.mkdir()
+        bindir.mkdir()
+        binds = [(uv, uv, True), (cache, cache, False), (venv, venv, False)]
+        if wheelhouse is not None:
+            binds.append((wheelhouse, wheelhouse, True))
+        tail: list[str] = list(line)
+        if hosts:
+            px = st.enter_context(netproxy.Proxy(hosts=list(hosts)))
+            shutil.copy(Path(netproxy.__file__), bindir / "netproxy.py")
+            binds += [(px.dir, PROXY_DIR, False), (bindir, "/work/bin", True)]
+            env += [
+                (k, "http://127.0.0.1:3128")
+                for k in ("HTTPS_PROXY", "HTTP_PROXY", "https_proxy", "http_proxy")
+            ]
+            tail = ["-I", "/work/bin/netproxy.py", "--bridge", f"{PROXY_DIR}/proxy.sock"]
+            tail += ["3128", "--", *line]
+        cmd = sandbox_cmd(
+            work,
+            interp=base_python() if hosts else uv,
+            env=tuple(env),
+            network=False,
+            etc=True,
+            home="/home/user",
+            work_at="/work/product",
+            binds=tuple(binds),
+        )
+        return run(cmd + (tail if hosts else line[1:]))
+
+
 def _build_venv_locked(reqs: list[str], key: str) -> tuple[Path | None, str | None]:
     path = venv_root() / key
     py = path / "bin" / "python"
@@ -106,18 +210,17 @@ def _build_venv_locked(reqs: list[str], key: str) -> tuple[Path | None, str | No
             return -1, str(e)
 
     uv = shutil.which("uv")
-    if uv:
-        rc, err = run([uv, "venv", "-q", "--python", base_python(), str(tmp)])
-        if rc == 0:
-            cmd = [uv, "pip", "install", "-q", "--python", str(tmp / "bin" / "python"), *reqs]
-            rc, err = run(cmd)
-            if rc != 0:
-                rc2, err2 = run(cmd + ["--offline"])
-                rc, err = (rc2, err2) if rc2 == 0 else (rc, err)
-    else:
-        rc, err = run([base_python(), "-m", "venv", str(tmp)])
-        if rc == 0:
-            rc, err = run([str(tmp / "bin" / "python"), "-m", "pip", "install", "-q", *reqs])
+    if not uv:
+        return None, "installing a product's packages needs uv, which this machine lacks"
+    if isolation() != "bwrap":
+        return None, NO_SANDBOX
+    # the empty venv on the host (no package code runs), every install inside the sandbox
+    rc, err = run([uv, "venv", "-q", "--python", base_python(), str(tmp)])
+    if rc == 0:
+        rc, err = install_sandboxed(tmp, reqs, indexes(), run)
+        if rc != 0:
+            rc2, err2 = install_sandboxed(tmp, reqs, [], run, offline=True)
+            rc, err = (rc2, err2) if rc2 == 0 else (rc, err)
     if rc != 0:
         shutil.rmtree(tmp, ignore_errors=True)
         return None, err[-1500:] or f"exit {rc}"
@@ -134,7 +237,18 @@ def _build_venv_locked(reqs: list[str], key: str) -> tuple[Path | None, str | No
 TEST_GROUPS = ("test", "tests", "testing", "dev")
 _REQ_FILE = re.compile(r"^(requirements([-_.][\w.-]+)?|[\w-]+[-_]requirements)\.txt$", re.I)
 _LOCAL_REQ = re.compile(r"^(\.|/|~|file:|-e\b|--editable\b)")
+# the product itself (``.``, ``-e .``): its code is on PYTHONPATH, it is never installed
+_SELF_REQ = re.compile(r"^(-e\s+|--editable[\s=]+)?\.[/\\]?(\[[\w,.\s-]*\])?$")
 _failed: dict[str, str] = {}  # venv key -> install error (this process only)
+
+
+def refused(req: str) -> bool:
+    """A requirement installed only by name from an allowed index: one with ``@`` (a direct
+    reference), a URL or a path is refused (and named), never fetched."""
+    r = req.strip()
+    if _SELF_REQ.match(r):
+        return False
+    return "@" in r or "://" in r or bool(_LOCAL_REQ.match(r)) or r.startswith(("git+", "hg+"))
 
 
 def dependency_files(root: Path | None) -> list[str]:
@@ -164,17 +278,29 @@ def _requirement_lines(path: Path, root: Path, seen: set) -> list[str]:
             if inc.is_relative_to(Path(root).resolve()):
                 out += _requirement_lines(inc, root, seen)
             continue
-        if line.startswith("-") or _LOCAL_REQ.match(line):
-            continue  # options, constraints, editable/local installs: the code is on PYTHONPATH
+        if _SELF_REQ.match(line):
+            continue  # the product itself: its code is on PYTHONPATH
+        if line.startswith("-") and not line.startswith(("-e", "--editable")):
+            continue  # options (an index, constraints): the install uses its own
         out.append(line)
     return out
 
 
 def declared_dependencies(root: Path | None) -> list[str]:
-    """Requirement strings the candidate declares: its requirements files, and from
-    ``pyproject.toml`` the project dependencies plus the test/dev extras and dependency
-    groups. Local and editable entries are skipped (the candidate's code is on
-    PYTHONPATH when tests run, it is never installed)."""
+    """Requirement strings the candidate declares and the install takes: its requirements
+    files, and from ``pyproject.toml`` the project dependencies plus the test/dev extras and
+    dependency groups. The product itself (``.``, ``-e .``) is skipped (its code is on
+    PYTHONPATH when tests run); a direct reference, URL or path is left out (``refused``,
+    named by ``refused_dependencies``)."""
+    return [d for d in _declared(root) if not refused(d)]
+
+
+def refused_dependencies(root: Path | None) -> list[str]:
+    """What the candidate declares that the install refuses (``refused``)."""
+    return [d for d in _declared(root) if refused(d)]
+
+
+def _declared(root: Path | None) -> list[str]:
     import tomllib
 
     out: list[str] = []
@@ -196,21 +322,36 @@ def declared_dependencies(root: Path | None) -> list[str]:
         for k, v in (pp.get("dependency-groups") or {}).items():
             if k in TEST_GROUPS:
                 out += [d for d in v or [] if isinstance(d, str)]
-    return sorted({d.strip() for d in out if d.strip() and not _LOCAL_REQ.match(d.strip())})
+    return sorted({d.strip() for d in out if d.strip() and not _SELF_REQ.match(d.strip())})
 
 
 def candidate_venv(root: Path | None, requirements: list[str]) -> tuple[Path, dict]:
     """The venv a candidate's tests run in: pytest, the task's ``requirements`` and the
-    candidate's own declared dependencies (``declared_dependencies``), installed outside the
-    sandbox with network and cached by the hash of that requirement set (candidates that
-    declare the same dependencies share one venv; one that declares none uses the task venv).
+    candidate's own declared dependencies (``declared_dependencies``), installed inside the
+    sandbox (``install_sandboxed``) and cached by the hash of that requirement set
+    (candidates that declare the same dependencies share one venv; one that declares none
+    uses the task venv).
 
     Returns ``(venv, install)``; ``install`` is ``{"status": "none" | "ok" | "failed",
-    "deps": [...], "detail": str}``. If the install fails, the task venv is returned (the
-    tests then fail at import, which is the candidate's fault) and ``status`` says why."""
+    "deps": [...], "refused": [...], "detail": str}``. If the install fails, the task venv is
+    returned (the tests then fail at import, which is the candidate's fault) and ``status``
+    says why. ``refused``: declared requirements with ``@``, a URL or a path, never
+    installed; ``detail`` names them."""
     deps = declared_dependencies(root)
+    no = refused_dependencies(root)
+    said = (
+        f"; not installed: {', '.join(no)} (a direct reference, URL or path: name the "
+        "package and its version instead)"
+        if no
+        else ""
+    )
     if not deps:
-        return ensure_venv(requirements), {"status": "none", "deps": [], "detail": ""}
+        return ensure_venv(requirements), {
+            "status": "none",
+            "deps": [],
+            "refused": no,
+            "detail": said[2:],
+        }
     reqs = sorted({"pytest", *requirements, *deps})
     key = _venv_key(reqs)
     err = _failed.get(key)
@@ -218,12 +359,18 @@ def candidate_venv(root: Path | None, requirements: list[str]) -> tuple[Path, di
     if err is None:
         path, err = _build_venv(reqs)
     if path is not None:
-        return path, {"status": "ok", "deps": deps, "detail": f"{len(deps)} declared"}
+        return path, {
+            "status": "ok",
+            "deps": deps,
+            "refused": no,
+            "detail": f"{len(deps)} declared{said}",
+        }
     _failed[key] = err
     return ensure_venv(requirements), {
         "status": "failed",
         "deps": deps,
-        "detail": f"installing {', '.join(deps)} failed: {err}",
+        "refused": no,
+        "detail": f"installing {', '.join(deps)} failed: {err}{said}",
     }
 
 
@@ -274,7 +421,7 @@ def run_pytest(
     with tempfile.TemporaryDirectory(prefix="repo_factory-tests-") as tmp:
         work = Path(tmp) / "a"
         if src is not None and Path(src).is_dir():
-            shutil.copytree(src, work, ignore=SKIP, symlinks=False)
+            links.copytree(src, work, ignore=SKIP)
         work.mkdir(exist_ok=True)
         for rel, source in overlays.items():
             dest = work / rel
@@ -286,9 +433,9 @@ def run_pytest(
                 continue
             dest.parent.mkdir(parents=True, exist_ok=True)
             (
-                shutil.copytree(source, dest, ignore=SKIP)
+                links.copytree(source, dest, ignore=SKIP)
                 if Path(source).is_dir()
-                else shutil.copy(source, dest)
+                else links.copy_file(source, dest)
             )
         junit = work / ".brb-junit.xml"
         py = str(venv / "bin" / "python")

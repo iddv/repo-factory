@@ -217,6 +217,7 @@ SANDBOX_FILES = {
     "test_harness_read_profile.py",
     "test_exam_integrity.py",
     "test_exam_runner.py",
+    "test_product_installs.py",
 }
 
 

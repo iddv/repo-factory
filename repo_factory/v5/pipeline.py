@@ -27,6 +27,7 @@ import yaml
 
 from .. import custom_prompts
 from ..costs import ledger
+from ..harness import links
 from ..models import V5_MODELS_ENV
 from ..resources import POLICIES
 from . import acceptance, exam, oracle, readiness, repair, report, verify
@@ -1295,10 +1296,9 @@ class Run:
             self._prebuilt_flag = False  # scope: always: built afresh
         if self.prebuilt is not None and not self.scoped():
             pb = self.prebuilt
-            shutil.copytree(
+            links.copytree(
                 pb.workspace,
                 self.ws,
-                symlinks=True,
                 ignore=shutil.ignore_patterns(
                     ".venv",
                     "venv",
@@ -1356,10 +1356,9 @@ class Run:
             prior = Path(self.carried) if self.carried else None
             if prior is not None and not self.ws.exists():
                 # Retry keeps the work: the earlier round's committed tree, as it stopped
-                shutil.copytree(
+                links.copytree(
                     prior / "build",
                     self.ws,
-                    symlinks=True,
                     ignore=shutil.ignore_patterns(
                         ".venv",
                         "venv",
@@ -2488,9 +2487,9 @@ class Run:
             tmp = self.scratch / "verify-keep"
             if tmp.exists():
                 shutil.rmtree(tmp)
-            shutil.copytree(keep, tmp)
+            links.copytree(keep, tmp)
             verify.copy_repo(self.ws, self.vws)
-            shutil.copytree(tmp, keep, dirs_exist_ok=True)
+            links.copytree(tmp, keep, dirs_exist_ok=True)
         else:  # the exam is outside: a fresh copy
             verify.copy_repo(self.ws, self.vws)
         fixes = (

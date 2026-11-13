@@ -1,8 +1,14 @@
 <script lang="ts">
   // New task: a text box, or a file whose text is read here and sent as the task; then Build.
   // Its first line names it. The row is on the list at once and says Brief.
+  // With Claude Code's own sign-in (no kept login token) it says once that builds copy that
+  // sign-in file into each session, as `repo-factory doctor` does.
+  import { read } from "../../lib/reads.svelte";
   import { go, href } from "../../lib/router.svelte";
   import { fileText, sendTask } from "../../lib/tasks.svelte";
+
+  const login = $derived(read<{ on: string | null }>("api/claude/login", 60000));
+  const copied = $derived(login.data?.on === "signin");
 
   let text = $state("");
   let from = $state("");
@@ -48,6 +54,7 @@
     <input id="task-file" type="file" accept=".md,.txt,text/plain,text/markdown" onchange={pick} />
     {#if from}<span class="muted small">The text of {from} is in the box: read it, change it, then Build.</span>{/if}
   </div>
+  {#if copied}<p class="muted small" id="task-signin-copied">Builds copy your Claude Code sign-in file into each session, where a build's own commands can read it. To avoid that, keep a login token in <a href={href("settings", "claude")}>Settings › Claude</a>.</p>{/if}
   {#if error}<p class="err" role="alert">{error}</p>{/if}
   <div class="actions">
     <button type="submit" class="btn primary" id="task-build" disabled={busy || !text.trim()}>{busy ? "Sending…" : "Build"}</button>

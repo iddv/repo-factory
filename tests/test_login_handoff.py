@@ -228,6 +228,17 @@ def test_the_sandbox_passes_no_login_variable():
     assert not any(k in got for k in handoff.LOGIN_VARS)
 
 
+def test_only_named_anthropic_variables_reach_a_session(monkeypatch):
+    """A list, not a prefix: a header variable, or one nobody has named yet, stays out."""
+    monkeypatch.setenv("ANTHROPIC_CUSTOM_HEADERS", "X-Made-Up: " + "v" * 12)
+    monkeypatch.setenv("ANTHROPIC_SOMETHING_NEW", "made-up")
+    monkeypatch.setenv("ANTHROPIC_MODEL", "a-model")
+    got = sandbox.process_env()
+    assert "ANTHROPIC_CUSTOM_HEADERS" not in got and "ANTHROPIC_SOMETHING_NEW" not in got
+    assert got["ANTHROPIC_MODEL"] == "a-model"
+    assert all(not k.startswith("ANTHROPIC_") or k in sandbox.PASS_ANTHROPIC for k in got)
+
+
 # -- the unsandboxed launches, with a real process ------------------------------------------
 def check_started(rows, tokens) -> None:
     assert rows, "claude was not started"
