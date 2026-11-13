@@ -35,15 +35,22 @@ case "${REPO_FACTORY_SHELL:-command}" in
     pid=$(cat "$d/pid" 2>/dev/null)
     if [ -z "$pid" ] || ! kill -0 "$pid" 2>/dev/null; then
       setsid unshare --user --map-current-user --pid --fork --mount --mount-proc --kill-child \
-        -- sleep infinity </dev/null >/dev/null 2>&1 9>&- &
+        -- sleep infinity </dev/null >/dev/null 2>"$d/err" 9>&- &
       up=$!
       pid=""
-      for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
+      # up to 10 s: a loaded machine (CI's runners) may take more than a moment
+      n=0
+      while [ $n -lt 100 ]; do
         pid=$(cut -d' ' -f1 "/proc/$up/task/$up/children" 2>/dev/null)
         [ -n "$pid" ] && break
+        kill -0 "$up" 2>/dev/null || break
         sleep 0.1
+        n=$((n + 1))
       done
-      [ -n "$pid" ] || { echo "factory-shell: the session's namespace did not start" >&2; exit 2; }
+      [ -n "$pid" ] || {
+        echo "factory-shell: the session's namespace did not start: $(head -c 300 "$d/err" 2>/dev/null)" >&2
+        exit 2
+      }
       echo "$pid" > "$d/pid"
     fi
     exec 9>&-
