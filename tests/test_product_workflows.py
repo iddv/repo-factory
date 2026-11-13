@@ -56,8 +56,14 @@ def test_what_holds_the_publish_is_said(tmp_path):
 
 
 def test_publish_anyway_never_pushes_over_it():
-    rec = {"blocked": ["workflow check: .github/workflows/ci.yml: job build runs on a self-hosted runner"]}
+    rec = {
+        "blocked": [
+            "workflow check: .github/workflows/ci.yml: job build runs on a self-hosted runner"
+        ]
+    }
     held = precheck.holds(rec)
-    assert held == [("workflow", ".github/workflows/ci.yml: job build runs on a self-hosted runner")]
+    assert held == [
+        ("workflow", ".github/workflows/ci.yml: job build runs on a self-hosted runner")
+    ]
     plan = gate.override_plan({}, [k for k, _ in held], ["tests", "workflow"])
     assert plan["refused"] == [("workflow", gate.NEVER["workflow"])] and not plan["overrides"]

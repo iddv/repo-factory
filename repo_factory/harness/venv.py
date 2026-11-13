@@ -29,10 +29,7 @@ SKIP = shutil.ignore_patterns(".git", "__pycache__", ".repo_factory", ".pytest_c
 
 
 def venv_root() -> Path:
-    return Path(
-        os.environ.get("REPO_FACTORY_VENV_ROOT")
-        or paths.cache() / "venvs"
-    )
+    return Path(os.environ.get("REPO_FACTORY_VENV_ROOT") or paths.cache() / "venvs")
 
 
 def _venv_key(reqs: list[str]) -> str:

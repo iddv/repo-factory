@@ -87,10 +87,11 @@ experiment.
 
 ## What it needs
 
-Linux, Python 3.12, [uv](https://docs.astral.sh/uv/), `git`,
-[Claude Code](https://docs.claude.com/en/docs/claude-code) signed in (a Claude plan or an API
-key), [bubblewrap](https://github.com/containers/bubblewrap) (`bwrap`), and, only to publish,
-the GitHub CLI (`gh`) logged in.
+Linux, Python 3.12, [uv](https://docs.astral.sh/uv/), `git`, Node.js with npm (to build the
+page from a checkout), [Claude Code](https://docs.claude.com/en/docs/claude-code) signed in (a
+Claude plan or an API key), [bubblewrap](https://github.com/containers/bubblewrap) (`bwrap`),
+about 5 GB of free memory while a build runs, and, only to publish, the GitHub CLI (`gh`)
+logged in.
 
 ## Install
 
@@ -100,7 +101,7 @@ page):
 ```
 git clone https://github.com/iddv/repo-factory && cd repo-factory
 python3 scripts/build_ui.py && uv tool install --python 3.12 .
-repo-factory doctor      # one line each: Claude Code, bubblewrap, git, gh
+repo-factory doctor      # one line each: Claude Code, bubblewrap, git, gh, memory
 repo-factory ui          # the page on 127.0.0.1:8790, and a sign-in link
 ```
 

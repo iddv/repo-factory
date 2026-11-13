@@ -106,6 +106,28 @@ def test_workflow_jobs_have_time_limits_and_a_read_only_token(wf):
     assert text.count("timeout-minutes:") >= len(jobs), "every job has a timeout"
 
 
+def _job_bodies(text: str) -> dict[str, str]:
+    body = text.split("\njobs:\n", 1)[1]
+    parts = re.split(r"^  ([A-Za-z0-9_-]+):\s*$", body, flags=re.M)
+    return dict(zip(parts[1::2], parts[2::2], strict=True))
+
+
+def test_only_the_release_publish_job_may_write():
+    """A token that may write exists in one job: the release workflow's publish job, behind
+    the `release` environment, which refuses a tag not on main and runs no third-party action."""
+    allowed = {("release.yml", "publish")}
+    for wf in WORKFLOWS:
+        text = _code(wf)
+        top = text.split("\njobs:\n", 1)[0]
+        assert not re.search(r":\s*write", top), f"{wf.name}: a workflow-wide write permission"
+        for job, body in _job_bodies(text).items():
+            if re.search(r":\s*write|write-all", body):
+                assert (wf.name, job) in allowed, f"{wf.name} job {job} may write"
+    pub = _job_bodies(_code(ROOT / ".github" / "workflows" / "release.yml"))["publish"]
+    assert "environment: release" in pub and "merge-base --is-ancestor" in pub
+    assert not [u for u in re.findall(r"uses:\s*([^\s#]+)", pub) if not u.startswith("actions/")]
+
+
 def test_ci_workflow_cancels_superseded_runs():
     text = _code(ROOT / ".github" / "workflows" / "ci.yml")
     assert "cancel-in-progress: true" in text

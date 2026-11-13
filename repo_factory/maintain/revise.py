@@ -513,8 +513,9 @@ class Fix:
     # -- plumbing ---------------------------------------------------------------------------
     @property
     def cap(self) -> float | None:
+        # 0 is a cap of nothing (loop.yaml's schema refuses it), never "no cap"
         caps = [float(x) for x in (self.pol["revise"].get("max_usd"), self.s.get("max_usd"))
-                if x not in (None, "", 0)]
+                if x is not None and x != ""]
         return min(caps) if caps else None
 
     def venv(self) -> Path:

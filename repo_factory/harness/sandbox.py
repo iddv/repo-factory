@@ -125,17 +125,11 @@ def home() -> Path:
 
 
 def worker_uv_cache() -> Path:
-    return Path(
-        os.environ.get("REPO_FACTORY_WORKER_UV_CACHE")
-        or paths.cache() / "worker-uv"
-    )
+    return Path(os.environ.get("REPO_FACTORY_WORKER_UV_CACHE") or paths.cache() / "worker-uv")
 
 
 def worker_venvs() -> Path:
-    return Path(
-        os.environ.get("REPO_FACTORY_WORKER_VENV_ROOT")
-        or paths.cache() / "worker-venvs"
-    )
+    return Path(os.environ.get("REPO_FACTORY_WORKER_VENV_ROOT") or paths.cache() / "worker-venvs")
 
 
 def claude_binary() -> Path:

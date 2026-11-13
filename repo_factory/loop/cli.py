@@ -425,7 +425,7 @@ def cmd_status(args):
     sp = s["spend"]
     print(
         f"Spend: today {money(sp['today']['total'])}, this week {money(sp['week']['total'])}"
-        + (f" (daily cap {money(s['daily_usd'])})" if s["daily_usd"] else " (no cap)")
+        + (f" (daily cap {money(s['daily_usd'])})" if s["daily_usd"] is not None else " (no cap)")
     )
     print("Tasks: " + (", ".join(f"{k} {v}" for k, v in sorted(s["counts"].items())) or "none"))
     for r in s["running"]:

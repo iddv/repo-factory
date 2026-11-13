@@ -5,7 +5,9 @@ the commit author's. ``git commit -s`` writes it.
 
     dco.py RANGE        e.g. BASE..HEAD
 
-Merge commits are skipped. Prints one line per commit without a matching sign-off and exits
+Merge commits are skipped. Dependabot signs off with its own address, not its author address:
+a commit authored by ``dependabot[bot]`` (its name and its no-reply address, both) passes with
+Dependabot's own sign-off; nobody else's commit does. Prints one line per commit without a matching sign-off and exits
 1; exits 0 when every commit has one. Standard library only.
 """
 
@@ -16,11 +18,21 @@ import subprocess
 import sys
 
 SIGNOFF = re.compile(r"^Signed-off-by:\s*(.+?)\s*<([^>]+)>\s*$", re.MULTILINE)
+DEPENDABOT = ("dependabot[bot]", "49699333+dependabot[bot]@users.noreply.github.com")
+DEPENDABOT_SIGNOFF = ("dependabot[bot]", "support@github.com")
+
+
+def signed(name: str, email: str, body: str) -> bool:
+    """The commit carries a sign-off for its author (or Dependabot's own, for Dependabot's)."""
+    offs = {(m.group(1).strip(), m.group(2).strip().lower()) for m in SIGNOFF.finditer(body)}
+    if email.strip().lower() in {e for _, e in offs}:
+        return True
+    return (name.strip(), email.strip().lower()) == DEPENDABOT and DEPENDABOT_SIGNOFF in offs
 
 
 def missing(rev: str, cwd: str | None = None) -> tuple[int, list[str]]:
     out = subprocess.run(
-        ["git", "log", "--no-merges", "--format=%h%x00%ae%x00%s%x00%B%x01", rev],
+        ["git", "log", "--no-merges", "--format=%h%x00%an%x00%ae%x00%s%x00%B%x01", rev],
         cwd=cwd,
         capture_output=True,
         text=True,
@@ -29,12 +41,11 @@ def missing(rev: str, cwd: str | None = None) -> tuple[int, list[str]]:
     bad, n = [], 0
     for rec in out.split("\x01"):
         parts = rec.strip("\n").split("\x00")
-        if len(parts) != 4:
+        if len(parts) != 5:
             continue
         n += 1
-        sha, email, subject, body = parts
-        emails = {m.group(2).strip().lower() for m in SIGNOFF.finditer(body)}
-        if email.strip().lower() not in emails:
+        sha, name, email, subject, body = parts
+        if not signed(name, email, body):
             bad.append(f"{sha} {subject}")
     return n, bad
 

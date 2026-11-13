@@ -269,7 +269,7 @@ def cant_revise(g: dict | None, task, now: dict | None = None) -> str | None:
     sec = ((g or {}).get("checks") or {}).get("security")
     if is_unreviewed(sec):
         # a revise round carries the review from the round it revises: it never runs it
-        return f"revise can't fix this: {sec['detail']}"
+        return f"revise can't fix this: {(sec or {}).get('detail')}"
     bad, rnd = failing(g), (g or {}).get("round")
     if bad != ["completeness"] or not task or not rnd:
         return None

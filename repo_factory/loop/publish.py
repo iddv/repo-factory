@@ -406,7 +406,7 @@ def maintenance_files(stage: Path, full: str, which: str = "policy") -> dict:
         res = backfill.write_files(stage, {}, only=backfill.POLICY_FILES)
         if (stage / "AGENTS.md").is_file():  # the product's own wins
             return {"files": res["written"], "kept": [], "removed": [], "doctor": []}
-        values = {**_values(stage, full), "commands_run_by": agentsmd.COMMANDS_RUN_BY_BEARS}
+        values = {**_values(stage, full), "commands_run_by": agentsmd.COMMANDS_RUN_BY_FACTORY}
         (stage / "AGENTS.md").write_text(agentsmd.render(values))
         return {
             "files": [*res["written"], "AGENTS.md"],

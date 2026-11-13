@@ -23,7 +23,7 @@ TEMPLATE = "AGENTS.md.tmpl"
 COMMANDS_RUN_BY_CI = (
     "These commands are run by CI exactly as written (`.github/workflows/ci.yml`, job `agents-md`)."
 )
-COMMANDS_RUN_BY_BEARS = (
+COMMANDS_RUN_BY_FACTORY = (
     "repo-factory runs these commands exactly as written before it proposes a fix."
 )
 # repo-factory's own command for the acceptance suite: AGENTS.md names it, the README need not

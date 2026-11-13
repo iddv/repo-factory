@@ -1,13 +1,14 @@
 """``repo-factory doctor``: what repo-factory needs, one line each.
 
-Four checks, each "ok ..." or one sentence with the command that fixes it:
+Five checks, each "ok ..." or one sentence with the command that fixes it:
 
 - **Claude Code**, installed and signed in (a login token repo-factory keeps, one in its
   environment, or Claude Code's own sign-in; with the last, the line says that builds copy the
   sign-in file into each session, and how to avoid it);
 - **bubblewrap**, usable here (every build session runs inside it);
 - **git**;
-- **gh**, logged in (only publishing needs it, so a missing gh does not fail the doctor).
+- **gh**, logged in (only publishing needs it, so a missing gh does not fail the doctor);
+- **memory**: a warning under 5 GB available (a build needs about that), never a failure.
 
 Exit 0 when claude, bubblewrap and git are fine; 1 otherwise. Nothing here calls a model or
 the network beyond ``gh auth status``."""
@@ -16,6 +17,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+from pathlib import Path
 
 
 def _run(cmd: list[str], timeout: float = 20) -> tuple[int, str]:
@@ -82,6 +84,32 @@ def git_line() -> tuple[bool, str]:
     return True, ((p.stdout or "").strip() or "git") if p.returncode == 0 else "git"
 
 
+MEM_GB = 5  # a build's sessions and its product's tests peaked at 3.7 GB in one cgroup
+
+
+def mem_available(meminfo: str = "/proc/meminfo") -> float | None:
+    """MemAvailable in GB, or None when the machine does not say."""
+    try:
+        for line in Path(meminfo).read_text().splitlines():
+            if line.startswith("MemAvailable:"):
+                return int(line.split()[1]) / 1024 / 1024
+    except (OSError, ValueError, IndexError):
+        return None
+    return None
+
+
+def mem_line() -> tuple[bool, str]:
+    gb = mem_available()
+    if gb is None:
+        return True, "memory: this machine does not say how much is free (a build needs about 5 GB)"
+    if gb < MEM_GB:
+        return False, (
+            f"only {gb:.1f} GB of memory is available: a build needs about {MEM_GB} GB "
+            "(close other programs, or expect a build to be stopped part way)"
+        )
+    return True, f"{gb:.1f} GB of memory available (a build needs about {MEM_GB} GB)"
+
+
 def gh_line() -> tuple[bool, str]:
     if not shutil.which("gh"):
         return False, (
@@ -95,13 +123,14 @@ def gh_line() -> tuple[bool, str]:
 
 
 def run(say=print) -> int:
-    """Print the four lines; the exit code (1 when claude, bubblewrap or git is missing)."""
+    """Print the five lines; the exit code (1 when claude, bubblewrap or git is missing)."""
     bad = False
     for check, needed in (
         (claude_line, True),
         (bwrap_line, True),
         (git_line, True),
         (gh_line, False),
+        (mem_line, False),
     ):
         try:
             ok, line = check()

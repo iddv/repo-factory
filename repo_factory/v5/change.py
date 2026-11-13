@@ -676,6 +676,8 @@ def revise(
     out = Path(saved["out"])
     log = EventLog(log_path(d.root), task.id, rid, subscribers)
     cap = _overrides().get("max_usd")
+    if cap is not None and float(cap) <= 0:  # loop.yaml's schema refuses it first
+        raise ReviseError("revise.max_usd: 0 or less is not a cap: a number above 0, or null")
     if cap is None:
         # no revise.max_usd: the round spends from what the build's cap has left
         b_cap, spent = build_spend(d.root, int(saved["change"]["revises"]))
@@ -695,7 +697,7 @@ def revise(
         log,
         rules,
         Path(base_policy),
-        Budget(float(cap) if cap else None, d.root, rid),
+        Budget(float(cap) if cap is not None else None, d.root, rid),
         "none",
         out,
         None,

@@ -43,6 +43,13 @@ The checks it passed, and anything that held it, are listed on the build's page 
 words. They are the factory's own checks: useful, and not proof. Read what it built before you
 make it public.
 
+Some holds **Publish anyway** never overrides: nothing delivered, an open critical or high
+security finding, **a security review that did not run** (the hold says why, and what to
+press: usually raise the cap, then **Build again**), a secrets hit, a product that listens
+beyond loopback, and a workflow of its own that could run on your runners or write to the
+repository. What the factory's own sandbox could not measure is a **gap**, said beside the
+checks; but when fewer than half of the flows could be measured, completeness holds.
+
 ## Settings {#settings}
 
 - **Claude**: what builds sign in to Claude with. Your Claude plan, set up with
@@ -52,8 +59,10 @@ make it public.
   the model of each part of it.
 - **Publishing**: ask first (the default), or publish on its own when the checks pass. The
   repository is private either way.
-- **Spend**: a cap on one build and on one day, each a number of dollars or "none". A build
-  that reaches a cap stops, and says the cap stopped it.
+- **Spend**: a cap on one build and on one day, each a number of dollars or "none" (0 is not
+  a cap: a hand-written 0 in loop.yaml stops every build until it is fixed). A build that
+  reaches a cap stops, and says the cap stopped it. A build keeps its security review's money
+  aside from the start, and **Ask for changes** spends from what the build's cap has left.
 - **Appearance**: light, dark, or your device's; kept in this browser.
 
 ## Where things are kept {#files}

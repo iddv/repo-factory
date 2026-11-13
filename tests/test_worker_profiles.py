@@ -176,7 +176,10 @@ def test_full_command_wraps_claude_in_bwrap(box, monkeypatch):
         (str(px), "/run/repo_factory"),
     }
     assert not px.exists()  # the proxy's dir is the proxy's to make
-    assert sandbox.worker_uv_cache() == home / ".cache" / "repo_factory" / "worker-uv"
+    # the workers' cache is in the home's cache folder (or an old install's ~/.cache one)
+    from repo_factory import paths
+
+    assert sandbox.worker_uv_cache() == paths.cache() / "worker-uv"
     inst = str(home / ".local" / "share" / "claude")
     assert (inst, inst) in ro and ("/etc", "/etc") in ro and ("/usr", "/usr") in ro
     assert (str(home / ".local" / "bin" / "uv"),) * 2 in ro
