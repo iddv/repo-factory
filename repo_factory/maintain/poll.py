@@ -190,7 +190,7 @@ def poll_repo(
         newest = _newest_issue(items)
         if newest and not msg.startswith("could not read"):
             body = (
-                f"{POLICY_ERROR}\nbears could not read `.github/repo-factory.yml`, so it leaves this "
+                f"{POLICY_ERROR}\nrepo-factory could not read `.github/repo-factory.yml`, so it leaves this "
                 f"repository alone until it is fixed: {triage.sanitize(msg, 600)}\n\n"
                 f"_{triage.SIGNATURE}_\n"
             )

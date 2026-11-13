@@ -1258,7 +1258,10 @@ def step(run) -> bool:
     nxt = rd.get("next") or "security"
     if nxt == "security":
         start = float(cfg(run, "start_usd") or 0.3)
-        if not run.budget.allows(start):
+        # money kept for the review since the first session (Budget.keep): the session
+        # before may have run a little over its own allowance, as real sessions do
+        kept = getattr(run.budget, "keep", {}).get("readiness")
+        if not run.budget.allows(start / 2 if kept else start):
             why = (
                 f"the build's cap: ${run.budget.spent():.2f} spent of ${run.budget.cap:.2f}, "
                 f"the stage needs ${start:.2f} to start"

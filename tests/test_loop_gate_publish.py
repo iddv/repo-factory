@@ -531,20 +531,22 @@ def test_publish_anyway_never_overrides_security_or_exposure(tmp_path, fake_gh, 
     assert not created(fake_gh) and lp.ledger.get(iid)["state"] == "held"
 
 
-def test_a_review_that_did_not_run_is_a_gap_not_a_hold(tmp_path, fake_gh):
-    # AU1 #1: Sidedoor r1-r2 carried "the security review did not run", never overridable;
-    # it is repo-factory's own gap: the tests hold may be overridden, and the release notes say it
-    lp, iid = held(tmp_path, {"readiness": {"security": {"ran": False}, **RED_TESTS["readiness"]}})
-    g = lp.ledger.get(iid)["gate"]
-    assert [r.split(":")[0] for r in g["reasons"]] == ["tests"]
-    assert g["gaps"] == ["security: the security review did not run"]
-    out = lp.publish_anyway(iid, "the four failures are flaky clock tests", yes=True)
-    assert out["state"] == "published"
-    rel = [c for c in gh_calls(fake_gh) if c[:2] == ["release", "create"]][0]
-    assert any(
-        "Not every check could run before this release: the security review did not run." in x
-        for x in rel
+def test_a_review_that_did_not_run_holds_and_publish_anyway_refuses_it(tmp_path, fake_gh):
+    # The operator's decision: no security review, no publish, whatever may_override says
+    why = "the build's cap: $11.79 spent of $12.00, the stage needs $0.30 to start"
+    lp, iid = held(
+        tmp_path, {"readiness": {"security": {"ran": False, "why": why}, **RED_TESTS["readiness"]}}
     )
+    g = lp.ledger.get(iid)["gate"]
+    assert [r.split(":")[0] for r in g["reasons"]] == ["security", "tests"]
+    assert g["reasons"][0] == (
+        f"security: the security review did not run ({why}); raise the cap in Settings › "
+        "Spend, then Retry"
+    )
+    assert g["gaps"] == []
+    with pytest.raises(LoopError, match="the security review did not run"):
+        lp.publish_anyway(iid, "the four failures are flaky clock tests", yes=True)
+    assert not created(fake_gh) and lp.ledger.get(iid)["state"] == "held"
 
 
 def test_a_failing_quick_start_may_be_overridden(tmp_path, fake_gh):

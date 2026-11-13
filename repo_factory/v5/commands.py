@@ -117,7 +117,7 @@ FOREIGN_HEADS = re.compile(
 DEP = re.compile(
     r"^(?:python3?\s+-m\s+)?pip3?\s+install\b|^uv\s+(?:pip\s+install|sync|tool\s+"
     r"install|add|venv)\b|^(?:poetry|pipenv|pdm|hatch)\s+install\b|^pipx\s+install"
-    r"\b|^(?:npm|pnpm|yarn)\s+(?:ci|install|add)\b|^python3?\s+-m\s+venv\b|"
+    r"\b|^(?:npm|pnpm|yarn)\s+(?:global\s+)?(?:ci|install|i|add|link)\b|^python3?\s+-m\s+venv\b|"
     r"^virtualenv\b|^(?:source|\.)\s+\S*activate\b|^deactivate$|^conda\b"
 )
 PLACEHOLDER = re.compile(
@@ -448,7 +448,13 @@ def installs_product(cmd: str) -> bool:
         return False
     if re.match(r"^(?:uv\s+sync|poetry\s+install|pdm\s+install)\b", cmd):
         return True
+    if re.match(r"^npm\s+link\s*$", cmd):
+        return True
     toks = _tokens(cmd)
+    if toks[:1] in (["npm"], ["pnpm"]) and ("-g" in toks or "--global" in toks):
+        return any(re.fullmatch(r"\./?", t) for t in toks[2:])
+    if toks[:3] == ["yarn", "global", "add"]:
+        return any(re.fullmatch(r"\./?", t) for t in toks[3:])
     return "install" in toks and any(
         re.fullmatch(r"\./?(?:\[[\w,.-]*\])?", t) for t in toks[toks.index("install") + 1 :]
     )
@@ -479,9 +485,15 @@ def write_scripts(repo: Path, bindir: Path, python: str) -> list[str]:
     ``pipx install .`` failed with "command not found" (exit 127: Nextread r1–r2, Repo Recall
     r1–r5)."""
     eps = entry_points(repo)
-    if not eps:
+    bins = node_bins(repo)
+    if not eps and not bins:
         return []
     bindir.mkdir(parents=True, exist_ok=True)
+    for name, rel in bins.items():
+        # what `npm install -g .` links: the bin's script, run by node from the fresh copy
+        f = bindir / name
+        f.write_text(f'#!/bin/sh\nexec node {str(Path(repo) / rel)!r} "$@"\n')
+        f.chmod(0o755)
     for name, spec in eps.items():
         mod, _, attr = spec.split("[")[0].strip().partition(":")
         top = mod.split(".")[0]
@@ -502,7 +514,33 @@ def write_scripts(repo: Path, bindir: Path, python: str) -> list[str]:
         f = bindir / name
         f.write_text(f"#!{python}\nimport sys\nsys.path[:0] = {roots!r}\n" + call)
         f.chmod(0o755)
-    return sorted(eps)
+    return sorted({*eps, *bins})
+
+
+def node_bins(root: Path) -> dict[str, str]:
+    """The product's Node commands: ``{name: path}`` from ``package.json`` ``bin`` (a path
+    names the package's own command; a map, one per name). Paths stay inside the copy."""
+    try:
+        j = json.loads((Path(root) / "package.json").read_text(errors="replace"))
+    except (OSError, ValueError):
+        return {}
+    b = j.get("bin") if isinstance(j, dict) else None
+    name = str(j.get("name") or "").split("/")[-1] if isinstance(j, dict) else ""
+    if isinstance(b, str) and name:
+        b = {name: b}
+    if not isinstance(b, dict):
+        return {}
+    out = {}
+    for k, v in b.items():
+        rel = str(v).lstrip("./") if isinstance(v, str) else ""
+        if (
+            re.fullmatch(r"[\w@.-]+", str(k))
+            and rel
+            and ".." not in Path(rel).parts
+            and (Path(root) / rel).is_file()
+        ):
+            out[str(k)] = rel
+    return out
 
 
 def readme_path(root: Path) -> Path | None:
@@ -850,10 +888,50 @@ def _own_file(r: dict) -> list[str]:
     return [m for m in r.get("missing") or [] if m in out]
 
 
+# A command that needed the network the check does not have (a test script that downloads
+# a browser first: Foldpage's `pretest`)
+NEEDS_NETWORK = re.compile(
+    r"(?-i:\b(?:ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ETIMEDOUT|ENETUNREACH)\b)|getaddrinfo|"
+    r"Temporary failure in name resolution|Could not resolve host|Name or service not known|"
+    r"Network is unreachable|failed to download|download failed|error downloading|"
+    r"unable to (?:download|connect)",
+    re.I,
+)
+NOT_FOUND = re.compile(r"command not found|: not found|Cannot find module|ERR_MODULE_NOT_FOUND")
+
+
+def after_install(ex: dict, cmd: str) -> bool:
+    """``cmd`` comes after an install step of the README that the check skipped (it has no
+    network: ``npm install -g .``, ``pip install -r requirements.txt``)."""
+    for e in ex.get("quick") or []:
+        if e.get("cmd") == cmd:
+            return False
+        if e.get("skip") and DEP.search(e.get("cmd") or ""):
+            return True
+    return False
+
+
+def mark(rows: list[dict], ex: dict) -> list[dict]:
+    """What the check itself kept a command from doing, on each row: ``needs_install`` (not
+    found right after an install step it skipped), ``needs_network`` (its output says it
+    tried to download)."""
+    for r in rows:
+        if r.get("status") not in ("failed", "timeout"):
+            continue
+        out = r.get("output") or ""
+        missing = r.get("rc") == 127 or NOT_FOUND.search(out)
+        if missing and after_install(ex, r.get("cmd") or ""):
+            r["needs_install"] = True
+        if NEEDS_NETWORK.search(out):
+            r["needs_network"] = True
+    return rows
+
+
 def _unavailable(r: dict) -> bool:
     """A command whose tool isn't in the sandbox (``uv``, ``make``...), one that asked for
-    input (an operator at a terminal would type it; the check has none), or one whose
-    example input is a file of the user's own (``nextread import tabs.txt``): not a
+    input (an operator at a terminal would type it; the check has none), one whose
+    example input is a file of the user's own (``nextread import tabs.txt``), one not found
+    right after an install step the check skipped, or one that needed a download: not a
     failure of the README."""
     if r.get("status") not in ("failed", "timeout"):
         return False
@@ -861,6 +939,8 @@ def _unavailable(r: dict) -> bool:
         (r.get("rc") == 127 and _first_word(r["cmd"]) in EXTERNAL)
         or bool(NEEDS_INPUT.search(r.get("output") or ""))
         or bool(_own_file(r))
+        or bool(r.get("needs_install"))
+        or bool(r.get("needs_network"))
     )
 
 
@@ -900,7 +980,7 @@ def items(
                 fixable=False,
             )
         return out
-    quick = [r for r in res.get("quick") or [] if r.get("status") != "skipped"]
+    quick = mark([r for r in res.get("quick") or [] if r.get("status") != "skipped"], ex)
     bad = [r for r in quick if r.get("status") in ("failed", "timeout") and not _unavailable(r)]
     unav = [r for r in quick if _unavailable(r)]
     skipped = [e for e in (ex.get("quick") or []) + (ex.get("skipped") or []) if e.get("skip")]
@@ -934,7 +1014,7 @@ def items(
             "make every quick-start command in the README work exactly as written on a "
             "fresh copy (fix the command or the script, or the README)",
         )
-    elif not ran and skipped and all(DEP.search(e["cmd"]) for e in skipped):
+    elif not ran and not unav and skipped and all(DEP.search(e["cmd"]) for e in skipped):
         it = _item(
             "commands",
             "n/a",
@@ -944,18 +1024,26 @@ def items(
             fixable=False,
         )
     elif not ran:
+        inst = [r for r in unav if r.get("needs_install")]
         it = _item(
             "commands",
             "amber",
             "no quick-start command could be run as written"
-            + (f" ({skipped[0]['skip']}: `{skipped[0]['cmd']}`)" if skipped else ""),
+            + (f" ({skipped[0]['skip']}: `{skipped[0]['cmd']}`)" if skipped else "")
+            + (
+                f"; {len(inst)} not measured, they need the install step the check skipped: "
+                + ", ".join(f"`{r['cmd']}`" for r in inst)
+                if inst
+                else ""
+            ),
             "check the quick start by hand on a fresh copy",
             fixable=False,
         )
     else:
         asks = [r for r in unav if NEEDS_INPUT.search(r.get("output") or "")]
         own = [r for r in unav if r not in asks and _own_file(r)]
-        tools = [r for r in unav if r not in asks and r not in own]
+        inst = [r for r in unav if r not in asks and r not in own and r.get("needs_install")]
+        tools = [r for r in unav if r not in asks and r not in own and r not in inst]
         alts = [r for r in res.get("quick") or [] if r.get("alternative")]
         reasons = sorted({e["skip"].split(":")[0] for e in skipped})
         it = _item(
@@ -972,6 +1060,12 @@ def items(
                 f"; {len(tools)} need a tool the check doesn't have: "
                 + ", ".join(f"`{r['cmd']}`" for r in tools)
                 if tools
+                else ""
+            )
+            + (
+                f"; {len(inst)} not measured, they need the install step the check skipped: "
+                + ", ".join(f"`{r['cmd']}`" for r in inst)
+                if inst
                 else ""
             )
             + (
@@ -1005,7 +1099,7 @@ def items(
 def tests_item(res: dict, ex: dict) -> dict:
     from .readiness import _item
 
-    rs = [r for r in res.get("tests") or []]
+    rs = mark([r for r in res.get("tests") or []], ex)
     doc = [
         e
         for e in ex.get("tests") or []
@@ -1040,14 +1134,23 @@ def tests_item(res: dict, ex: dict) -> dict:
             "written, on a fresh copy with only the declared dependencies",
         )
     elif not ok:
+        net = [r for r in unav if r.get("needs_network") or r.get("needs_install")]
         it = _item(
             "tests_green",
             "amber",
-            "no documented test command could be run as written"
+            (
+                "not measured: "
+                + ", ".join(f"`{r['cmd']}`" for r in net)
+                + " needs a download or an install, and the check has no network"
+            )
+            if net and len(net) == len(unav)
+            else "no documented test command could be run as written"
             + (f" ({unav[0]['cmd']} needs a tool the check doesn't have)" if unav else ""),
             "run the test commands by hand",
             fixable=False,
         )
+        if net and len(net) == len(unav):
+            it["not_verifiable"] = True
     else:
         it = _item(
             "tests_green",

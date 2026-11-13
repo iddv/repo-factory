@@ -1,9 +1,11 @@
 name: release
 # A release, on a version tag (vX.Y.Z) pushed by a maintainer. It shares nothing with the pull
-# request workflow: its own trigger, no cache, and the `release` environment, which waits for a
-# maintainer's approval before anything is published. It builds the page and the wheel, runs
-# the install test against that exact wheel, writes SHA256SUMS, and creates the GitHub release
-# with both files attached.
+# request workflow: its own trigger, no cache. Two jobs:
+# - build, with a read-only token: the page, the wheel, the install test against that exact
+#   wheel, SHA256SUMS and the release notes, kept as this run's artefact;
+# - publish, in the `release` environment (it waits for a maintainer's approval), the only job
+#   that may write: it refuses a tag whose commit is not on main, then creates the GitHub
+#   release with the build job's files. No third-party action runs while it holds that token.
 on:
   push:
     tags: ["v[0-9]+.[0-9]+.[0-9]+"]
@@ -16,12 +18,9 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  release:
+  build:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    environment: release
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -41,13 +40,47 @@ jobs:
           SETUPTOOLS_SCM_PRETEND_VERSION: ${{ steps.v.outputs.version }}
         run: uv build --wheel
       - run: python3 scripts/ci/install_test.py dist/*.whl
-      - name: checksums
-        run: cd dist && sha256sum ./*.whl | sed 's| \./| |' > SHA256SUMS && cat SHA256SUMS
+      - name: checksums and notes
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          cd dist && sha256sum ./*.whl | sed 's| \./| |' > SHA256SUMS && cat SHA256SUMS && cd ..
+          python3 scripts/ci/release_notes.py "$TAG" > dist/notes.md
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+          retention-days: 3
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: release
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: the tag's commit is on main
+        run: |
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" FETCH_HEAD; then
+            echo "the tag's commit $GITHUB_SHA is not on main: no release" >&2
+            exit 1
+          fi
+      - name: the build job's files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --name dist --dir dist
       - name: the release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
         run: |
-          python3 scripts/ci/release_notes.py "$TAG" > notes.md
           gh release create "$TAG" dist/*.whl dist/SHA256SUMS --repo "$GITHUB_REPOSITORY" \
-            --title "$TAG" --notes-file notes.md --verify-tag
+            --title "$TAG" --notes-file dist/notes.md --verify-tag

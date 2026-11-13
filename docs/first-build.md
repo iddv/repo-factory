@@ -30,8 +30,11 @@ The link works once, within 10 minutes; for another browser, or when it expired,
 `repo-factory link` prints a new one.
 
 Everything it keeps is in one folder, `~/.repo-factory` (`REPO_FACTORY_HOME` or `--home` moves
-it): the settings (`loop.yaml`), the ledger (`loop.db`), the sign-in tokens, and the tasks
-(`tasks/<name>/`, each with the delivered code in `out/` and the build's records in `.den/`).
+it): the settings (`loop.yaml`), the ledger (`loop.db`), the sign-in tokens, the tasks
+(`tasks/<name>/`, each with the delivered code in `out/` and the build's records in `.den/`),
+and `cache/`: the products' environments and package caches, which grow by a few hundred MB a
+build and may be deleted between builds. (An install from before this kept them in
+`~/.cache/repo_factory`; while that folder is there it is used as it is.)
 
 ## Type a task
 
@@ -60,17 +63,22 @@ a build takes about an hour and costs about $10; the range was 32 minutes to alm
 
 When the gate passes, the page says **Ready: publish?** with the checks it passed. Nothing is
 on GitHub yet. A build that did not pass is **held**, with each reason in plain words; **Ask for
-changes** sends it another round with your note, and **Retry** builds it again.
+changes** sends it another round with your note, and **Retry** builds it again. A build whose
+security review did not run is held, and Publish anyway never publishes it.
 
-**Publish** runs the pre-push checks (a secrets scan and an honesty check of its public text),
+**Publish** runs the pre-push checks (a secrets scan, a look at the product's own workflows and
+an honesty check of its public text),
 then creates a **private** repository under your GitHub account with a first release and the
 report of what was checked. **Make public** is a separate press, and only you make it.
 
 ## Spend
 
 By default a build stops at **$25** and no new build starts once today's spend reaches **$50**.
-Both are in **Settings › Spend**; either can be set to none. A build the cap stopped is held,
-and its first reason says so. On a Claude plan, the amounts are what Claude Code reports as the
+Both are in **Settings › Spend**; either can be set to none (0 is not a cap: it stops every
+build until you fix it). A build keeps its security review's typical cost aside from its first
+session, so a tight cap stops the earlier stages, in words, before the review. Repair rounds
+(the automatic one, and **Ask for changes**) spend from what the build's cap has left, unless
+`revise.max_usd` is set. A build the cap stopped is held, and its first reason says so. On a Claude plan, the amounts are what Claude Code reports as the
 usage's list price, and your plan's own limits apply.
 
 ## When something goes wrong

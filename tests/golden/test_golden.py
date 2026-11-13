@@ -73,7 +73,10 @@ def factory(tmp_path):
         for k, v in os.environ.items()
         if k not in ("GH_TOKEN", "GITHUB_TOKEN", "REPO_FACTORY_ALLOW_UNSANDBOXED")
     }
+    user = tmp_path / "user"  # the person's own home: nothing of repo-factory's goes here
+    user.mkdir()
     env.update(
+        HOME=str(user),
         REPO_FACTORY_HOME=str(home),
         PATH=f"{FAKE}{os.pathsep}{env['PATH']}",
         FAKE_GH_ROOT=str(github),
@@ -85,7 +88,7 @@ def factory(tmp_path):
         GH_TOKEN="gh" + "o_" + secrets.token_hex(18),
     )
 
-    def run(*args: str, timeout: int = LIMIT_S) -> subprocess.CompletedProcess:
+    def run(*args: str, timeout: int = LIMIT_S, may_fail=False) -> subprocess.CompletedProcess:
         p = subprocess.run(
             [sys.executable, "-m", "repo_factory.cli", *args],
             env=env,
@@ -94,13 +97,15 @@ def factory(tmp_path):
             text=True,
             timeout=timeout,
         )
+        if may_fail:
+            return p
         assert p.returncode == 0, f"repo-factory {' '.join(args)}:\n{p.stdout}\n{p.stderr}"
         return p
 
     def show(task: str) -> dict:
         return json.loads(run("loop", "show", task).stdout)
 
-    run.home, run.github, run.show, run.env = home, github, show, env
+    run.home, run.github, run.show, run.env, run.user = home, github, show, env, user
     return run
 
 
@@ -111,7 +116,7 @@ def escapes(factory, tmp_path):
     host's loopback, and the run's tokens (as hashes). Yields a function that reads the
     sessions' reports."""
     files = [
-        Path(os.environ["HOME"]) / ".config" / "golden-canary.txt",
+        factory.user / ".config" / "golden-canary.txt",
         factory.home / "golden-canary.txt",
     ]
     for f in files:
@@ -217,6 +222,10 @@ def test_a_typed_task_becomes_a_verified_private_repository_on_the_press(factory
         json.loads(x)["argv"] for x in (factory.github / "calls.jsonl").read_text().splitlines()
     ]
     assert not any("visibility=public" in a or "--public" in a for c in calls for a in c)
+
+    # nothing of repo-factory's in the person's home: only what this test planted there
+    left = sorted(p.relative_to(factory.user).as_posix() for p in factory.user.rglob("*"))
+    assert left == [".config", ".config/golden-canary.txt"], left
     assert time.monotonic() - t0 < LIMIT_S
 
 
@@ -227,6 +236,31 @@ def test_a_build_stopped_by_the_spend_cap_says_so_first(factory):
     row = factory.show(task)
     assert row["state"] == "held"
     first = row["gate"]["reasons"][0]
-    assert first.startswith("spend: the spend cap stopped it before the build stage"), first
+    # the security review's money is kept aside from the first session on: at $0.03 the
+    # first stage already stops
+    assert first.startswith("spend: the spend cap stopped it before the scope stage"), first
     assert "Settings › Spend" in first
+    assert not (factory.github / "octo-owner").exists()
+
+
+def test_a_build_whose_security_review_did_not_run_is_held_and_never_published(factory):
+    # a cap on the readiness stage too small for a session: the build is delivered, the
+    # review never runs
+    (factory.home / "loop.yaml").write_text("build:\n  stage_caps:\n    readiness: 0.001\n")
+    task = factory("loop", "add", TASK).stdout.split()[1]
+    factory("loop", "run", "--until-idle")
+    row = factory.show(task)
+    assert row["state"] == "held", row.get("reason")
+    sec = [r for r in row["gate"]["reasons"] if r.startswith("security:")]
+    assert sec and sec[0].startswith("security: the security review did not run ("), sec
+    assert sec[0].endswith("raise the cap in Settings › Spend, then Retry")
+    assert not any(g.startswith("security") for g in row["gate"]["gaps"])
+    # neither press publishes it
+    p = factory("loop", "publish", task, may_fail=True)
+    assert p.returncode != 0
+    p = factory(
+        "loop", "publish-anyway", task, "--reason", "I read the code myself", "--yes", may_fail=True
+    )
+    assert p.returncode != 0 and "the security review did not run" in p.stdout + p.stderr
+    assert factory.show(task)["state"] == "held"
     assert not (factory.github / "octo-owner").exists()

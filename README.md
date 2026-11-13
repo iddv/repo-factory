@@ -57,11 +57,12 @@ on a Claude plan that is usage, not a bill.
 local test repository): three typed tasks. A command-line habit tracker built in an hour
 ($10.16) and passed the gate. A small reading-list web page built in 49 minutes ($11.51) and
 was held for one open high-severity security finding; one "Ask for changes" fixed it in 3
-minutes ($0.43), its exploit test now passing, and it passed. A Markdown-notes-to-HTML tool hit
-its $12 cap before its security review and was held for two real problems (its tests needed a
-browser the sandbox could not download; its README used the command before installing it); its
-automatic repair round did not clear them. About $34 in all, including runs lost to a usage
-limit.
+minutes ($0.43), its exploit test now passing, and it passed. A Markdown-notes-to-HTML tool
+(written in Node) hit its $12 cap before its security review ran, and was held by the check's
+own environment, not by the product: the check skipped the README's install line and then
+could not find the command it installs, and its tests needed a browser download the sandbox
+does not allow. Both are now "not measured", and a build whose security review did not run is
+now held for that. About $34 in all, including runs lost to a usage limit.
 
 ### Where it is weak
 
@@ -74,7 +75,8 @@ limit.
 - **A build can end "ok" and be bad** (NoteHatch's first), and can run for six hours.
 - **Half the maintenance fix runs failed**, and the fixes that worked waited weeks for a person.
 - **The sample is small:** ten small Python products with few dependencies, one owner, one
-  machine, one week. Linux only.
+  machine, one week. Linux only. The brief asks for Python unless your task names another
+  language; other languages (Node above all) are less tested, and their checks measure less.
 
 **"Isn't this just Claude Code in a loop?"** Mostly, yes. The builder is one ordinary Claude
 Code session. What is added is the part around it: a brief first, an exam written by a session
@@ -85,10 +87,11 @@ experiment.
 
 ## What it needs
 
-Linux, Python 3.12, [uv](https://docs.astral.sh/uv/), `git`,
-[Claude Code](https://docs.claude.com/en/docs/claude-code) signed in (a Claude plan or an API
-key), [bubblewrap](https://github.com/containers/bubblewrap) (`bwrap`), and, only to publish,
-the GitHub CLI (`gh`) logged in.
+Linux, Python 3.12, [uv](https://docs.astral.sh/uv/), `git`, Node.js with npm (to build the
+page from a checkout), [Claude Code](https://docs.claude.com/en/docs/claude-code) signed in (a
+Claude plan or an API key), [bubblewrap](https://github.com/containers/bubblewrap) (`bwrap`),
+about 5 GB of free memory while a build runs, and, only to publish, the GitHub CLI (`gh`)
+logged in.
 
 ## Install
 
@@ -98,7 +101,7 @@ page):
 ```
 git clone https://github.com/iddv/repo-factory && cd repo-factory
 python3 scripts/build_ui.py && uv tool install --python 3.12 .
-repo-factory doctor      # one line each: Claude Code, bubblewrap, git, gh
+repo-factory doctor      # one line each: Claude Code, bubblewrap, git, gh, memory
 repo-factory ui          # the page on 127.0.0.1:8790, and a sign-in link
 ```
 
@@ -115,7 +118,7 @@ Releases page>`, `repo-factory doctor`, `repo-factory ui`. Then read
 
 | Setting | Default |
 |---|---|
-| Publish | **Asks first:** a ready build waits at "Ready: publish?" until you press |
+| Publish | **Asks first:** a ready build waits at "Ready: publish?" until you press. Publishing starts the product's own CI on your account (one Linux job; a workflow asking for a self-hosted runner, `pull_request_target` or a write token holds the publish) |
 | Visibility | **Private**; only you make a repository public |
 | Spend | **$25 a build, $50 a day**; either can be changed or set to none |
 | Maintenance | **Off** until you switch it on for a repository |

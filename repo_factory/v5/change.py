@@ -568,6 +568,31 @@ class ChangeRun(Run):
         )
 
 
+def build_spend(den_root: Path, rid: int) -> tuple[float | None, float]:
+    """``(cap, spent)`` of the build round ``rid`` belongs to: the cap its first round ran
+    under (None: no cap), and what that round and every revise round of it spent so far."""
+    from ..costs import ledger
+
+    chain: list[int] = []
+    r: int | None = int(rid)
+    while r and r not in chain:
+        chain.append(r)
+        ch = (_state(den_root, r) or {}).get("change") or {}
+        r = ch.get("revises")
+    first = _state(den_root, chain[-1]) or {}
+    cap = first.get("cap")
+    spent = sum(
+        float(x.get("usd") or 0.0) for x in ledger.read(Path(den_root)) if x.get("build") in chain
+    )
+    return (float(cap) if cap is not None else None), round(spent, 4)
+
+
+def build_left(den_root: Path, rid: int) -> float | None:
+    """What the build's cap has left for a revise round of round ``rid`` (None: no cap)."""
+    cap, spent = build_spend(den_root, rid)
+    return None if cap is None else round(cap - spent, 2)
+
+
 def _overrides() -> dict:
     try:
         v = json.loads(os.environ.get(MODELS_ENV) or "{}")
@@ -651,6 +676,18 @@ def revise(
     out = Path(saved["out"])
     log = EventLog(log_path(d.root), task.id, rid, subscribers)
     cap = _overrides().get("max_usd")
+    if cap is not None and float(cap) <= 0:  # loop.yaml's schema refuses it first
+        raise ReviseError("revise.max_usd: 0 or less is not a cap: a number above 0, or null")
+    if cap is None:
+        # no revise.max_usd: the round spends from what the build's cap has left
+        b_cap, spent = build_spend(d.root, int(saved["change"]["revises"]))
+        if b_cap is not None:
+            if b_cap - spent < 0.01:
+                raise ReviseError(
+                    f"the build's cap of ${b_cap:.2f} is spent (${spent:.2f}): raise it in "
+                    "Settings › Spend, or set revise.max_usd, then ask again"
+                )
+            cap = round(b_cap - spent, 2)
     run = ChangeRun(
         taskdir,
         task,
@@ -660,7 +697,7 @@ def revise(
         log,
         rules,
         Path(base_policy),
-        Budget(float(cap) if cap else None, d.root, rid),
+        Budget(float(cap) if cap is not None else None, d.root, rid),
         "none",
         out,
         None,

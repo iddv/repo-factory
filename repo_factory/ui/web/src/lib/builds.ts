@@ -38,6 +38,8 @@ export type Build = BuildRow & {
   stopped?: { round?: number | null; resumable?: boolean } | null;
   control?: { what?: string } | null;
   precheck?: { state?: string; holds?: [string, string][] } | null;
+  /** what a revise round may spend: the build's cap less what it spent (null: no cap) */
+  revise_left?: number | null;
 };
 
 export interface State {

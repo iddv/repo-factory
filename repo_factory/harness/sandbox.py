@@ -7,7 +7,7 @@ What the worker sees (``mounts`` lists it, with the reason for each entry):
 
 - **read-write:** the workspace; the Claude Code config dir (``~/.claude``: auth, sessions,
   so ``--resume`` across directories keeps working) and ``~/.claude.json``; a uv cache and
-  a venv root of the workers' own (``~/.cache/repo_factory/worker-uv``, ``.../worker-venvs``);
+  a venv root of the workers' own (``<home>/cache/worker-uv``, ``.../worker-venvs``);
   a private ``/tmp``. The rest of ``$HOME`` is an empty tmpfs: writes there vanish.
 - **read-only:** the system (``/usr``, ``/etc`` and the merged-/usr links), the claude
   install, uv, the base python, and the factory's own package and venv mounted under
@@ -40,6 +40,8 @@ import os
 import shutil
 import sys
 from pathlib import Path
+
+from .. import paths
 
 OPT = "/opt/repo_factory"  # where the factory's own files appear inside
 HIDE = ("/home",)  # an empty tmpfs; binds under it come back
@@ -123,17 +125,11 @@ def home() -> Path:
 
 
 def worker_uv_cache() -> Path:
-    return Path(
-        os.environ.get("REPO_FACTORY_WORKER_UV_CACHE")
-        or home() / ".cache" / "repo_factory" / "worker-uv"
-    )
+    return Path(os.environ.get("REPO_FACTORY_WORKER_UV_CACHE") or paths.cache() / "worker-uv")
 
 
 def worker_venvs() -> Path:
-    return Path(
-        os.environ.get("REPO_FACTORY_WORKER_VENV_ROOT")
-        or home() / ".cache" / "repo_factory" / "worker-venvs"
-    )
+    return Path(os.environ.get("REPO_FACTORY_WORKER_VENV_ROOT") or paths.cache() / "worker-venvs")
 
 
 def claude_binary() -> Path:

@@ -343,9 +343,31 @@ def rule_view(rule: tuple) -> dict:
     }
 
 
+# What a request may never write, whatever its token (loop.yaml by hand still can, and the
+# loop reads it as it says): making repositories public without a press, and switching on the
+# parts that are in the code but not in this version.
+REFUSED = {
+    ("publish.approval", "auto"): "publish.approval: auto (making a repository public without "
+    "your press) is not something the page sets; publishing asks you first",
+    ("maintain.enabled", True): "maintain.enabled: maintenance is not in this version",
+    ("projects.enabled", True): "projects.enabled: projects are not in this version",
+}
+
+
+def refused(key: str, value) -> str | None:
+    """Why a request may not write ``key: value`` (``REFUSED``), or None."""
+    v = value.strip().lower() if isinstance(value, str) else value
+    if isinstance(v, str) and v in ("true", "on", "yes"):
+        v = True
+    return REFUSED.get((key, v)) if isinstance(v, str | bool) else None
+
+
 def check(key: str, value):
     """A loop.yaml value from a request, checked against ``RULES``; ValueError says why, in
     words. Never a model."""
+    why = refused(key, value)
+    if why:
+        raise ValueError(why)
     rule = RULES.get(key)
     if rule is None:
         raise ValueError(
@@ -462,6 +484,9 @@ def _folder(key: str, value) -> str:
 
 def project_value(key: str, value):
     """A Settings › Publishing › Projects value from a request, checked; ValueError says why (in words)."""
+    why = refused(f"projects.{key}", value)
+    if why:
+        raise ValueError(why)
     rule = PROJECTS.get(key)
     if rule is None:
         raise ValueError(f"projects.{key} is not a setting this page writes")

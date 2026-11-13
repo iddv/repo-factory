@@ -69,7 +69,7 @@
 
 <div class="controls" id="build-controls">
   {#if canPublish}
-    <Press id="publish" label="Publish" primary run={publish} confirm="Create a private repository under your GitHub account and push this build to it?" />
+    <Press id="publish" label="Publish" primary run={publish} confirm="Create a private repository under your GitHub account and push this build to it? Its own CI then runs there, on your account's GitHub Actions minutes." />
   {/if}
   {#if canPublic}
     <Press id="make-public" label="Make public" run={makePublic} confirm="Make the repository public? Anyone can then read it." yes="Make public" />
@@ -92,6 +92,7 @@
   <form class="askbox" id="ask" onsubmit={ask}>
     <label for="ask-text">What should change?</label>
     <textarea id="ask-text" rows="4" bind:value={text} placeholder="The search should also match words inside code blocks"></textarea>
+    {#if b.revise_left != null}<p class="muted small" id="ask-left">{b.revise_left > 0 ? "It spends from what the build's cap has left: $" + b.revise_left.toFixed(2) + "." : "The build's cap is spent: raise it in Settings › Spend first."}</p>{/if}
     {#if askError}<p class="err" role="alert">{askError}</p>{/if}
     <div class="actions">
       <button type="submit" class="btn primary" disabled={askBusy || !text.trim()}>{askBusy ? "Sending…" : "Send"}</button>

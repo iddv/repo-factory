@@ -20,6 +20,7 @@ import threading
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+from .. import paths
 from . import links
 from .isolation import base_python, isolation, sandbox_cmd
 
@@ -28,10 +29,7 @@ SKIP = shutil.ignore_patterns(".git", "__pycache__", ".repo_factory", ".pytest_c
 
 
 def venv_root() -> Path:
-    return Path(
-        os.environ.get("REPO_FACTORY_VENV_ROOT")
-        or Path.home() / ".cache" / "repo_factory" / "venvs"
-    )
+    return Path(os.environ.get("REPO_FACTORY_VENV_ROOT") or paths.cache() / "venvs")
 
 
 def _venv_key(reqs: list[str]) -> str:
