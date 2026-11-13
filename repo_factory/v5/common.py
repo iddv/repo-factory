@@ -324,6 +324,14 @@ class Budget:
         # runs once per repair round (repair, reverify) gets a cap per round, not one cap
         # shared by every round (round 2 once got $0.06 because round 1 had used the rest)
         self.windows: dict[str, list[float]] = {}
+        # stage -> money kept aside for it under the global cap: every other stage stops
+        # that much short of the cap (the security review's typical cost, from the first
+        # session on, so a tight cap stops the Fix stage before it stops the review)
+        self.keep: dict[str, float] = {}
+
+    def kept(self, stage: str) -> float:
+        """What the cap keeps aside from ``stage`` for the other stages (``keep``)."""
+        return round(sum(v for s, v in self.keep.items() if s != stage), 4)
 
     def window(self, stage: str, cap: float | None = None) -> None:
         """Open a new window for ``stage``: from now on its cap (``cap``, default the
@@ -394,10 +402,13 @@ class Budget:
     def check(self, stage: str, need: float = 0.01) -> None:
         """Before a call: raises ``BudgetExceeded`` unless ``need`` (default: a cent, any
         call costs something) fits under the build's cap and the stage has money left."""
-        if self.cap is not None and self.spent() + need > self.cap:
+        kept = self.kept(stage)
+        if self.cap is not None and self.spent() + need > self.cap - kept:
             self._hit(stage)
             raise BudgetExceeded(
-                f"{stage}: the build's cap ${self.cap:.2f} is reached (spent ${self.spent():.2f})"
+                f"{stage}: the build's cap ${self.cap:.2f} is reached (spent ${self.spent():.2f}"
+                + (f", ${kept:.2f} kept for the security review" if kept else "")
+                + ")"
             )
         if self.stage_left(stage) <= 0:
             self._hit(stage)
@@ -425,7 +436,11 @@ class Budget:
         (forks) an earlier session: Claude Code 2.1.287 reports ``total_cost_usd``
         cumulatively over the session's history, but ``--max-budget-usd`` counts only the
         resumed run's own spend (measured; ``profile.launch``'s doc)."""
-        lim = min(math.inf if want is None else float(want), self.stage_left(stage), self.left())
+        lim = min(
+            math.inf if want is None else float(want),
+            self.stage_left(stage),
+            self.left() - self.kept(stage),
+        )
         if lim == math.inf:
             return None
         return round(max(0.0, lim), 2)

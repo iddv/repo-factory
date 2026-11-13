@@ -19,14 +19,18 @@ There is no ``p_hidden`` check any more (AU1 #5): it was arithmetic on the claim
 measurement, and in 36 recorded rounds it never held a build. A ``gate.json`` from before
 still lists it; it is shown as it was recorded.
 
-Only the product holds a build (AU1 #1). What repo-factory itself failed to measure is a **gap**,
-never a hold: a flow of the definition of done the harness could not measure (``environment``:
-its sandbox fails the flow on the build and on the verifier's own copy, ``Run.triage``;
-``unchecked``: no scenario checked it), and a security review that did not run (a cap or a
-cut-off build). No round of the product could change those, so the gate judges the rest and
-says what it could not measure: the verdict's ``gaps``, shown beside the checks and written
-into the release notes. A round where nothing at all was measured (no flow, no security
-review: a cut-off build) leaves nothing to judge, and holds on completeness."""
+Only the product holds a build (AU1 #1), with one exception. What repo-factory itself failed to
+measure is a **gap**, never a hold: a flow of the definition of done the harness could not
+measure (``environment``: its sandbox fails the flow on the build and on the verifier's own
+copy, ``Run.triage``; ``unchecked``: no scenario checked it). No round of the product could
+change those, so the gate judges the rest and says what it could not measure: the verdict's
+``gaps``, shown beside the checks and written into the release notes. A round where nothing at
+all was measured (no flow, no security review: a cut-off build) leaves nothing to judge, and
+holds on completeness.
+
+The exception: **a security review that did not run holds the build** (``security``, with
+why it did not run and what to press), and Publish anyway never overrides it. It is the one
+check a reader cannot redo by reading the README, and a tight cap made it the common case."""
 
 from __future__ import annotations
 
@@ -61,6 +65,9 @@ NOTHING_MEASURED = (
     "nothing was measured: no flow was checked and the security review did "
     "not run; Retry builds it again"
 )
+# The security hold when the review did not run: these words start its detail, so a stored
+# verdict (gate.json keeps only ok and detail) is still known for what it is
+UNREVIEWED = "the security review did not run"
 NO_DOD = (
     "not scored: no definition of done (the scope wrote none and none could be drawn from the spec)"
 )
@@ -249,6 +256,10 @@ def cant_revise(g: dict | None, task, now: dict | None = None) -> str | None:
     press that helps: Publish anyway or Close, or Re-check when today's gate holds on nothing.
     None: a revise may help (Repo Recall on 2026-10-28: today's gate held it on a README
     command, which the console's round 6 fixed)."""
+    sec = ((g or {}).get("checks") or {}).get("security")
+    if is_unreviewed(sec):
+        # a revise round carries the review from the round it revises: it never runs it
+        return f"revise can't fix this: {sec['detail']}"
     bad, rnd = failing(g), (g or {}).get("round")
     if bad != ["completeness"] or not task or not rnd:
         return None
@@ -293,6 +304,24 @@ def with_item(rd: Path, files: set, item: dict, at: Path) -> dict:
     return record_checks(at, files)
 
 
+def unreviewed(why) -> str:
+    """The security hold's detail when the review did not run: why, then what to press."""
+    why = str(why or "").strip()
+    capped = "cap" in why or "budget" in why
+    then = (
+        "raise the cap in Settings › Spend, then Retry"
+        if capped
+        else "Retry builds it again with the review"
+    )
+    return f"{UNREVIEWED} ({why or 'no reason was recorded'}); {then}"
+
+
+def is_unreviewed(check: dict | None) -> bool:
+    """A failing security check that says the review did not run (live or stored)."""
+    c = check or {}
+    return not c.get("ok") and str(c.get("detail") or "").startswith(UNREVIEWED)
+
+
 def record_checks(root: Path, files: set | None = None) -> dict:
     """The gate's checks that read the round's records (``<den>/v5/r<N>/``, or a corpus
     entry's copy): documents, security, tests, safe_defaults, completeness.
@@ -328,10 +357,8 @@ def record_checks(root: Path, files: set | None = None) -> dict:
     ready = _json(root / "readiness.json") or {}
     sec = ready.get("security") or {}
     if not sec.get("ran"):
-        # a factory gap (AU1 #1): a cap or a cut-off build, nothing the product can change
-        why = str(sec.get("why") or "").strip()
-        put("security", True, "not reviewed: the security review did not run")
-        checks["security"]["gap"] = "the security review did not run" + (f" ({why})" if why else "")
+        # a hold, never overridden (the operator's decision): a cap or a cut-off build
+        put("security", False, unreviewed(sec.get("why")))
     else:
         open_ = [
             f
@@ -400,8 +427,8 @@ def record_checks(root: Path, files: set | None = None) -> dict:
 
 # Publish anyway: the holds the owner may override, by default, as
 # ``publish.anyway.may_override``. These are never overridable, whatever the setting says:
-# nothing delivered, an open critical or high security finding (a review that did not run is
-# a gap, not a hold), a secrets hit, and a product that listens beyond loopback by
+# nothing delivered, an open critical or high security finding or a security review that
+# did not run, a secrets hit, and a product that listens beyond loopback by
 # default (a red ``bind_localhost``: a network exposure, treated like security).
 # (wording, the honesty check and the jargon scan, are never holds)
 MAY_OVERRIDE = ("tests", "completeness", "safe_defaults")
@@ -412,6 +439,10 @@ NEVER = {
     "bind_localhost": "it listens beyond loopback by default: a network exposure is "
     "never overridden",
 }
+NEVER_UNREVIEWED = (
+    "the security review did not run: a build is never published without it, whatever "
+    "publish.anyway.may_override says"
+)
 PREPUSH = {"honesty check": "honesty", "jargon scan": "jargon", "secrets scan": "secrets"}
 
 
@@ -435,7 +466,9 @@ def override_plan(checks: dict, prepush: list[str], may_override=None) -> dict:
         if c.get("ok"):
             continue
         detail = c.get("detail") or ""
-        if k in NEVER:
+        if k == "security" and is_unreviewed(c):
+            refused.append((k, NEVER_UNREVIEWED))
+        elif k in NEVER:
             refused.append((k, NEVER[k]))
         elif k == "safe_defaults" and "bind_localhost" in (c.get("red") or []):
             refused.append(("bind_localhost", NEVER["bind_localhost"]))

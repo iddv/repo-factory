@@ -1,7 +1,8 @@
 """AU1 #1: the gate holds only on the product. What repo-factory itself could not measure (a flow
-the harness's sandbox fails on both copies, a flow no scenario checked, a security review
-that did not run) is a gap, stated, never a hold. The cases are real rounds' records,
-trimmed (``tests/fixtures/factory_holds``)."""
+the harness's sandbox fails on both copies, a flow no scenario checked) is a gap, stated, never
+a hold. The one exception: a security review that did not run holds the build, and Publish
+anyway never overrides it. The cases are real rounds' records, trimmed
+(``tests/fixtures/factory_holds``)."""
 
 from pathlib import Path
 
@@ -41,25 +42,46 @@ def test_a_factory_gap_never_holds_the_build(name, gap):
     assert v["checks"]["completeness"]["ok"]
 
 
-def test_a_cut_off_build_with_nothing_measured_holds_overridably():
+def test_a_cut_off_build_with_nothing_measured_holds_and_is_never_published():
     # Sidedoor r1: cut off, no scenario for any flow and no security review: nothing to judge
     v = judge("sidedoor-r1")
     assert v["verdict"] == "held"
-    assert v["reasons"] == ["completeness: " + gate.NOTHING_MEASURED]
-    assert v["checks"]["security"]["ok"]
-    assert "security: the security review did not run" in v["gaps"]
+    assert [r.split(":")[0] for r in v["reasons"]] == ["security", "completeness"]
+    assert v["reasons"][1] == "completeness: " + gate.NOTHING_MEASURED
+    assert not any(g.startswith("security") for g in v["gaps"])
     plan = gate.override_plan(v["checks"], [])
-    assert [k for k, _ in plan["overrides"]] == ["completeness"] and not plan["refused"]
+    assert [k for k, _ in plan["overrides"]] == ["completeness"]
+    assert plan["refused"] == [("security", gate.NEVER_UNREVIEWED)]
 
 
-def test_a_security_review_that_did_not_run_is_a_gap_and_overridable():
-    # Sidedoor r2: the same gaps, and a product hold beside them (no README: no test command)
+def test_a_security_review_that_did_not_run_holds_whatever_may_override_says():
+    # Sidedoor r2: no review, and a product hold beside it (no README: no test command)
     v2 = judge("sidedoor-r2")
     assert v2["verdict"] == "held"
-    assert [r.split(":")[0] for r in v2["reasons"]] == ["tests", "completeness"]
-    assert "security: the security review did not run" in v2["gaps"]
-    plan = gate.override_plan(v2["checks"], [])
-    assert [k for k, _ in plan["overrides"]] == ["tests", "completeness"] and not plan["refused"]
+    assert [r.split(":")[0] for r in v2["reasons"]] == ["security", "tests", "completeness"]
+    said = v2["reasons"][0]
+    assert said.startswith("security: the security review did not run (")
+    assert said.endswith("Retry builds it again with the review") or "Settings › Spend" in said
+    for allowed in (None, ["tests", "completeness", "security"]):
+        plan = gate.override_plan(v2["checks"], [], allowed)
+        assert plan["refused"] == [("security", gate.NEVER_UNREVIEWED)]
+    # a revise round carries the review it revises: no automatic round, and it says why
+    v2["round"] = 2
+    assert gate.cant_revise(v2, "/no/task") == "revise can't fix this: " + said[10:]
+
+
+def test_the_hold_says_why_the_review_did_not_run_and_what_to_press():
+    capped = "the build's cap: $11.79 spent of $12.00, the stage needs $0.30 to start"
+    assert gate.unreviewed(capped) == (
+        f"the security review did not run ({capped}); raise the cap in Settings › Spend, then Retry"
+    )
+    assert gate.unreviewed(None) == (
+        "the security review did not run (no reason was recorded); Retry builds it again "
+        "with the review"
+    )
+    # a verdict stored before this change (gate.json keeps ok and detail) is known too
+    assert gate.is_unreviewed({"ok": False, "detail": gate.unreviewed("x")})
+    assert not gate.is_unreviewed({"ok": False, "detail": "open: high: x"})
 
 
 def test_a_broken_flow_still_holds():
@@ -82,16 +104,14 @@ def test_an_open_finding_is_never_overridden():
 
 
 def test_the_gap_is_kept_with_the_verdict_and_said_in_the_release_notes(tmp_path):
-    v = judge("sidedoor-r1")
+    v = judge("notehatch-r1")
     gate.record(tmp_path, v)
     import json
 
     rec = json.loads((tmp_path / ".den" / "v5" / "r1" / "gate.json").read_text())
-    assert rec["gaps"] == v["gaps"] and rec["checks"]["security"]["gap"]
-    line = publish.gaps_line(v)
-    assert line == (
-        "Not every check could run before this release: the security review did not run."
-    )
+    assert rec["gaps"] == v["gaps"] and rec["checks"]["completeness"]["gap"]
+    # a review that did not run is a hold now, never a line in the release notes
+    assert publish.gaps_line(judge("sidedoor-r1")) is None
     line = publish.gaps_line(judge("notehatch-r1"))
     assert line.startswith(
         "Not every check could run before this release: F1 Install and first run, F2 "

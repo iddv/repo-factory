@@ -308,6 +308,22 @@ def default_cap(rules: dict) -> float | None:
     return float(m)
 
 
+def keep_for_the_review(run) -> None:
+    """Under a global cap, keep the security review's typical cost aside from the first
+    session on (``Budget.keep``): at least what the readiness stage needs to start, at most
+    its stage cap and a quarter of the build's cap (a small cap still builds something).
+    Without a cap, or without the readiness stage, nothing is kept."""
+    if run.budget.cap is None or "readiness" not in (run.rules.get("stages") or ()):
+        return
+    start = float(readiness.cfg(run, "start_usd") or 0.3)
+    want = readiness.step_usd(run, "security")
+    cap = run.budget.stage_caps.get("readiness")
+    if cap is not None:
+        want = min(want, float(cap))
+    want = min(want, run.budget.cap / 4)
+    run.budget.keep["readiness"] = round(max(start, want), 2)
+
+
 def build_cap(max_usd, task_budget, rules: dict, vanilla_usd=None) -> float | None:
     """The build's global cap: ``--max-cost``, else the task's ``budget_usd``, else
     ``default_cap``; the bench's 2.95x vanilla caps it further. None: no cap."""
@@ -432,6 +448,7 @@ def build(
         claims_mod.load_lessons(lessons_at, exclude_lessons_born_on),
         fresh=saved is None,
     )
+    keep_for_the_review(run)
     if saved is not None:
         run.load(saved)
     elif from_round is not None:
@@ -830,7 +847,11 @@ class Run:
         cap = self.budget.session_cap(stage, usd_or_none(caps.get("max_usd"), f"{stage}.max_usd"))
         if cap is not None and cap < 0.05:
             self.budget._hit(stage)
-            raise BudgetExceeded(f"{stage}: no budget left for a {role} session")
+            kept = self.budget.kept(stage)
+            raise BudgetExceeded(
+                f"{stage}: no budget left for a {role} session"
+                + (f" (${kept:.2f} kept for the security review)" if kept else "")
+            )
         sid = str(uuid.uuid4())
         sess = {"id": sid}
         if resume and resume.get("id"):

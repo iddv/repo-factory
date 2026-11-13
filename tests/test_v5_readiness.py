@@ -581,8 +581,20 @@ def test_the_round_is_skipped_below_its_minimum_and_the_stage_below_its_start(tm
         in (ev(out) / "security.md").read_text()
     )
     assert "Readiness repair: not run (the build's cap" in (o / "REPORT.md").read_text()
-    # with less than start_usd left, the stage doesn't start; SECURITY.md says so
-    t2, h2, out2 = ready_build(tmp_path / "b", max_usd=0.8)  # $0.55 + $0.30 > $0.80
+    # the review's money is kept aside from the first session on: at $0.80 the stages before
+    # it stop short, in words, and the review still runs ($0.55 + $0.30 > $0.80 skipped it)
+    t1, h1, out1 = ready_build(tmp_path / "a", max_usd=0.8)
+    assert "security" in [r[0] for r in h1.runs]
+    before = [
+        e
+        for e in read_events(Path(out1["events"]))
+        if e["type"] == "v5_stage" and e.get("status") == "capped" and e["stage"] != "readiness"
+    ]
+    assert before and all("$0.30 kept for the security review" in e["why"] for e in before)
+    sec1 = json.loads((Path(out1["den"]) / "v5" / "r1" / "readiness.json").read_text())
+    assert sec1["security"]["ran"]
+    # with less than start_usd under the cap at all, the stage doesn't start; SECURITY.md says so
+    t2, h2, out2 = ready_build(tmp_path / "b", max_usd=0.1)
     assert "security" not in [r[0] for r in h2.runs]
     sec = (ev(out2) / "security.md").read_text()
     assert "**This version has not had a security review**" in sec

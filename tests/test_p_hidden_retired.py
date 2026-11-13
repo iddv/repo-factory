@@ -48,12 +48,13 @@ def test_sidedoor_r1_has_no_p_hidden_check_and_the_same_verdict_otherwise(tmp_pa
         assert c["ok"] is ok, k
         if detail is not None:
             assert c["detail"] == detail, k
-    # AU1 #1: the review that did not run is a gap; with nothing measured completeness holds
-    assert checks["security"]["ok"] and checks["security"]["gap"]
+    # the review that did not run holds (never overridden); with nothing measured
+    # completeness holds too
+    assert gate.is_unreviewed(checks["security"])
     assert checks["completeness"] == {"ok": False, "detail": gate.NOTHING_MEASURED}
     v = gate._verdict(checks, 1, None, None, None)
     assert v["verdict"] == "held" and "p_hidden" not in v
-    assert [r.split(":")[0] for r in v["reasons"]] == ["documents", "completeness"]
+    assert [r.split(":")[0] for r in v["reasons"]] == ["documents", "security", "completeness"]
     # what p_hidden hid is a fact on its own: nothing was checked
     assert json.loads((rd / "findings.json").read_text())["scenarios"] == []
 
