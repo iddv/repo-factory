@@ -176,8 +176,10 @@ class Proxy:
 
         return handle
 
-    async def _resolve(self, host: str, port: int) -> str | None:
-        """An address of ``host`` the proxy may connect to; None if any address isn't."""
+    async def _resolve(self, host: str, port: int) -> list[str] | None:
+        """The addresses of ``host`` the proxy may connect to, IPv4 first (a machine without
+        an IPv6 route still reaches a name that has both); None if any address isn't
+        allowed."""
         host = host.strip("[]")
         try:
             infos = await asyncio.get_running_loop().getaddrinfo(
@@ -185,10 +187,19 @@ class Proxy:
             )
         except OSError:
             return None
-        ips = [i[4][0] for i in infos]
+        ips = list(dict.fromkeys(i[4][0] for i in infos))
         if not ips or not all(self.allow(ip) for ip in ips):
             return None
-        return ips[0]
+        return sorted(ips, key=lambda ip: ":" in ip)
+
+    async def _connect(self, ips: list[str], port: int):
+        """The first of ``ips`` that answers on ``port``: ``(reader, writer)``, or None."""
+        for ip in ips:
+            try:
+                return await asyncio.wait_for(asyncio.open_connection(ip, port), CONNECT_TIMEOUT_S)
+            except (TimeoutError, OSError):
+                continue
+        return None
 
     async def _handle(self, reader, writer) -> None:
         try:
@@ -226,13 +237,13 @@ class Proxy:
                 except Exception:  # noqa: BLE001 - the refusal stands either way
                     pass
             return await self._refuse(writer, 403, self.refusal, target)
-        ip = await self._resolve(host, port_n)
-        if ip is None:
+        ips = await self._resolve(host, port_n)
+        if ips is None:
             return await self._refuse(writer, 403, "destination not allowed", target)
-        try:
-            ur, uw = await asyncio.wait_for(asyncio.open_connection(ip, port_n), CONNECT_TIMEOUT_S)
-        except (TimeoutError, OSError):
+        got = await self._connect(ips, port_n)
+        if got is None:
             return await self._refuse(writer, 502, "could not connect", target)
+        ur, uw = got
         self.log.append(("allowed", target))
         if fwd:
             uw.write(fwd)

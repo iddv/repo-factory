@@ -187,7 +187,13 @@ def install_sandboxed(
             work_at="/work/product",
             binds=tuple(binds),
         )
-        return run(cmd + (tail if hosts else line[1:]))
+        rc, err = run(cmd + (tail if hosts else line[1:]))
+        if rc != 0 and hosts:
+            # what the proxy refused or could not reach, so the reason is in the message
+            seen = [f"{v} {t}" for v, t in list(px.log) if v != "allowed"][-4:]
+            if seen:
+                err = f"{err} (the index proxy: {'; '.join(seen)})"
+        return rc, err
 
 
 def _build_venv_locked(reqs: list[str], key: str) -> tuple[Path | None, str | None]:
