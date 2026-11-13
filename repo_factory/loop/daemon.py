@@ -594,10 +594,12 @@ class Loop:
         return spend_summary(self.ledger)
 
     def over_cap(self) -> bool:
+        """Today's spend has reached ``daily_usd``. None: no cap; 0 or less (refused by the
+        schema, so no build starts) counts as reached, never as no cap."""
         cap = self.cfg.get("daily_usd")
-        return bool(cap) and self.spend()["today"]["total"] >= float(
-            cap
-        )  # stored-shape: bool(cap) first
+        if cap is None or isinstance(cap, bool) or not isinstance(cap, (int, float)):
+            return False
+        return float(cap) <= 0 or self.spend()["today"]["total"] >= float(cap)
 
     # -- builds --------------------------------------------------------------------------------
     def building(self) -> list[dict]:
@@ -1034,6 +1036,13 @@ class Loop:
         used = int(rec.get("auto_repairs") or 0)
         if used >= n:
             return None
+        left = self._build_left(idea, g)
+        if left is not None and left < 0.01:
+            log(
+                f"{idea['id']} {idea['title']}: no automatic repair: the build's cap is spent "
+                "(raise it in Settings › Spend, or set revise.max_usd)"
+            )
+            return None
         text = "\n".join(
             [
                 "The release checks held this build. Fix the product so each of "
@@ -1054,6 +1063,21 @@ class Loop:
             )
         except LoopError as e:  # revise off, its bound, or nothing to change
             log(f"{idea['id']} {idea['title']}: no automatic repair: {e}")
+            return None
+
+    def _build_left(self, idea: dict, g: dict) -> float | None:
+        """What the build's cap has left for a revise round (None: no cap, or a
+        ``revise.max_usd`` of its own, which the round spends from instead)."""
+        if (self.cfg.get("revise") or {}).get("max_usd") is not None:
+            return None
+        task, rnd = idea.get("task_dir"), g.get("round")
+        if not task or not rnd:
+            return None
+        from ..v5.change import build_left
+
+        try:
+            return build_left(Path(task) / ".den", int(rnd))
+        except (OSError, ValueError, TypeError):
             return None
 
     @staticmethod

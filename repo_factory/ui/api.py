@@ -2672,7 +2672,27 @@ class App:
             # Claims: how the task's claims are read, repo-factory's release text,
             # and the text check's state; None for a build with no pitch (a hand build)
             "claims": self.claims_of(idea),
+            # Ask for changes spends from what the build's cap has left (None: no cap, or
+            # revise.max_usd of its own)
+            "revise_left": self.revise_left(idea),
         }
+
+    def revise_left(self, idea: dict | None) -> float | None:
+        """What a revise round of this build may spend: the build's cap less what the build
+        and its revise rounds spent (``v5.change.build_left``); None without a cap, or with
+        ``revise.max_usd`` set (the round's own cap)."""
+        task = (idea or {}).get("task_dir")
+        rnd = ((idea or {}).get("gate") or {}).get("round")
+        if not task or not rnd:
+            return None
+        try:
+            if (self.loop_cfg().get("revise") or {}).get("max_usd") is not None:
+                return None
+            from ..v5.change import build_left
+
+            return build_left(Path(task) / ".den", int(rnd))
+        except Exception:  # noqa: BLE001 - a number on the page, never an error
+            return None
 
     def idea_row(self, i: dict, tasks: dict) -> dict:
         """A task in the ledger (an "idea" row): ``state`` ``new`` and no ``build`` is the

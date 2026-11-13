@@ -49,7 +49,13 @@ BUILD_CRITICAL = (
     ("build", "stage_caps"),
     ("build", "max_usd"),
     ("daily_usd",),
+    ("revise", "max_usd"),
+    ("maintain", "max_usd"),
 )
+# a cap of 0 or less is a wrong value, never "no cap" (null is no cap): someone who writes
+# `daily_usd: 0` to stop spending must not have removed the cap
+POSITIVE_CAPS = {"daily_usd", "build.max_usd", "revise.max_usd", "maintain.max_usd"}
+NOT_A_CAP = "0 or less is not a cap: write a number of dollars above 0, or null for no cap"
 # keys an older version read and this one retired with what they set: not a typo, so not an
 # unknown key; the file keeps them and nothing reads them
 RETIRED: set[str] = set()
@@ -116,6 +122,9 @@ def check(data, defaults: dict = DEFAULTS) -> list[dict]:
                         "detail": f"should be a number of dollars or null, is {_kind(v)}",
                     }
                 )
+                continue
+            if key in POSITIVE_CAPS and v is not None and v <= 0:
+                out.append({"kind": "type", "key": key, "detail": NOT_A_CAP})
                 continue
             if not _fits(d, v):
                 out.append(

@@ -92,6 +92,7 @@
   <form class="askbox" id="ask" onsubmit={ask}>
     <label for="ask-text">What should change?</label>
     <textarea id="ask-text" rows="4" bind:value={text} placeholder="The search should also match words inside code blocks"></textarea>
+    {#if b.revise_left != null}<p class="muted small" id="ask-left">{b.revise_left > 0 ? "It spends from what the build's cap has left: $" + b.revise_left.toFixed(2) + "." : "The build's cap is spent: raise it in Settings › Spend first."}</p>{/if}
     {#if askError}<p class="err" role="alert">{askError}</p>{/if}
     <div class="actions">
       <button type="submit" class="btn primary" disabled={askBusy || !text.trim()}>{askBusy ? "Sending…" : "Send"}</button>
