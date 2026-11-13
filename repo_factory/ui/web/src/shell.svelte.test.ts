@@ -184,6 +184,26 @@ describe("the shell", () => {
     expect(posts[0]).toEqual(["api/act", { kind: "publish", subject: { kind: "build", id: "notes" }, fields: {}, origin: "ui", confirm: true }]);
   });
 
+  it("offers Resume on a build you stopped, and Build again on a held one", async () => {
+    const offer = (kind: string) => ({ kind, enabled: true, title: kind, says: "", click: "click", key: null, fields: [], why: null, page: true });
+    const stopped = { key: "notes", dir: "/home/user/.repo-factory/tasks/notes", status: "paused", title: "Notes", desc: "", updated: 9, idea: "i1", repo: null, url: null,
+      gate: null, actions: [offer("resume_build"), offer("retry")] };
+    routes["api/state"] = () => ({ body: { builds: [stopped], ideas: [] } });
+    routes["api/build/runs"] = () => ({ body: { key: "notes", runs: [] } });
+    routes["POST api/act"] = () => ({ body: { ok: true } });
+    await open("#/builds/notes");
+    await until(() => !!document.querySelector("#resume"));
+    expect(document.querySelector("#retry")).toBeNull(); // Resume first: it keeps the work done
+    (document.querySelector("#resume") as HTMLButtonElement).click();
+    await until(() => posts.length === 1);
+    expect(posts[0]![1]).toMatchObject({ kind: "resume_build", subject: { kind: "build", id: "notes" } });
+    routes["api/state"] = () => ({ body: { builds: [{ ...stopped, status: "held", actions: [offer("retry")], gate: { verdict: "held", reasons: ["tests: 1 fails"], round: 1, checks: {} } }], ideas: [] } });
+    await open("#/builds");
+    await open("#/builds/notes");
+    await until(() => !!document.querySelector("#retry"));
+    expect(document.querySelector("#resume")).toBeNull();
+  });
+
   it("opens each settings page", async () => {
     routes["api/claude/login"] = () => ({ body: { on: null, words: "not set", line: "", stored: false, command: "claude setup-token", hold: "Builds are held until a login is set up." } });
     routes["api/github/user"] = () => ({ body: { connected: true, login: "someone", line: "connected as someone" } });

@@ -31,6 +31,8 @@ describe("a build's status in words", () => {
     expect(buildSaid(build({ status: "ready" })).word).toBe("Ready: publish?");
     expect(buildSaid(build({ status: "ready", url: "https://github.com/someone/notes" })).word).toBe("Published privately");
     expect(buildSaid(build({ status: "public", url: "https://github.com/someone/notes" })).word).toBe("Public");
+    // the loop's own word for a private repository waiting for Make public
+    expect(buildSaid(build({ status: "published", url: "https://github.com/someone/notes" })).word).toBe("Published privately");
   });
   it("says a stopped build stopped, and a held one what held it", () => {
     expect(buildSaid(build({ status: "held", builds: { n: 2, latest: { n: 2, outcome: "stopped" } } as never })).word).toBe("Stopped");

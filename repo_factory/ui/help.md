@@ -32,6 +32,8 @@ Each stage shows its time, its cost and **Open the log**.
 ## What you can do on a build {#controls}
 
 - **Stop** ends a running build. Its workers are killed; nothing else changes.
+- **Resume** continues a build you stopped, from where it stopped.
+- **Build again** builds a held build once more (it spends again, up to the build's cap).
 - **Ask for changes** sends what should change; a new round of the build makes the change.
 - **Publish**: a build that passed its checks waits at "Ready: publish?". Nothing is on GitHub
   until you press Publish, which creates a **private** repository under your account.

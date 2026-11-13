@@ -40,3 +40,15 @@ All notable changes to this project are written here. Versions follow
 - No build starts without a working sandbox: it is held, in words, and starts by itself once
   bubblewrap works. A missing Claude Code, or a usage limit, is said in words.
 - "Publish on its own" is private (`publish.when: ready`); making public stays a press.
+
+### Added, from the first real builds
+- A build's page offers **Resume** after Stop, and **Build again** on a held build.
+- `repo-factory link`: a new one-time sign-in link for the running page.
+- Screenshots of the page in `docs/images/`.
+
+### Fixed, from the first real builds
+- A revise round (Ask for changes, the automatic repair) works on the branch its build was
+  delivered on, also for a build delivered under an earlier branch name.
+- The gate's documents line no longer uses an internal word.
+- A build published to a private repository says "Published privately" in the list, not
+  "Needs you".
