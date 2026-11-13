@@ -18,6 +18,10 @@ GitHub account. It is an experiment: read what it builds before you trust it.
   (`bwrap`): the workspace writable, the system read-only, the rest of your home hidden, a
   private `/tmp`, and a network namespace of its own. Without `bwrap` nothing a model wrote
   runs.
+- **What a session leaves behind** is checked before the host reads it: in the folders a
+  session can write, only links that stay inside the folder are kept, and the host copies them
+  as links. A product's packages install inside the sandbox too; the host makes the empty
+  environment and never starts it.
 - **GitHub** is only ever reached from the host: the sandbox has no `gh`, no token and no SSH
   key.
 

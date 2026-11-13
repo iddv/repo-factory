@@ -3,7 +3,8 @@
 Four checks, each "ok ..." or one sentence with the command that fixes it:
 
 - **Claude Code**, installed and signed in (a login token repo-factory keeps, one in its
-  environment, or Claude Code's own sign-in);
+  environment, or Claude Code's own sign-in; with the last, the line says that builds copy the
+  sign-in file into each session, and how to avoid it);
 - **bubblewrap**, usable here (every build session runs inside it);
 - **git**;
 - **gh**, logged in (only publishing needs it, so a missing gh does not fail the doctor).
@@ -42,7 +43,17 @@ def claude_line() -> tuple[bool, str]:
         )
     code, out = _run(["claude", "--version"])
     version = out.strip().splitlines()[0] if code == 0 and out.strip() else "installed"
-    return True, f"Claude Code {version}, signed in ({login['words']})"
+    line = f"Claude Code {version}, signed in ({login['words']})"
+    if login["on"] == "signin":
+        line += "; " + SIGNIN_COPIED
+    return True, line
+
+
+# Said by the doctor, the README and the New task page in the same words.
+SIGNIN_COPIED = (
+    "builds copy this sign-in file into each session, where a build's own commands can read "
+    "it: to avoid that, run claude setup-token and keep the token in Settings › Claude"
+)
 
 
 def bwrap_line() -> tuple[bool, str]:

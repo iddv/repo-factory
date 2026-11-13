@@ -36,6 +36,7 @@ from pathlib import Path
 
 import yaml
 
+from ..harness import links
 from . import acceptance, repair, verify
 from .common import BudgetExceeded, prompt
 
@@ -557,7 +558,7 @@ def prepare(run, name: str, purpose: str, stage: str = "readiness") -> tuple[Pat
         shutil.rmtree(v)
     ex.mkdir(parents=True, exist_ok=True)
     if run.helpers is not None and Path(run.helpers).is_dir():
-        shutil.copytree(run.helpers, v)
+        links.copytree(run.helpers, v)
     (v / "scenarios").mkdir(parents=True, exist_ok=True)
     (v / "__init__.py").touch()
     (v / "spec.md").write_text(run.spec)
@@ -595,9 +596,9 @@ def merge_helpers(run, ws: Path, codes: list[str]) -> None:
     for m in needed_modules(src, codes):
         rel = Path(m.replace(".", "/") + ".py")
         p, dest = src / rel, Path(run.helpers) / rel
-        if p.is_file() and not dest.exists():
+        if p.is_file() and not p.is_symlink() and not dest.exists():
             dest.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(p, dest)
+            links.copy_file(p, dest)
 
 
 def _probe_name(p, prefix: str) -> str | None:

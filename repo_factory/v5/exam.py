@@ -33,6 +33,8 @@ import tempfile
 import time
 from pathlib import Path
 
+from ..harness import links
+
 DIR = "exam"
 VERIFY = "_verify"
 SCENARIOS = f"{VERIFY}/scenarios"
@@ -170,7 +172,7 @@ def write_exam(dest: Path, rules: list, helpers: Path | None) -> Path:
     if v.exists():
         shutil.rmtree(v)
     if helpers is not None and Path(helpers).is_dir():
-        shutil.copytree(
+        links.copytree(
             helpers,
             v,
             ignore=shutil.ignore_patterns(
@@ -511,7 +513,7 @@ def _invoke(run, tree, tk, rules, exam_dir, ehash, cmds, own, reverse, flake) ->
     with tempfile.TemporaryDirectory(prefix="repo-factory-exam-") as tmp:
         tmp = Path(tmp)
         src, product, out, bindir = tmp / "src", tmp / "product", tmp / "out", tmp / "bin"
-        shutil.copytree(tree, src, ignore=SKIP, symlinks=True)
+        links.copytree(tree, src, ignore=SKIP)
         for d in (product, out, bindir):
             d.mkdir()
         here = Path(__file__).parent
@@ -607,6 +609,7 @@ def _invoke(run, tree, tk, rules, exam_dir, ehash, cmds, own, reverse, flake) ->
             err = (p.stderr or "")[-1500:]
         except subprocess.TimeoutExpired:
             err = f"the exam run itself timed out after {total} s"
+        links.scrub(out)  # the product's own code ran with it writable
         f = out / "result.json"
         if not f.is_file():
             rec["why"] = "the exam runner failed: " + err
@@ -975,7 +978,7 @@ def evidence(r, rec: dict, docs: dict[str, str], product: str) -> Path:
         shutil.rmtree(ev)
     ev.mkdir(parents=True)
     if (root / VERIFY).is_dir():
-        shutil.copytree(
+        links.copytree(
             root / VERIFY,
             ev / "exam" / VERIFY,
             ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
@@ -1011,13 +1014,16 @@ def set_commit(r, commit: str | None) -> None:
 
 def evidence_tarball(ev: Path, dest: Path, name: str) -> Path:
     """``<name>-checks.tar.gz`` of the evidence folder, its entries under ``<name>-checks/``
-    (reproducible: sorted, no owner, a fixed mtime)."""
+    (reproducible: sorted, no owner, a fixed mtime). Regular files and folders only: a link,
+    a pipe or a device is left out, never followed."""
     import tarfile
 
     dest = Path(dest)
     dest.parent.mkdir(parents=True, exist_ok=True)
 
     def norm(ti):
+        if not (ti.isreg() or ti.isdir()):
+            return None
         ti.uid = ti.gid = 0
         ti.uname = ti.gname = ""
         ti.mtime = 0
@@ -1025,6 +1031,8 @@ def evidence_tarball(ev: Path, dest: Path, name: str) -> Path:
 
     with tarfile.open(dest, "w:gz") as t:
         for p in sorted(Path(ev).rglob("*")):
+            if p.is_symlink() or not (p.is_file() or p.is_dir()):
+                continue
             t.add(
                 p,
                 arcname=f"{name}-checks/{p.relative_to(ev).as_posix()}",
@@ -1069,7 +1077,7 @@ def legacy_evidence(round_dir: Path, product: str) -> Path | None:
     out.mkdir(parents=True)
     acc = art / "tests" / "acceptance"
     if acc.is_dir():
-        shutil.copytree(
+        links.copytree(
             acc,
             out / "exam" / "tests" / "acceptance",
             ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
@@ -1080,7 +1088,7 @@ def legacy_evidence(round_dir: Path, product: str) -> Path | None:
         ("ASSUMPTIONS.md", "assumptions.md"),
     ):
         if (art / src).is_file():
-            shutil.copy2(art / src, out / dst)
+            links.copy_file(art / src, out / dst)
     try:
         st = json.loads((rd / "state.json").read_text())
     except (OSError, ValueError):

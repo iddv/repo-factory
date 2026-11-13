@@ -343,6 +343,42 @@ def test_proxy_refuses_the_hosts_loopback_and_tunnels_what_it_allows():
         srv.close()
 
 
+def test_proxy_tries_each_address_of_a_name_ipv4_first(monkeypatch):
+    """A name with an IPv6 address first, on a machine where that address does not answer
+    (no IPv6 route, as on some CI runners): the proxy tries the next one."""
+    from repo_factory.harness import netproxy
+
+    srv, port = _echo_server()
+
+    async def resolve(self, host, p):
+        return sorted(["::1", "127.0.0.1"], key=lambda ip: ":" in ip)[::-1]  # v6 first
+
+    monkeypatch.setattr(netproxy.Proxy, "_resolve", resolve)
+    try:
+        with netproxy.Proxy(allow=lambda ip: True) as px:
+            r = _via_proxy(px.sock, f"CONNECT pkgs.example:{port} HTTP/1.1\r\n\r\nhi".encode())
+            assert r.startswith(b"HTTP/1.1 200") and b"echo:hi" in r
+    finally:
+        srv.close()
+
+
+def test_proxy_resolves_ipv4_first(monkeypatch):
+    import asyncio
+    import socket
+
+    from repo_factory.harness import netproxy
+
+    async def gai(self, host, port, type=0):
+        return [
+            (socket.AF_INET6, type, 6, "", ("2001:db8::1", port, 0, 0)),
+            (socket.AF_INET, type, 6, "", ("192.0.2.1", port)),
+        ]
+
+    monkeypatch.setattr(asyncio.BaseEventLoop, "getaddrinfo", gai)
+    px = netproxy.Proxy(allow=lambda ip: True)
+    assert asyncio.run(px._resolve("pkgs.example", 443)) == ["192.0.2.1", "2001:db8::1"]
+
+
 def test_bridge_forwards_a_local_port_to_the_proxy_and_execs(tmp_path):
     import socket
     import subprocess

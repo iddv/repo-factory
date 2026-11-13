@@ -58,7 +58,7 @@ import threading
 import uuid
 from pathlib import Path
 
-from . import claude_code, handoff, sandbox
+from . import claude_code, handoff, links, sandbox
 from .base import HarnessResult
 
 PROFILE = "full-v4"  # bump on ANY change to tools, sandbox mounts, net mode or CLI flags
@@ -510,6 +510,17 @@ def _retry_auth(r, prompt: str, session: dict, run_once):
     )
 
 
+def session_writable(workspace: Path, cfg: Path, spec=None) -> list[Path]:
+    """The host folders a session can write: its workspace, its own config dir and every
+    read-write bind of its launch (the exam, the proposals folder). ``links.scrub`` runs on
+    each after the session, before the host reads any of them."""
+    out = [Path(workspace), Path(cfg)]
+    for m in getattr(spec, "mounts", None) or []:
+        if m.get("kind") == "rw" and m.get("src"):
+            out.append(Path(m["src"]))
+    return out
+
+
 def launch(
     prompt: str,
     workspace: Path,
@@ -560,6 +571,8 @@ def launch(
         if v
     }
     copy = auth_source() == "file"
+    written = session_writable(workspace, cfg, spec)
+    scrubbed: dict[str, list[str]] = {}
 
     def run_once(text: str, sess: dict):
         _enter(cfg, src, copy)  # the login copied right before every launch
@@ -578,6 +591,9 @@ def launch(
                 **more,
             )
         finally:
+            # before the host reads anything the session could have written
+            for k, v in links.scrub_all(written).items():
+                scrubbed.setdefault(k, []).extend(v)
             _leave(cfg, src)
 
     r = run_once(prompt, session)
@@ -589,6 +605,7 @@ def launch(
         shutil.move(str(r.transcript_path), transcript)
         r.transcript_path = Path(transcript)
     r.fingerprint = fingerprint(r.transcript_path)
+    r.scrubbed = scrubbed
     bad = violations(r.fingerprint, tools)
     if bad and not r.fingerprint.get("missing"):
         raise ProfileError(

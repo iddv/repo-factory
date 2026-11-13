@@ -6,8 +6,8 @@ backend (``[build-system] requires``: setuptools, hatchling, flit-core...) from 
 index. The exam's run has no network, so an install flow failed there for a reason no user
 meets (Repo Recall's and Nextread's "F1 Install and first run").
 
-Like the venv the product's tests run in (``sandbox.candidate_venv``: built on the host with
-uv, cached by requirement set), the wheels are fetched on the host before the exam runs:
+Unlike the venv the product's tests run in (``venv.candidate_venv``: installed inside the
+sandbox, cached by requirement set), the wheels are fetched on the host before the exam runs:
 ``pip download --only-binary=:all:`` (wheels only, so no package code runs) of pip, setuptools,
 wheel and the product's declared build requirements, into
 ``<den>/exam-cache/py/<key>/wheels``. The exam's run gets that folder read-only at
@@ -63,6 +63,13 @@ def python_tag(venv: Path) -> str:
         return "unknown"
 
 
+def _tag() -> str:
+    """``major.minor`` of repo-factory's own interpreter (the base the venvs are made from)."""
+    import sys
+
+    return f"{sys.version_info[0]}.{sys.version_info[1]}"
+
+
 def key(reqs: list[str], tag: str) -> str:
     return hashlib.sha256(json.dumps([sorted(set(reqs) | set(BASE)), tag]).encode()).hexdigest()[
         :20
@@ -99,10 +106,20 @@ def install(run, tree: Path, cfg: dict) -> dict:
 
 def download(reqs: list[str], dest: Path, venv: Path) -> dict:
     """``pip download --only-binary=:all:`` of ``reqs`` for ``venv``'s Python, on the host, into
-    ``dest/wheels`` (then ``dest/.ok``)."""
+    ``dest/wheels`` (then ``dest/.ok``). The pip that downloads runs on repo-factory's own
+    base interpreter (the one ``venv`` was made from), never ``venv``'s: a package in that
+    venv may carry start-up code (a ``.pth``), which runs only inside the sandbox."""
+    from ..harness.isolation import base_python
+
     uv = shutil.which("uv")
     if not uv:
         return {"ok": False, "why": "needs uv, which this machine lacks", "files": []}
+    if python_tag(venv) not in ("unknown", _tag()):
+        return {
+            "ok": False,
+            "why": f"the product's Python ({python_tag(venv)}) is not repo-factory's own",
+            "files": [],
+        }
     with tempfile.TemporaryDirectory(prefix="repo-factory-wheels-") as tmp:
         tools, out = Path(tmp) / "pip", Path(tmp) / "wheels"
 
@@ -113,9 +130,7 @@ def download(reqs: list[str], dest: Path, venv: Path) -> dict:
             except subprocess.TimeoutExpired:
                 return -1, f"timed out after {TIMEOUT_S} s"
 
-        rc, err = run(
-            [uv, "venv", "-q", "--seed", "--python", str(venv / "bin" / "python"), str(tools)]
-        )
+        rc, err = run([uv, "venv", "-q", "--seed", "--python", base_python(), str(tools)])
         if rc == 0:
             rc, err = run(
                 [

@@ -48,6 +48,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from ..harness import links
 from .cmdrunner import assignment_only
 
 SHELL_LANGS = {
@@ -703,10 +704,9 @@ def run(
     with tempfile.TemporaryDirectory(prefix="readme-check-") as tmp:
         work = Path(tmp)
         repo, home, logs = work / "repo", work / "home", work / "logs"
-        shutil.copytree(
+        links.copytree(
             tree,
             repo,
-            symlinks=True,
             ignore=shutil.ignore_patterns(
                 "__pycache__", ".pytest_cache", ".venv", "venv", "node_modules", "*.pyc"
             ),

@@ -67,7 +67,20 @@ PASS_ENV = (
     "CLAUDE_CODE_USE_BEDROCK",
     "CLAUDE_CODE_USE_VERTEX",
 )
-PASS_PREFIX = ("ANTHROPIC_",)
+# Claude Code's own settings that carry no credential: the endpoint and the models. A list,
+# not a prefix: a header or key variable added later (ANTHROPIC_CUSTOM_HEADERS, a cloud
+# provider's key) never reaches a session or its commands by accident.
+PASS_ANTHROPIC = (
+    "ANTHROPIC_BASE_URL",
+    "ANTHROPIC_MODEL",
+    "ANTHROPIC_SMALL_FAST_MODEL",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+    "ANTHROPIC_VERTEX_PROJECT_ID",
+    "ANTHROPIC_VERTEX_BASE_URL",
+    "ANTHROPIC_BEDROCK_BASE_URL",
+)
 NET_MODES = ("proxy", "host")
 PROXY_DIR = "/run/repo_factory"  # the proxy's socket dir, inside
 PROXY_PORT = 3128  # the bridge, on the sandbox's own loopback
@@ -371,12 +384,12 @@ def env(
 
 def process_env(config_dir: Path | None = None) -> dict:
     """The environment bwrap starts with (``--clearenv`` is off so secrets never appear on
-    the command line): only ``PASS_ENV`` and ``PASS_PREFIX`` variables, never a Claude login
+    the command line): only ``PASS_ENV`` and ``PASS_ANTHROPIC`` variables, never a Claude login
     (``handoff.LOGIN_VARS``: the token goes through a pipe, ``handoff.piped``), and
     ``CLAUDE_CONFIG_DIR`` set to ``config_dir`` when one is given."""
     from . import handoff
 
-    out = {k: v for k, v in os.environ.items() if k in PASS_ENV or k.startswith(PASS_PREFIX)}
+    out = {k: v for k, v in os.environ.items() if k in PASS_ENV or k in PASS_ANTHROPIC}
     handoff.scrub(out)
     if config_dir is not None:
         out["CLAUDE_CONFIG_DIR"] = str(config_dir)

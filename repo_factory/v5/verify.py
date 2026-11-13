@@ -19,6 +19,7 @@ import re
 import shutil
 from pathlib import Path
 
+from ..harness import links
 from ..rules.model import Rule
 from ..rules.store import RuleStore, held_by_hash
 from . import settings
@@ -52,7 +53,7 @@ def copy_repo(src: Path, dest: Path) -> Path:
     dest = Path(dest)
     if dest.exists():
         shutil.rmtree(dest)
-    shutil.copytree(src, dest, ignore=SKIP, symlinks=True)
+    links.copytree(src, dest, ignore=SKIP)
     return dest
 
 
@@ -197,7 +198,7 @@ def helpers_dir(ws: Path, dest: Path) -> Path | None:
     dest = Path(dest)
     if dest.exists():
         shutil.rmtree(dest)
-    shutil.copytree(
+    links.copytree(
         src,
         dest,
         ignore=shutil.ignore_patterns(

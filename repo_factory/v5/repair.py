@@ -19,6 +19,7 @@ import shutil
 from pathlib import Path
 
 from .. import gitcmd
+from ..harness import links
 from . import accept
 
 # The workspace's git is the session's: every call goes through gitcmd (hooks, fsmonitor,
@@ -219,13 +220,12 @@ def checkout_copy(ws: Path, sha: str, dest: Path) -> Path:
     dest = Path(dest)
     if dest.exists():
         shutil.rmtree(dest)
-    shutil.copytree(
+    links.copytree(
         ws,
         dest,
         ignore=shutil.ignore_patterns(
             ".venv", "venv", "node_modules", "__pycache__", ".pytest_cache"
         ),
-        symlinks=True,
     )
     git(dest, "checkout", "-q", "--force", "--detach", sha)
     return dest

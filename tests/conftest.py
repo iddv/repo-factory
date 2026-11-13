@@ -179,7 +179,15 @@ def pytest_sessionstart(session):
     and without PyPI that fails, and the run stops with one message instead of ~180 failures."""
     from repo_factory.harness.venv import _build_venv
 
-    path, err = _build_venv(["pytest"])
+    # the one fetch the suite makes on purpose: pytest from PyPI, through the sandboxed
+    # install's proxy (a thread of this process, so the guard above is lifted for it alone)
+    socket.socket.connect, socket.socket.connect_ex = _real_connect, _real_connect_ex
+    socket.getaddrinfo = _real_getaddrinfo
+    try:
+        path, err = _build_venv(["pytest"])
+    finally:
+        socket.socket.connect, socket.socket.connect_ex = _connect, _connect_ex
+        socket.getaddrinfo = _getaddrinfo
     if path is None:
         pytest.exit(
             "the test venv needs pytest from PyPI once: run `uv sync` online (or set "
@@ -217,6 +225,7 @@ SANDBOX_FILES = {
     "test_harness_read_profile.py",
     "test_exam_integrity.py",
     "test_exam_runner.py",
+    "test_product_installs.py",
 }
 
 

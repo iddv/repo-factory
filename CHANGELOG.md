@@ -52,3 +52,18 @@ All notable changes to this project are written here. Versions follow
 - The gate's documents line no longer uses an internal word.
 - A build published to a private repository says "Published privately" in the list, not
   "Needs you".
+
+### Security
+- What a session writes stays inside the sandbox: in the folders a session can write, a link
+  that is absolute or leads out of its folder is removed when the session ends, before the
+  host reads anything; every copy keeps links as links; the checks asset holds regular files
+  and folders only.
+- A product's Python packages install inside bubblewrap, whose one way out is the index proxy
+  with the `exam.indexes` allow-list; the host makes the empty environment and never starts
+  it. A requirement given by address (`@`, a URL or a path) is not installed, and the build's
+  record names it. Without bubblewrap nothing installs.
+- Only named `ANTHROPIC_*` settings (the endpoint and the models) reach a session.
+- `repo-factory doctor`, the README's install and the New task page say when builds copy
+  Claude Code's sign-in file into each session, and how to avoid it.
+- The golden build tries, from inside a build session and a check session, to read the home,
+  reach the host's loopback and find a token, and fails if any succeeds.

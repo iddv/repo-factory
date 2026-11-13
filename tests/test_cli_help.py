@@ -48,3 +48,26 @@ def test_doctor_passes_without_gh(monkeypatch):
     monkeypatch.setattr(doctor, "git_line", lambda: (True, "git"))
     monkeypatch.setattr(doctor, "gh_line", lambda: (False, "gh is not installed"))
     assert doctor.run(said.append) == 0
+
+
+def _claude_here(monkeypatch, on):
+    from repo_factory.harness import handoff
+
+    monkeypatch.setattr(doctor.shutil, "which", lambda name: "/usr/bin/" + name)
+    monkeypatch.setattr(doctor, "_run", lambda cmd, timeout=20: (0, "2.1.300 (Claude Code)\n"))
+    monkeypatch.setattr(
+        handoff, "build_login", lambda **k: {"on": on, "words": "the way builds sign in"}
+    )
+
+
+def test_doctor_says_when_builds_copy_the_sign_in_file(monkeypatch):
+    _claude_here(monkeypatch, "signin")
+    ok, line = doctor.claude_line()
+    assert ok and "copy this sign-in file into each session" in line
+    assert "claude setup-token" in line and "Settings › Claude" in line
+
+
+def test_doctor_says_nothing_of_a_copy_with_a_login_token(monkeypatch):
+    _claude_here(monkeypatch, "login")
+    ok, line = doctor.claude_line()
+    assert ok and "copy" not in line

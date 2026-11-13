@@ -87,6 +87,68 @@ PHRASES = [
 ]
 
 
+# What the sandbox must hide, tried from inside (the test writes probe.json: the files of the
+# home it plants, a port on the host's loopback, sha256 of the tokens the run was given).
+PROBE = HERE / "probe.json"
+PROBE_CODE = r'''
+import hashlib, json, os, socket, sys
+spec = json.loads(sys.argv[1])
+out = {"read": [], "connected": [], "tokens": []}
+for p in spec["files"]:
+    try:
+        with open(p) as f:
+            f.read()
+        out["read"].append(p)
+    except OSError:
+        pass
+port = spec["port"]
+try:
+    socket.create_connection(("127.0.0.1", port), timeout=2).close()
+    out["connected"].append("direct")
+except OSError:
+    pass
+proxy = os.environ.get("HTTPS_PROXY", "")
+if proxy.startswith("http://"):
+    h, _, pp = proxy[7:].rstrip("/").partition(":")
+    try:
+        s = socket.create_connection((h, int(pp or 80)), timeout=2)
+        s.sendall(f"CONNECT 127.0.0.1:{port} HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\n\r\n".encode())
+        if b" 200" in s.recv(200).split(b"\r\n")[0]:
+            out["connected"].append("proxy")
+        s.close()
+    except OSError:
+        pass
+for k, v in os.environ.items():
+    if hashlib.sha256(v.encode()).hexdigest() in spec["hashes"]:
+        out["tokens"].append(k)
+print(json.dumps(out))
+'''
+
+
+def probe(where: str) -> None:
+    """Try, as this process and as a tool command (through the shell prefix, as a build's
+    commands run), to read the planted files, reach the host's loopback and find a token;
+    write what happened into this session's config dir, ``probe-<where>.json``."""
+    if not PROBE.is_file():
+        return
+    import shlex
+    import subprocess
+
+    spec = PROBE.read_text()
+    got = {}
+    p = subprocess.run([sys.executable, "-c", PROBE_CODE, spec], capture_output=True, text=True)
+    got["claude"] = json.loads(p.stdout) if p.returncode == 0 else {"error": p.stderr[-300:]}
+    prefix = os.environ.get("CLAUDE_CODE_SHELL_PREFIX")
+    if prefix:
+        line = f"python3 -c {shlex.quote(PROBE_CODE)} {shlex.quote(spec)}"
+        p = subprocess.run([prefix, line], capture_output=True, text=True, timeout=60)
+        got["command"] = (
+            json.loads(p.stdout) if p.returncode == 0 else {"error": p.stderr[-300:]}
+        )
+    cfg = Path(os.environ.get("CLAUDE_CONFIG_DIR") or ".")
+    write_json(cfg / f"probe-{where}.json", got)
+
+
 def write_json(path: Path, obj) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(obj, indent=2))
@@ -100,12 +162,14 @@ def session(prompt: str) -> str:
         import time
         time.sleep(float(delay.read_text().strip() or 0))
     if prompt.rstrip().endswith("Work in the current directory."):
+        probe("build")
         shutil.copytree(PRODUCT, cwd, dirs_exist_ok=True)
         return "Built wordtally: the command, its tests and its README."
     if "You are verifying" in prompt:
         shutil.copytree(ANSWERS / "exam", EXAM, dirs_exist_ok=True)
         return "Wrote the exam."
     if "You are a security engineer" in prompt:
+        probe("security")
         write_json(EXAM / "_verify" / "security.json",
                    json.loads(answer_file("security.json")))
         return "Reviewed: nothing open."
