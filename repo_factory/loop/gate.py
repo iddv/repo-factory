@@ -92,11 +92,21 @@ def completeness_check(
                 + said.format("it" if len(names) == 1 else "them")
             )
     n = sum(1 for _, _, s in flows if s in NOT_MEASURED)
+    measured = len(flows) - n
+    # nothing measured, or fewer than half, is not complete (a hold Publish anyway may
+    # override): the gap alone would let a product nobody could exercise say "Ready"
+    thin = bool(flows) and measured * 2 < len(flows)
     out = {
-        "ok": not broken,
+        "ok": not broken and not thin,
         "detail": f"{done}/{total} flows work end to end"
         + (f"; not yet: {', '.join(broken)}" if broken else "")
-        + (f"; {n} not measured" if n else ""),
+        + (f"; {n} not measured" if n else "")
+        + (
+            f"; only {measured} of {len(flows)} flows could be measured, too few to call it "
+            "complete"
+            if thin
+            else ""
+        ),
     }
     if gaps:
         out["gap"] = "; ".join(gaps)

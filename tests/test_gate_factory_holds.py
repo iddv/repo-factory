@@ -27,12 +27,6 @@ def judge(name: str) -> dict:
             "repo-recall-r4",
             "completeness: F5 Detect drift not measured: the sandbox fails it in both copies",
         ),
-        # NoteHatch r1-r2: the scenario runner had no HOME, all six flows `environment`
-        (
-            "notehatch-r1",
-            "completeness: F1 Install and first run, F2 Preview what will be exported",
-        ),
-        ("notehatch-r2", "not measured: the sandbox fails them in both copies"),
     ],
 )
 def test_a_factory_gap_never_holds_the_build(name, gap):
@@ -40,6 +34,29 @@ def test_a_factory_gap_never_holds_the_build(name, gap):
     assert v["verdict"] == "ready", v["reasons"]
     assert any(gap in g for g in v["gaps"]), v["gaps"]
     assert v["checks"]["completeness"]["ok"]
+
+
+@pytest.mark.parametrize("name", ["notehatch-r1", "notehatch-r2"])
+def test_nothing_measured_is_not_complete(name):
+    # NoteHatch r1-r2: the scenario runner had no HOME, all six flows `environment`: the gap
+    # is still said, and completeness holds (Publish anyway may override it)
+    v = judge(name)
+    assert v["verdict"] == "held"
+    assert [r.split(":")[0] for r in v["reasons"]] == ["completeness"]
+    assert "only 0 of 6 flows could be measured, too few to call it complete" in v["reasons"][0]
+    assert any("not measured: the sandbox fails them in both copies" in g for g in v["gaps"])
+    plan = gate.override_plan(v["checks"], [])
+    assert [k for k, _ in plan["overrides"]] == ["completeness"] and not plan["refused"]
+
+
+def test_fewer_than_half_measured_is_not_complete_and_half_is():
+    rows = [("F1", "A", "works"), ("F2", "B", "environment"), ("F3", "C", "unchecked")]
+    c = gate.completeness_check(rows)
+    assert not c["ok"] and c["detail"].endswith(
+        "only 1 of 3 flows could be measured, too few to call it complete"
+    )
+    c = gate.completeness_check(rows[:2])
+    assert c["ok"] and "too few" not in c["detail"]
 
 
 def test_a_cut_off_build_with_nothing_measured_holds_and_is_never_published():
@@ -130,7 +147,10 @@ def test_a_recheck_keeps_an_unmeasured_flow_a_gap():
         FIX / "notehatch-r1",
     )
     c = new["completeness"]
-    assert c["ok"] and c["detail"] == "1/6 flows work end to end; 5 not measured"
+    assert not c["ok"] and c["detail"] == (
+        "1/6 flows work end to end; 5 not measured; only 1 of 6 flows could be measured, "
+        "too few to call it complete"
+    )
     assert c["gap"].startswith("F2 Preview what will be exported, F3 ")
 
 
