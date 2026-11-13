@@ -27,14 +27,14 @@ dev = [
     "pytest>=8",
     "pytest-randomly>=5.0.0",
     "pytest-xdist>=3.8.0",
-    "ruff==0.16.10",
+    "ruff==0.17.4",
     # tests/fake_github.py signs and verifies JWTs with a key made at run time
     "cryptography>=42",
     "hypothesis>=6.100",
     "mypy>=1.13",
 ]
 # the browser smoke (tests/test_browser_smoke.py): only its CI job installs it
-browser = ["playwright==1.63.0"]
+browser = ["playwright==1.65.0"]
 
 [build-system]
 requires = ["hatchling>=1.24", "hatch-vcs>=0.4"]
