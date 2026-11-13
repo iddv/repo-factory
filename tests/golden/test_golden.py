@@ -73,7 +73,10 @@ def factory(tmp_path):
         for k, v in os.environ.items()
         if k not in ("GH_TOKEN", "GITHUB_TOKEN", "REPO_FACTORY_ALLOW_UNSANDBOXED")
     }
+    user = tmp_path / "user"  # the person's own home: nothing of repo-factory's goes here
+    user.mkdir()
     env.update(
+        HOME=str(user),
         REPO_FACTORY_HOME=str(home),
         PATH=f"{FAKE}{os.pathsep}{env['PATH']}",
         FAKE_GH_ROOT=str(github),
@@ -102,7 +105,7 @@ def factory(tmp_path):
     def show(task: str) -> dict:
         return json.loads(run("loop", "show", task).stdout)
 
-    run.home, run.github, run.show, run.env = home, github, show, env
+    run.home, run.github, run.show, run.env, run.user = home, github, show, env, user
     return run
 
 
@@ -113,7 +116,7 @@ def escapes(factory, tmp_path):
     host's loopback, and the run's tokens (as hashes). Yields a function that reads the
     sessions' reports."""
     files = [
-        Path(os.environ["HOME"]) / ".config" / "golden-canary.txt",
+        factory.user / ".config" / "golden-canary.txt",
         factory.home / "golden-canary.txt",
     ]
     for f in files:
@@ -219,6 +222,10 @@ def test_a_typed_task_becomes_a_verified_private_repository_on_the_press(factory
         json.loads(x)["argv"] for x in (factory.github / "calls.jsonl").read_text().splitlines()
     ]
     assert not any("visibility=public" in a or "--public" in a for c in calls for a in c)
+
+    # nothing of repo-factory's in the person's home: only what this test planted there
+    left = sorted(p.relative_to(factory.user).as_posix() for p in factory.user.rglob("*"))
+    assert left == [".config", ".config/golden-canary.txt"], left
     assert time.monotonic() - t0 < LIMIT_S
 
 

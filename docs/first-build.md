@@ -30,8 +30,11 @@ The link works once, within 10 minutes; for another browser, or when it expired,
 `repo-factory link` prints a new one.
 
 Everything it keeps is in one folder, `~/.repo-factory` (`REPO_FACTORY_HOME` or `--home` moves
-it): the settings (`loop.yaml`), the ledger (`loop.db`), the sign-in tokens, and the tasks
-(`tasks/<name>/`, each with the delivered code in `out/` and the build's records in `.den/`).
+it): the settings (`loop.yaml`), the ledger (`loop.db`), the sign-in tokens, the tasks
+(`tasks/<name>/`, each with the delivered code in `out/` and the build's records in `.den/`),
+and `cache/`: the products' environments and package caches, which grow by a few hundred MB a
+build and may be deleted between builds. (An install from before this kept them in
+`~/.cache/repo_factory`; while that folder is there it is used as it is.)
 
 ## Type a task
 
