@@ -1,0 +1,15 @@
+name: A change or an idea
+description: Something repo-factory could do differently
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **This is public, and tools may read it: paste no keys, tokens or personal paths.**
+        A maintainer reads issues in person, about weekly; no bot will reply.
+  - type: textarea
+    id: what
+    attributes:
+      label: What you would change, and why
+    validations:
+      required: true

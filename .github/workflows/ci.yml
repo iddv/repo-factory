@@ -1,0 +1,78 @@
+name: ci
+# One workflow for pull requests, on GitHub's own runners only (tests/test_tree.py checks it).
+# Kept cheap on purpose: one OS, one Python, no matrix, a time limit on every job, and a newer
+# push to a pull request cancels its older run. No job calls a model or the network beyond
+# installing pinned tools, and no secret is available to any job.
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Ruff (lint and format) and the repository's own rules (tests/test_tree.py: no private
+  # names, no self-hosted runner, pinned actions).
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+      - run: uv sync --locked --only-group dev
+      - run: uv run --no-sync ruff check .
+      - run: uv run --no-sync ruff format --check .
+      - run: uv run --no-sync pytest -q tests/test_tree.py
+
+  # What the pull request's commits and text say: no attribution line or private name, a DCO
+  # sign-off on every commit, and no secret in the commits (gitleaks, pinned by checksum).
+  gitleaks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: the range this run checks
+        id: range
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "$EVENT" = pull_request ]; then r="$PR_BASE..$PR_HEAD"; else r="HEAD~1..HEAD"; fi
+          echo "range=$r" >> "$GITHUB_OUTPUT"
+      - name: no private words or attribution lines in the commits and the pull request
+        env:
+          RANGE: ${{ steps.range.outputs.range }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          python3 scripts/ci/public_words.py commits "$RANGE"
+          python3 scripts/ci/public_words.py text
+      - name: DCO sign-off on every commit
+        if: github.event_name == 'pull_request'
+        env:
+          RANGE: ${{ steps.range.outputs.range }}
+        run: python3 scripts/ci/dco.py "$RANGE"
+      - name: scan for secrets
+        env:
+          GITLEAKS_VERSION: 8.30.1
+          GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+          RANGE: ${{ steps.range.outputs.range }}
+        run: |
+          cd "$RUNNER_TEMP"
+          curl -sSfL -o gitleaks.tar.gz "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  gitleaks.tar.gz" | sha256sum -c -
+          tar -xzf gitleaks.tar.gz gitleaks
+          cd "$GITHUB_WORKSPACE"
+          "$RUNNER_TEMP/gitleaks" git --redact --no-banner --log-opts="$RANGE" .

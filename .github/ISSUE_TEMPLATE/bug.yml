@@ -1,0 +1,47 @@
+name: Something went wrong
+description: A build, the page or a command did not do what the docs say
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **This is public, and tools may read it: paste no keys, tokens or personal paths.**
+        Security problems go to the Security tab, not here. A maintainer reads issues in
+        person, about weekly; no bot will reply.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to see it
+      description: The task you typed, the command you ran, or the page and the button you pressed.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: repo-factory version
+      description: Output of `repo-factory --version`.
+    validations:
+      required: true
+  - type: input
+    id: claude
+    attributes:
+      label: Claude Code version
+      description: Output of `claude --version`.
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: The last lines of the stage's log (the build's page, "Open the log"), with secrets and paths removed.
+      render: text
