@@ -1,0 +1,26 @@
+[project]
+name = "repo-factory"
+version = "0.0.0"
+description = "Give it a task; it designs, builds, checks, hardens and publishes a small software project, then keeps maintaining it. An experiment."
+readme = "README.md"
+license = "Apache-2.0"
+authors = [{ name = "the repo-factory authors" }]
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "ruff==0.16.10",
+]
+
+[tool.uv]
+# The package itself arrives with the import; until then this project only holds its checks.
+package = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
