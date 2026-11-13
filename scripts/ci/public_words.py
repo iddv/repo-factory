@@ -49,7 +49,18 @@ PRIVATE = frozenset(
     }
 )
 
-GENERIC_HOMES = ("user", "someone", "you", "runner", "example", "me", "alice", "bob", "ubuntu")
+GENERIC_HOMES = (
+    "user",
+    "someone",
+    "you",
+    "runner",
+    "example",
+    "me",
+    "alice",
+    "bob",
+    "ubuntu",
+    "demo",
+)
 HOME = re.compile(r"/home/(?!(?:" + "|".join(GENERIC_HOMES) + r")\b)[a-z_][a-z0-9_-]*")
 ACCOUNT = re.compile(r"(?<![0-9a-fA-F.:/_-])\d{12}(?![0-9a-zA-Z_-])")
 

@@ -1,0 +1,75 @@
+# v5 (docs/design/build-v5.md §3): the vanilla build, then post-build search.
+# Selected with `repo-factory build --policy policies/v5`; `pipeline: v5` makes `repo-factory build` call
+# `repo_factory.v5.pipeline.build` instead of the v1-v4 executor. Policy is data: the stage code
+# is a fixed library in repo_factory/v5/, the prompts are in prompts/, the lessons in lessons.yaml.
+pipeline: v5
+version: "5.0"
+# The build's global cap (USD) when the caller gives none. null = no global cap: the owner's
+# standing rule, the default. A cap still applies when one is given: `repo-factory build --max-cost`,
+# a task's budget_usd, the bench's 2.95x vanilla, the environment variable
+# REPO_FACTORY_V5_MAX_USD (a number; `none` for no cap), or a number here. Only under a global
+# cap do the reserve rules apply (a second repair round keeps the readiness stage's share;
+# readiness starts with start_usd left and repairs with min_usd left); without one no stage
+# is ever skipped for lack of global budget.
+max_usd: null
+# Every other dollar cap is optional too, and none is set: spend is uncapped by default.
+#  - build.stage_caps: a map of stage to dollars (e.g. {build: 6.0, verify: 2.5}); the loop's
+#    loop.yaml build.stage_caps goes over it (null there removes a cap set here). A capped
+#    stage's sessions get what is left of its cap (a repair round and each readiness step get
+#    a window of their own).
+#  - max_usd in a stage's section below: one session's own cap (--max-budget-usd).
+# A session with no cap at all gets no --max-budget-usd. What stops a runaway instead, per
+# session: max_turns (the CLI's --max-turns) and timeout_s (wall clock; the session is
+# killed). The defaults: build 250 turns / 2 h; verify 60 / 30 min; re-verify 40 / ~7 min;
+# repair 60 / 30 min; readiness security 60 / 20 min, checks 40 / 15 min, repair 60 / 25 min.
+# A build stage that stops (turns, time, a cap or an error) without a usable tree fails the
+# build instead of delivering it (docs/design/build-v5.md, "a failed build stage").
+# Stage 0: an idea (short, no concrete rules, numbers or interfaces) gets a v1 product brief,
+# SCOPE.md, from one no-tools call with the builder's model; a spec passes through unchanged.
+# auto: a cheap heuristic decides, the model may still pass a borderline input | always | off
+scope: auto
+# SCOPE.md's word budget, enforced in code: over its limit (single_words for a single-user tool
+# or a library, team_words otherwise, from the spec's Shape line), one shortening pass with the
+# word count and the limit; trim_max_usd caps that pass (0: no pass; null: no cap)
+scope_size: {single_words: 1800, team_words: 2500, trim_max_usd: 1.0}
+build:  {max_turns: 250, max_usd: null, timeout_s: 7200, model: null,      # null: the CLI default
+         stage_caps: {}}
+# samples: one claim list per build. A second, independent one existed only for the retired
+# p_hidden estimate's capture-recapture term; it cost a sample and a dedupe call (~$0.45).
+claims:  {samples: 1, max_claims: 60, max_ambiguities: 8, model: null}
+verify:  {max_turns: 60, max_usd: null, timeout_s: 1800, held_fraction: 0.3, explore_share: 0.3}
+oracle:  {votes: 3, defect_min: 2, model: null}
+# resume: auto = a round's session resumes (forks) the builder's only while its prompt cache
+# is likely warm (last used < warm_minutes ago), else a fresh session; true | false force it.
+# The round records which (REPORT.md, the repair_round event). Re-verify runs only when a
+# further round can follow it (max_rounds; under a cap also the reserve): what it finds is
+# always repaired, never just reported.
+repair:  {max_rounds: 2, max_turns: 60, max_usd: null, timeout_s: 1800,
+          fixup_usd: null, resume: auto, warm_minutes: 30}
+# Addendum A: binary ambiguities are operator settings, complex ones the build's call; `ask`
+# (complex items only) needs an owner.
+interpret: {mode: auto, max_questions: 3}  # auto | ask
+# Addendum C: the readiness stage, after re-verify. A security review (threat model, then
+# probes of the running product) and the operational checks (each done, not read), each a
+# fresh session on a copy; then the harness runs the README's commands as written on a fresh
+# copy of the tree as delivered (`commands`: the quick start, an immediate restart after a
+# stop and after a SIGKILL, every documented test command; seconds per step, in a sandbox
+# with loopback only); then one repair round: critical and high findings always, medium
+# ones when the full round is affordable (`medium: always | if_budget | never`; always
+# affordable without a global cap), fixable red readiness gaps (a failing README command
+# rank 3, a slow restart rank 2). Each step has its own cap. Delivery writes SECURITY.md,
+# READINESS.md and the plain acceptance suite (tests/acceptance/).
+readiness:
+  # max_usd null: no cap on the step's session (a number caps it and opens the step's window)
+  security: {max_usd: null, max_turns: 60, timeout_s: 1200}
+  checks:   {max_usd: null, max_turns: 40, timeout_s: 900}
+  # resume: false = a fresh session. Forking the builder's session after its prompt cache
+  # expired re-cached the whole build transcript: $1.00-1.36 before the first edit.
+  repair:   {max_usd: null, max_turns: 60, timeout_s: 1500, min_usd: 0.5, resume: false}
+  # seconds: a quick-start command, a test command, all test commands, a start, serving again.
+  # A test command gets the delivered suite's own budget (900 s): the acceptance suite repo-factory
+  # writes can take minutes, and it is run with 900 s at delivery.
+  commands: {step_s: 60, test_s: 900, tests_total_s: 1500, start_s: 25, serve_s: 15}
+  medium: if_budget
+  start_usd: 0.3              # under a global cap: the stage starts only with this much left
+stages:  [scope, build, claims, verify, oracle, repair, reverify, readiness, deliver]   # tier 3 mutates this list

@@ -1,0 +1,52 @@
+# Scope: wordtally
+
+## Users
+
+One person who writes in plain text files and wants word counts from the terminal.
+
+## Core flows
+
+### F1: Install and first run
+From a fresh machine, following the README: install it, run `wordtally notes.txt`, see the
+file's word count.
+
+### F2: Count several files
+Run `wordtally a.txt b.txt` and see each file's count and a total line.
+
+### F3: A file that cannot be read
+Run it on a missing file and see the file named in an error, with exit code 1.
+
+## Features
+### Must have (v1)
+- M1: count the words of each named file (flows F1, F2)
+- M2: print a total for more than one file (flow F2)
+- M3: a plain error and exit code 1 for a file it cannot read (flow F3)
+
+### Later (not in v1)
+- counting characters and lines
+
+## Domain rules and defaults
+
+A word is a run of non-whitespace characters.
+
+## Operator settings
+
+None.
+
+## Money and data integrity
+
+It reads files and writes nothing.
+
+## Install and run
+
+`pip install .`, then `wordtally FILE...`.
+
+## Non-functional basics
+
+Standard library only; Python 3.10 or newer.
+
+## Definition of done
+
+- [ ] F1: Install and first run — `wordtally notes.txt` prints the count and the file name
+- [ ] F2: Count several files — each file's count, then `<total>\ttotal`
+- [ ] F3: A file that cannot be read — the file is named on stderr and the exit code is 1

@@ -1,0 +1,97 @@
+{"build": 1, "cap_usd": 5, "harness": "fake", "note": "first", "parent": null, "pid": 4242, "pipeline": "v4", "policy": "policies/v4", "spec": "spec.md", "task": "t-every", "taskdir": "/nowhere/task", "title": "Every kind", "ts": 1760000001.5, "type": "build_started", "v": 1}
+{"auto_accept_s": 30, "build": 1, "id": "q1", "n": 1, "of": 2, "task": "t-every", "text": "Which store?", "ts": 1760000003.0, "type": "question", "v": 1}
+{"build": 1, "id": "plan", "n": 2, "of": 2, "task": "t-every", "text": "The plan", "ts": 1760000004.5, "type": "question", "v": 1}
+{"build": 1, "id": "q1", "task": "t-every", "text": "sqlite", "ts": 1760000006.0, "type": "answer", "v": 1}
+{"build": 1, "id": "q9", "task": "t-every", "text": "an answer to a question never logged", "ts": 1760000007.5, "type": "answer", "v": 1}
+{"build": 1, "held_back": 4, "task": "t-every", "ts": 1760000009.0, "type": "tests_generated", "v": 1, "visible": 12}
+{"build": 1, "items": ["one user", "local only"], "task": "t-every", "ts": 1760000010.5, "type": "assumptions", "v": 1}
+{"build": 1, "candidates": ["sqlite", "json"], "decision": "sqlite", "stack": "python", "task": "t-every", "ts": 1760000012.0, "type": "adr", "v": 1}
+{"applied": 1, "build": 1, "error": null, "gaps": ["auth"], "task": "t-every", "ts": 1760000013.5, "type": "plan_reviewed", "v": 1}
+{"build": 1, "milestones": [{"id": "m1", "size": "s", "tasks": [{"id": "t1", "size": "s", "title": "Model", "uncertainty": "design"}, {"id": "t2", "size": "m", "title": "CLI"}], "title": "Core"}, {"id": "m2", "size": "m", "title": "Polish"}], "replanned": false, "task": "t-every", "ts": 1760000015.0, "type": "plan", "v": 1, "version": 1}
+{"build": 1, "call": "c1", "caller": "build", "kind": "worker", "label": "w1", "model": "m", "node": "n1", "task": "t-every", "ts": 1760000016.5, "type": "call_started", "v": 1}
+{"build": 1, "call": "c1", "caller": "build", "kind": "worker", "node": "n1", "ok": true, "task": "t-every", "tokens_in": 100, "tokens_out": 50, "ts": 1760000018.0, "type": "call_finished", "usd": 0.12, "v": 1, "wall_s": 3.0}
+{"build": 1, "id": "m1", "max_turns": 40, "max_usd": 2, "n": 1, "size": "s", "task": "t-every", "title": "Core", "ts": 1760000019.5, "type": "milestone_started", "v": 1}
+{"build": 1, "hints": ["approach a", "approach b"], "kind": "design", "milestone": "m1", "n": 1, "task": "t-every", "task_id": "t1", "title": "Model", "ts": 1760000021.0, "type": "task_started", "v": 1}
+{"build": 1, "cached": false, "candidate": 1, "kind": "worker", "lint": [], "model": "m", "summary": "brief", "task": "t-every", "text": "do it", "ts": 1760000022.5, "type": "brief", "unit": "t1", "usd": 0.01, "v": 1}
+{"build": 1, "candidate": 1, "fix_items": ["x"], "hint": 0, "kind": "worker", "milestone": "m1", "parent": null, "reason": "first", "run": "r1", "strategy": "fresh", "task": "t-every", "task_id": "t1", "ts": 1760000024.0, "type": "candidate_started", "v": 1}
+{"build": 1, "candidate": 2, "hint": 1, "kind": "worker", "parent": 1, "run": "r2", "strategy": "fork", "task": "t-every", "task_id": "t1", "ts": 1760000025.5, "type": "candidate_started", "v": 1}
+{"acceptance": 0.8, "build": 1, "candidate": 1, "coverage": 0.7, "dropped_tests": 0, "exit_reason": "done", "gate": {"passed": true}, "milestone": "m1", "model": "m", "node": "n1", "reason": "ok", "rules": {"active": 2}, "score": 0.9, "task": "t-every", "ts": 1760000027.0, "type": "candidate_finished", "usd": 0.5, "user_tests": 10, "v": 1, "valid": true}
+{"build": 1, "candidate": 2, "node": "n2", "score": 0.1, "task": "t-every", "ts": 1760000028.5, "type": "candidate_finished", "usd": 0.25, "v": 1, "valid": false}
+{"build": 1, "candidates": [{"coverage": 0.75, "node": "n1", "rules": {"active": 3}, "score": 0.95, "valid": true}], "dropped_tests": 1, "task": "t-every", "ts": 1760000030.0, "type": "candidates_rescored", "v": 1}
+{"build": 1, "candidates": [{"node": "n1"}, {"node": "n2"}], "coverage": 0.75, "kind": "design", "milestone": "m1", "n": 1, "passed": true, "reason": "best", "runs": 2, "stage": "judge", "task": "t-every", "task_id": "t1", "ts": 1760000031.5, "type": "task_finished", "usd": 0.75, "v": 1, "winner": "n1"}
+{"build": 1, "kind": "routine", "milestone": "m1", "n": 3, "passed": false, "task": "t-every", "task_id": "t3", "ts": 1760000033.0, "type": "task_finished", "v": 1}
+{"ambiguous": false, "at": "m1", "build": 1, "by": "rules", "epoch": 0, "label": "Keep going", "menu": ["keep"], "milestone": "m1", "option": "keep", "params": {}, "reason": "green", "task": "t-every", "task_id": "t1", "ts": 1760000034.5, "type": "controller_decision", "v": 1}
+{"build": 1, "revision": 1, "task": "t-every", "ts": 1760000036.0, "type": "adr_revised", "v": 1}
+{"at": "m1", "build": 1, "by": "rules", "change": "store", "discard": ["n2"], "flaws": ["slow"], "from_milestone": "m1", "kind": "design", "label": "Backtrack", "node": "n1", "number": 1, "reason": "slow", "target": "m1", "task": "t-every", "ts": 1760000037.5, "type": "backtrack", "v": 1}
+{"build": 1, "interface_changed": true, "kept": ["m1"], "retired": ["m2"], "summary": "s", "task": "t-every", "ts": 1760000039.0, "type": "replan", "v": 1, "version": 2}
+{"build": 1, "revision": 2, "task": "t-every", "ts": 1760000040.5, "type": "adr_revised", "v": 1}
+{"backtrack": 1, "build": 1, "kept": ["m1"], "milestones": [{"id": "m1", "size": "s", "title": "Core"}, {"id": "m3", "size": "s", "title": "New"}], "replanned": true, "task": "t-every", "ts": 1760000042.0, "type": "plan", "v": 1, "version": 2}
+{"attempt_reasons": [], "attempts": 1, "build": 1, "coverage": 0.8, "id": "m1", "n": 1, "node": "n1", "passed": true, "slice": "all", "task": "t-every", "title": "Core", "ts": 1760000043.5, "type": "milestone_finished", "usd": 1.0, "v": 1}
+{"build": 1, "id": "review1", "n": 3, "task": "t-every", "title": "Review", "ts": 1760000045.0, "type": "milestone_started", "v": 1}
+{"build": 1, "id": "m3", "n": 2, "passed": false, "task": "t-every", "title": "New", "ts": 1760000046.5, "type": "milestone_finished", "v": 1}
+{"budget_usd": 5, "build": 1, "committed_usd": 1, "milestone": "m3", "n": 1, "spent_usd": 4, "task": "t-every", "task_id": "t9", "ts": 1760000048.0, "type": "budget_warning", "v": 1}
+{"build": 1, "search": "wide", "stand_in": false, "task": "t-every", "ts": 1760000049.5, "type": "design_started", "v": 1}
+{"build": 1, "chosen": "a", "dimensions": 3, "forked": 1, "gaps": 0, "revisions": 1, "stand_in": false, "task": "t-every", "ts": 1760000051.0, "type": "design_finished", "usd": 0.2, "v": 1, "wall_s": 10}
+{"build": 1, "epoch": 0, "max_turns": 50, "max_usd": 3, "milestone": "m1", "model": "m", "task": "t-every", "ts": 1760000052.5, "type": "build_once_started", "v": 1}
+{"acceptance": 0.9, "build": 1, "coverage": 0.8, "epoch": 0, "exit_reason": "done", "held_back": 4, "milestone": "m1", "node": "n3", "passed": true, "session_id": "s1", "task": "t-every", "ts": 1760000054.0, "turns": 20, "type": "build_once_finished", "usd": 1.1, "user_tests": 12, "v": 1, "valid": true, "wall_s": 60}
+{"build": 1, "epoch": 1, "milestone": "m9", "node": "n9", "task": "t-every", "ts": 1760000055.5, "type": "build_once_finished", "v": 1}
+{"build": 1, "epoch": 1, "milestone": "m1", "task": "t-every", "ts": 1760000057.0, "type": "build_once_started", "v": 1}
+{"active": 2, "after": "n3", "async": false, "build": 1, "modes": ["a"], "point": "harden1.bt1", "task": "t-every", "ts": 1760000058.5, "type": "mining_started", "v": 1}
+{"build": 1, "caught": 1, "error": null, "fix_items": ["f"], "mined": 3, "point": "harden1.bt1", "task": "t-every", "ts": 1760000060.0, "type": "mining_finished", "usd": 0.3, "v": 1}
+{"build": 1, "error": null, "proposed": 3, "task": "t-every", "ts": 1760000061.5, "type": "rules_mined", "v": 1}
+{"build": 1, "error": "parse", "proposed": 1, "task": "t-every", "ts": 1760000063.0, "type": "rules_mined", "v": 1}
+{"build": 1, "id": "r1", "task": "t-every", "to": "active", "ts": 1760000064.5, "type": "rule_status", "v": 1, "visibility": "held"}
+{"build": 1, "id": "r2", "task": "t-every", "to": "active", "ts": 1760000066.0, "type": "rule_status", "v": 1, "visibility": "visible"}
+{"build": 1, "id": "r3", "task": "t-every", "to": "retired", "ts": 1760000067.5, "type": "rule_status", "v": 1}
+{"build": 1, "id": "r4", "task": "t-every", "to": "disputed", "ts": 1760000069.0, "type": "rule_status", "v": 1}
+{"build": 1, "id": "r5", "task": "t-every", "to": "candidate", "ts": 1760000070.5, "type": "rule_status", "v": 1}
+{"build": 1, "id": "r5", "task": "t-every", "ts": 1760000072.0, "type": "rule_promoted", "v": 1}
+{"build": 1, "code_wrong": 1, "fixed": 1, "passed": 4, "round": 1, "rules": 5, "stop": null, "task": "t-every", "ts": 1760000073.5, "type": "review_round", "v": 1}
+{"build": 1, "code_wrong": 1, "design_flaws": [], "design_rules": [], "epoch": 1, "failing": 1, "head": "n3", "mined": 3, "node": "n4", "repaired": 1, "round": 1, "status": "repairing", "task": "t-every", "ts": 1760000075.0, "type": "harden_round", "v": 1}
+{"accepted": true, "after": 0, "before": 1, "build": 1, "epoch": 1, "round": 1, "status": "done", "task": "t-every", "ts": 1760000076.5, "type": "harden_round", "v": 1}
+{"accepted": false, "build": 1, "epoch": null, "round": 2, "status": "done", "task": "t-every", "ts": 1760000078.0, "type": "harden_round", "v": 1}
+{"build": 1, "round": 3, "status": "done", "stop": "budget", "task": "t-every", "ts": 1760000079.5, "type": "harden_round", "v": 1}
+{"build": 1, "dimension": "store", "final": false, "from": "a", "kept": ["x"], "number": 1, "reason": "slow", "rebuild": true, "rule": "r1", "status": "running", "task": "t-every", "to": "b", "ts": 1760000081.0, "type": "backtrack_design", "v": 1, "why": "w"}
+{"build": 1, "final": true, "number": 1, "status": "done", "task": "t-every", "ts": 1760000082.5, "type": "backtrack_design", "v": 1}
+{"branch": "repo-factory/every", "build": 1, "changed": ["a.py"], "commit": "abc", "held_back": 4, "node": "n4", "out": "/nowhere/out", "report": "REPORT.md", "rules": {"active": 2}, "task": "t-every", "ts": 1760000084.0, "type": "delivered", "v": 1}
+{"build": 1, "node": "n4", "note": "good", "source": "ui", "task": "t-every", "ts": 1760000085.5, "type": "verdict", "v": 1, "verdict": "accept"}
+{"build": 1, "cost_breakdown": {"workers": 2}, "cost_usd": 3.21, "error": null, "failure": null, "stage": null, "status": "ok", "task": "t-every", "ts": 1760000087.0, "type": "build_finished", "v": 1, "wall_s": 300, "worker_cost_usd": 2.0}
+{"build": 2, "cap_usd": 8, "harness": "claude", "instructions": "tighten", "kind": "revise", "mode": "docs", "origin": "ui", "pid": 4343, "pipeline": "v5", "policy": "policies/v5", "revises": 1, "spec": "spec.md", "stages": ["scope", "build", "verify", "repair", "deliver"], "task": "t-every", "title": "Every kind", "ts": 1760000088.5, "type": "revise_started", "v": 1}
+{"after": "b", "before": "a", "build": 2, "changed": true, "task": "t-every", "ts": 1760000090.0, "type": "revise_outcome", "v": 1, "what": "docs"}
+{"build": 2, "capabilities": ["rea"], "path": "study.md", "status": "done", "task": "t-every", "tools_by_server": {"rea": 2}, "ts": 1760000091.5, "type": "study", "v": 1, "wall_s": 4}
+{"build": 2, "name": "rea", "origin": "owner", "ref": "v1", "stages": ["build"], "task": "t-every", "ts": 1760000093.0, "type": "capability", "v": 1, "why": "asked"}
+{"build": 2, "name": "rea", "origin": "owner", "ref": "v2", "stages": ["build", "verify"], "task": "t-every", "ts": 1760000094.5, "type": "capability", "v": 1, "why": "again"}
+{"additions": 1, "build": 2, "custom": true, "house_rules": true, "id": "build", "n": 2, "stage": "build", "task": "t-every", "template": "t", "ts": 1760000096.0, "type": "prompt", "v": 1, "version": 3}
+{"build": 2, "stage": "scope", "status": "started", "task": "t-every", "ts": 1760000097.5, "type": "v5_stage", "v": 1}
+{"build": 2, "called": true, "decision": "go", "dod": ["x"], "flows": 2, "mode": "auto", "must": ["y"], "path": "scope.json", "settings": {}, "shared_base": false, "task": "t-every", "ts": 1760000099.0, "type": "scope", "v": 1, "verdict": "ok", "why": "small", "words": 100}
+{"build": 2, "prompts": {"scope": 1}, "stage": "scope", "status": "done", "task": "t-every", "tokens_in": 10, "tokens_out": 5, "ts": 1760000100.5, "type": "v5_stage", "usd": 0.1, "v": 1, "wall_s": 5}
+{"build": 2, "stage": "build", "status": "started", "task": "t-every", "ts": 1760000102.0, "type": "v5_stage", "v": 1}
+{"at": 1, "build": 2, "by_server": {"rea": 1}, "denied": 0, "evidence": [], "last_tool": "Edit", "notes": [], "stage": "build", "task": "t-every", "tool_calls": 10, "ts": 1760000103.5, "type": "v5_live", "v": 1}
+{"agents": {"a": 2}, "build": 2, "capabilities": ["rea"], "skills": {"s": 1}, "stage": "build", "status": "done", "task": "t-every", "tokens_in": 1000, "tokens_out": 500, "tools_by_server": {"rea": 3}, "ts": 1760000105.0, "type": "v5_stage", "usd": 1.0, "v": 1, "wall_s": 100}
+{"build": 2, "stage": "build", "status": "started", "task": "t-every", "ts": 1760000106.5, "type": "v5_stage", "v": 1, "why": "again"}
+{"build": 2, "skills": {"s": 2}, "stage": "build", "status": "done", "task": "t-every", "tools_by_server": {"rea": 1}, "ts": 1760000108.0, "type": "v5_stage", "usd": 0.5, "v": 1, "wall_s": 50}
+{"ambiguities": 1, "build": 2, "dedupe": 0, "lessons": [], "n": 5, "samples": ["c"], "task": "t-every", "ts": 1760000109.5, "type": "claims", "v": 1}
+{"build": 2, "chosen": "a", "forked": false, "implements": "x", "item": "i1", "kind": "setting", "mode": "ask", "setting": "s", "stakes": "low", "status": "chosen", "task": "t-every", "ts": 1760000111.0, "type": "interpretation", "v": 1}
+{"build": 2, "stage": "verify", "status": "started", "task": "t-every", "ts": 1760000112.5, "type": "v5_stage", "v": 1}
+{"blocked": 0, "build": 2, "completeness": 1, "confirmed": 2, "environment": 0, "failing": 2, "incomplete": 0, "interpretation": 0, "new_failing": 2, "retired": 0, "scenarios": 10, "settings": 0, "stage": "verify", "task": "t-every", "ts": 1760000114.0, "type": "findings", "v": 1}
+{"applied": 5, "build": 2, "killed": 4, "new_failing": 0, "score": 0.8, "survivors": 1, "task": "t-every", "ts": 1760000115.5, "type": "mutation", "v": 1}
+{"build": 2, "stage": "unknown_stage", "status": "started", "task": "t-every", "ts": 1760000117.0, "type": "v5_stage", "v": 1}
+{"accepted": null, "build": 2, "conflicts": 0, "fixed": 0, "regressions": 0, "reverted": 0, "round": 1, "sent": 2, "session": "s", "settings": {}, "status": "repairing", "task": "t-every", "ts": 1760000118.5, "type": "repair_round", "v": 1, "why": null}
+{"action": "revert", "build": 2, "group": "g", "round": 1, "task": "t-every", "ts": 1760000120.0, "type": "conflict", "v": 1, "verdict": "keep", "x": "a", "x_rank": 1, "y": "b", "y_rank": 2}
+{"accepted": true, "build": 2, "fixed": 2, "round": 1, "sent": 2, "status": "done", "task": "t-every", "ts": 1760000121.5, "type": "repair_round", "v": 1}
+{"accepted": null, "build": 2, "round": 2, "sent": 3, "status": "fixing", "task": "t-every", "ts": 1760000121.6, "type": "fix_round", "v": 1}
+{"build": 2, "expected_hidden_failures_per_100": 3, "features": {"a": 1}, "interval80": [0.8, 0.95], "p_hidden": 0.9, "task": "t-every", "ts": 1760000123.0, "type": "prediction", "v": 1}
+{"audit": "a", "build": 2, "confirmed": 1, "critical": 0, "high": 1, "low": 2, "medium": 0, "probes": 3, "ran": true, "task": "t-every", "ts": 1760000124.5, "type": "security", "unconfirmed": 0, "v": 1}
+{"build": 2, "ran": true, "task": "t-every", "ts": 1760000126.0, "type": "security", "v": 1}
+{"amber": 1, "build": 2, "green": 5, "na": 0, "red": 1, "security": "ok", "step": "checks", "task": "t-every", "ts": 1760000127.5, "type": "readiness", "v": 1}
+{"build": 2, "fixed": 0, "sent": 2, "status": "repairing", "step": "repair", "task": "t-every", "ts": 1760000129.0, "type": "readiness", "v": 1}
+{"accepted": true, "build": 2, "fixed": 2, "regressions": 0, "sent": 2, "status": "done", "step": "repair", "task": "t-every", "ts": 1760000130.5, "type": "readiness", "updated": true, "v": 1, "why": null}
+{"amber": 0, "build": 2, "green": 7, "na": 0, "red": 0, "step": "final", "task": "t-every", "ts": 1760000132.0, "type": "readiness", "v": 1}
+{"build": 2, "error": "stopped", "failure": "stopped", "stage": "readiness", "status": "error", "task": "t-every", "ts": 1760000133.5, "type": "build_finished", "v": 1, "wall_s": 200}
+{"build": 2, "pid": 4444, "task": "t-every", "ts": 1760000135.0, "type": "build_resumed", "v": 1}
+{"build": 2, "stage": "deliver", "status": "started", "task": "t-every", "ts": 1760000136.5, "type": "v5_stage", "v": 1}
+{"branch": "repo-factory/every", "build": 2, "commit": "def", "node": "n9", "out": "/nowhere/out", "task": "t-every", "ts": 1760000138.0, "type": "delivered", "v": 1}
+{"build": 2, "status": "ok", "task": "t-every", "ts": 1760000139.5, "type": "build_finished", "v": 1, "wall_s": 20}
+{"build": 3, "pipeline": "v5", "stages": ["build"], "task": "t-every", "title": "Running", "ts": 1760000141.0, "type": "build_started", "v": 1}
+{"build": 3, "id": "q2", "n": 1, "of": 1, "task": "t-every", "text": "Ok?", "ts": 1760000142.5, "type": "question", "v": 1}
+{"build": 3, "call": "c9", "caller": "build", "kind": "worker", "label": "w9", "node": "n9", "task": "t-every", "ts": 1760000144.0, "type": "call_started", "v": 1}

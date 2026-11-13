@@ -1,0 +1,5 @@
+#!/bin/sh
+# tests/conftest.py puts this first on PATH: a test never acts on GitHub as the developer.
+# A test that needs `gh` gives its own fake (earlier on PATH, or by path).
+echo "tests/_shims: the real gh was called from a test: gh $*" >&2
+exit 97

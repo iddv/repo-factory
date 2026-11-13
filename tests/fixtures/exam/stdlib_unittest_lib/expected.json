@@ -1,0 +1,6 @@
+{"what": "python -m unittest discover -s tests stays green with the exam outside (the Beliefline case); the task venv is used (no dependencies)",
+ "own_green": true,
+ "own_tests": 2,
+ "scenarios": {"c1": "passed", "c2": "passed", "x1": "failed"},
+ "readme_tests": ["python3 -m unittest discover -s tests -v"],
+ "provenance": []}

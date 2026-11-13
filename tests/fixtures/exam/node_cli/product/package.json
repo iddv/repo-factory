@@ -1,0 +1,8 @@
+{
+  "name": "countcli",
+  "version": "0.1.0",
+  "description": "Counts the words on standard input.",
+  "bin": {"countcli": "bin/countcli.js"},
+  "scripts": {"test": "node --test"},
+  "license": "MIT"
+}

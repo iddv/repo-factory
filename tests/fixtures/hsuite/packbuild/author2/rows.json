@@ -1,0 +1,5 @@
+[
+ {"row": "s_top/most_common_first", "situation": "a text where one word occurs twice", "action": "ask for the top word", "expect": "the word occurring twice #req", "quote": "the n most common words"},
+ {"row": "s_top/ties_alphabetical", "situation": "two words occurring once each", "action": "ask for the top 2", "expect": "alphabetical order on ties #split", "quote": ""},
+ {"row": "s_top/case_folded", "situation": "'A a b'", "action": "ask for the top word", "expect": "'a': words are compared case-insensitively #silent", "quote": ""}
+]

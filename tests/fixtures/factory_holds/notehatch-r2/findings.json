@@ -1,0 +1,56 @@
+{
+ "completeness": {
+  "done": 0,
+  "total": 6,
+  "flows": [
+   {
+    "id": "F1",
+    "title": "Install and first run",
+    "status": "environment",
+    "scenarios": [
+     "e27"
+    ]
+   },
+   {
+    "id": "F2",
+    "title": "Preview what will be exported",
+    "status": "environment",
+    "scenarios": [
+     "e28"
+    ]
+   },
+   {
+    "id": "F3",
+    "title": "Export all notes",
+    "status": "environment",
+    "scenarios": [
+     "e29"
+    ]
+   },
+   {
+    "id": "F4",
+    "title": "Update an existing export",
+    "status": "environment",
+    "scenarios": [
+     "e30"
+    ]
+   },
+   {
+    "id": "F5",
+    "title": "Export from a backup or legacy file",
+    "status": "environment",
+    "scenarios": [
+     "e31"
+    ]
+   },
+   {
+    "id": "F6",
+    "title": "Verify an export",
+    "status": "environment",
+    "scenarios": [
+     "e32"
+    ]
+   }
+  ]
+ }
+}

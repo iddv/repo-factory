@@ -1,0 +1,4 @@
+{"what": "the product builds canary secrets at runtime; the secrets scan is clean; a sibling with a committed-looking key is caught; a security probe against a CLI",
+ "own_green": true,
+ "scenarios": {"sec_1": "passed"},
+ "secrets": []}

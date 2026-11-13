@@ -1,0 +1,18 @@
+{
+ "what": "Sidedoor's docs revise rounds (AU1 #8), trimmed from its den's events (revise_outcome, the deliver stage, exam_run). Rounds 7 and 8 changed only Markdown, yet each deliver re-ran the whole exam (about 800 s). Round 10 also removed repo-factory's old acceptance suite from the tree (the legacy strip: 96 .py files, trimmed to 3 here), so it must re-run everything. Round 10 is the first with exam_run events: a 78 s baseline that docs mode never read, then the delivered tree.",
+ "rounds": [
+  {"round": 7, "revises": 6, "mode": "docs", "changed": ["READINESS.md"], "deliver_wall_s": 802.3,
+   "reuse": true},
+  {"round": 8, "revises": 7, "mode": "docs", "changed": ["READINESS.md", "README.md"],
+   "deliver_wall_s": 803.7, "reuse": true},
+  {"round": 10, "revises": 8, "mode": "docs",
+   "changed": ["ASSUMPTIONS.md", "READINESS.md", "README.md", "SECURITY.md",
+               "tests/acceptance/README.md", "tests/acceptance/__init__.py",
+               "tests/acceptance/conftest.py", "tests/acceptance/test_audit_trail.py"],
+   "deliver_wall_s": 485.7, "reuse": false}
+ ],
+ "r10_exam_runs": [
+  {"round": 10, "rules": 0, "own": true, "readme": 0, "wall_s": 78.0},
+  {"round": 10, "rules": 100, "own": true, "readme": 1, "wall_s": 479.3}
+ ]
+}

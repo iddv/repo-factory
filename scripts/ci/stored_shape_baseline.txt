@@ -1,0 +1,3 @@
+# stored_shape_lint.py's findings that were already there (path:RULE:line hash).
+# A new finding fails the check; so does a line here that matches nothing. Each
+# column's contract (the package's stored/) takes its lines out.

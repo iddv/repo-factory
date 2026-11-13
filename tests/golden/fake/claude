@@ -1,0 +1,168 @@
+#!/usr/bin/env python3
+"""A stand-in for the `claude` command, for the golden build: recorded answers, no model.
+
+It accepts the flags repo-factory passes (``-p``, ``--output-format json|stream-json``,
+``--tools``, ``--model``, ``--session-id``, ...), reads the prompt on stdin, and answers by
+what the prompt is:
+
+- a call with no tools tagged ``[factory-rules task=<task>]`` answers
+  ``answers/<task>.json`` (or ``answers/<task>.<mode>.json``) as its text;
+- the brief, the product's public text and the honesty check answer their files the same
+  way, found by a phrase of their prompt;
+- a session with tools does its stage's work in the current directory and in the exam
+  folder at ``/work/exam`` (the sandbox binds it there): the build copies ``product/``, the
+  verifier writes its scenarios, the readiness sessions write their reports.
+
+Every answer reports a small fixed cost, so the spend shown is predictable. A prompt it does
+not know ends the call with an error that quotes the prompt's first line. Standard library
+only: it runs inside the build's sandbox, where repo-factory is not importable.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+import shutil
+import sys
+import uuid
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+ANSWERS = HERE / "answers"
+PRODUCT = HERE / "product"
+EXAM = Path(os.environ.get("FAKE_CLAUDE_EXAM", "/work/exam"))
+VERSION = "2.1.0 (Claude Code)"
+TAG = re.compile(r"^\[factory-rules task=(\w+)(?: mode=(\w+))?\]")
+COST = {"json": 0.01, "session": 0.05}
+# Claude Code's own tools, as its init event lists them when ``--tools`` does not narrow them
+DEFAULT_TOOLS = ["Bash", "Edit", "Glob", "Grep", "NotebookEdit", "Read", "Task", "TodoWrite",
+                 "WebFetch", "WebSearch", "Write"]
+
+
+def args() -> dict:
+    a = sys.argv[1:]
+    out = {"format": "text", "tools": None, "session": None, "model": "fake-model",
+           "permission": None}
+    for i, x in enumerate(a):
+        nxt = a[i + 1] if i + 1 < len(a) else ""
+        if x == "--output-format":
+            out["format"] = nxt
+        elif x == "--tools":
+            out["tools"] = nxt
+        elif x == "--session-id":
+            out["session"] = nxt
+        elif x == "--model":
+            out["model"] = nxt
+        elif x == "--permission-mode":
+            out["permission"] = nxt
+        elif x in ("--version", "-v"):
+            out["version"] = True
+    return out
+
+
+def answer_file(name: str) -> str:
+    return (ANSWERS / name).read_text()
+
+
+def no_tools(prompt: str) -> str:
+    m = TAG.match(prompt)
+    if m:
+        task, mode = m.group(1), m.group(2)
+        for name in ([f"{task}.{mode}.json"] if mode else []) + [f"{task}.json"]:
+            if (ANSWERS / name).is_file():
+                return answer_file(name)
+        raise LookupError(f"no recorded answer for task {task!r} mode {mode!r}")
+    for phrase, name in PHRASES:
+        if phrase in prompt:
+            return answer_file(name)
+    raise LookupError("no recorded answer for this prompt")
+
+
+# no-tools prompts without a tag, by a phrase their template always contains
+PHRASES = [
+    ("You are the product scout", "pitch.json"),
+    ("You write the public description", "describe.json"),
+    ("You check the public text", "honesty.json"),
+]
+
+
+def write_json(path: Path, obj) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(obj, indent=2))
+
+
+def session(prompt: str) -> str:
+    """A session with tools: do the stage's work; return its last message."""
+    cwd = Path.cwd()
+    delay = HERE / "delay.txt"          # a break test's slow build: seconds, written by the test
+    if delay.is_file():
+        import time
+        time.sleep(float(delay.read_text().strip() or 0))
+    if prompt.rstrip().endswith("Work in the current directory."):
+        shutil.copytree(PRODUCT, cwd, dirs_exist_ok=True)
+        return "Built wordtally: the command, its tests and its README."
+    if "You are verifying" in prompt:
+        shutil.copytree(ANSWERS / "exam", EXAM, dirs_exist_ok=True)
+        return "Wrote the exam."
+    if "You are a security engineer" in prompt:
+        write_json(EXAM / "_verify" / "security.json",
+                   json.loads(answer_file("security.json")))
+        return "Reviewed: nothing open."
+    if "You are an operations engineer" in prompt:
+        write_json(EXAM / "_verify" / "readiness.json",
+                   json.loads(answer_file("readiness.json")))
+        return "Checked."
+    if "=== Items ===" in prompt or "=== Findings ===" in prompt:
+        return "Nothing to change."
+    if "The builder has repaired" in prompt:
+        return "Nothing new to probe."
+    raise LookupError("no recorded session for this prompt")
+
+
+def emit(a: dict, text: str, cost: float, sid: str, error: str | None) -> None:
+    fmt, model = a["format"], a["model"]
+    tools = DEFAULT_TOOLS if a["tools"] is None else [x for x in a["tools"].split(",") if x]
+    result = {"type": "result", "subtype": "success" if not error else "error_during_execution",
+              "is_error": bool(error), "result": error or text, "total_cost_usd": cost,
+              "num_turns": 1, "session_id": sid, "duration_ms": 10,
+              "usage": {"input_tokens": 1000, "output_tokens": 200},
+              "modelUsage": {model: {"costUSD": cost}}}
+    if fmt == "stream-json":
+        print(json.dumps({"type": "system", "subtype": "init", "session_id": sid,
+                          "model": model, "tools": tools, "mcp_servers": [],
+                          "permissionMode": a["permission"] or "default"}))
+        print(json.dumps({"type": "assistant", "session_id": sid,
+                          "message": {"model": model, "role": "assistant",
+                                      "content": [{"type": "text", "text": text}]}}))
+        print(json.dumps(result))
+    elif fmt == "json":
+        print(json.dumps(result))
+    else:
+        print(error or text)
+
+
+def main() -> int:
+    a = args()
+    if a.get("version"):
+        print(VERSION)
+        return 0
+    prompt = sys.stdin.read()
+    sid = a["session"] or str(uuid.uuid4())
+    try:
+        if a["tools"] == "" or a["format"] == "json":
+            text, cost = no_tools(prompt), COST["json"]
+        else:
+            text, cost = session(prompt), COST["session"]
+    except (LookupError, OSError) as e:
+        first = next((ln for ln in prompt.splitlines() if ln.strip()), "")[:200]
+        msg = f"fake claude: {e}: {first}"
+        print(msg, file=sys.stderr)
+        emit(a, "", 0.0, sid, msg)
+        return 1
+    emit(a, text, cost, sid, None)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

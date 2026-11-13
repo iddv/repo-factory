@@ -1,0 +1,339 @@
+{
+ "idea": {
+  "id": "i235df527",
+  "title": "Sidedoor",
+  "state": "held",
+  "reason": "not pushed: honesty check: 'At the end it says plainly either **\"went through the broker\"** or **\"snuck around it via `<door>`\"**, with evidence.': The README documents the outputs as the verdicts BROKER and SIDEDOOR, not these phrases. \"Snuck around it via <door>\" also implies the tool knows where the agent read the secret, which the README says it cannot see. A BROKER verdict only means a valid broker token reached the target, not that the agent went through the broker.; 'Tests whether your coding agent gets its secrets from your broker': The README says the tool cannot see where a secret was read from. It only observes which decoys and broker tokens reach the target, so it does not test where the agent got its secrets.; 'The mock broker is faithful but a mock.': \"Faithful\" claims the mock matches real brokers (Vault, STS, ...) in behaviour, and the text does not show that this was checked against any real broker.; next: open Claims on the build page and accept or edit the interpretation, or edit the release text there",
+  "pitch": {
+   "product": "Sidedoor",
+   "product_type": "cli",
+   "one_liner": "A command-line test that plants decoy credentials around a sandbox, runs your coding agent on a task needing a secret, and reports whether it got that secret from your secrets broker or from somewhere it shouldn't have.",
+   "who": "Engineers who run coding or ops agents with real infrastructure access, are moving those agents onto a short-lived, audited secrets broker such as OpenBao or Vault, and need to confirm a given agent and harness can't route around it.",
+   "why_now": "One practitioner moving agents to OpenBao saw one of two agents bypass the broker through gopass. A harness-security benchmark finds that allowed tools leave unauthorized paths reachable and that protective effects are hard to measure. A demonstrated backdoor in open-weight models exfiltrates .env files and SSH keys from coding agents. There is no demand evidence beyond that single anecdote.",
+   "brief": "People running coding agents against real infrastructure are moving them onto short-lived secrets from a broker, but some agents quietly grab credentials from other places instead, like a password store, env vars or dotfiles. Build something they can install and point at their agent of choice. It should drop decoy credentials in the usual hiding spots, give the agent a task that needs a secret, and tell them plainly whether the agent went through the broker or snuck around it, and through which door.",
+   "release": {
+    "text": "Tests whether your coding agent gets its secrets from your broker: it plants decoy credentials in a throwaway sandbox and reports which decoys and broker tokens reached a local target API.",
+    "was": [
+     "A command-line test that plants decoy credentials around a sandbox, runs your coding agent on a task needing a secret, and reports whether it got that secret from your secrets broker or from somewhere it shouldn't have."
+    ],
+    "by": "owner",
+    "at": 1792184075.3750234
+   },
+   "claims": [
+    {
+     "claim": "reports whether it got that secret from your secrets broker or from somewhere it shouldn't have",
+     "interpreted": "reports which planted decoy credentials and broker tokens reached a local target API, with a BROKER or SIDEDOOR verdict drawn from that evidence; it cannot see where a secret was read from, and file reads are detected only on Linux",
+     "setting": null,
+     "spirit": {
+      "keeps": true,
+      "why": "a decoy reaching the target shows the agent used a credential from outside the broker, which is the core question, though reads of the real home directory stay invisible"
+     },
+     "source": "check",
+     "status": "accepted",
+     "at": 1792042798.9574184,
+     "id": "k1"
+    }
+   ]
+  },
+  "gate": {
+   "verdict": "ready",
+   "reasons": [],
+   "checks": {
+    "delivered": {
+     "ok": true,
+     "detail": "build ok, branch repo-factory/sidedoor"
+    },
+    "documents": {
+     "ok": true,
+     "detail": "the evidence (security and readiness reports, the checks) is in the den"
+    },
+    "security": {
+     "ok": true,
+     "detail": "no open critical or high finding"
+    },
+    "tests": {
+     "ok": true,
+     "detail": "1 documented test command(s) run green as written: `python3 -m unittest discover -s tests -t .`"
+    },
+    "safe_defaults": {
+     "ok": true,
+     "detail": "safe defaults and install: install green, bind_localhost green, empty_start green, first_admin n/a",
+     "red": []
+    },
+    "completeness": {
+     "ok": true,
+     "detail": "7/7 flows work end to end"
+    },
+    "p_hidden": {
+     "ok": true,
+     "detail": "p_hidden 0.99 (minimum 0.85)"
+    }
+   },
+   "round": 10
+  },
+  "publish": {
+   "honesty_repairs": 1,
+   "negotiation": {
+    "flags": {
+     "e0a9d781e82d": {
+      "quote": "runs your agent in a throwaway sandbox",
+      "author": "product",
+      "file": "README.md",
+      "seen": 3,
+      "repaired": 0,
+      "last": 1792043743.0814214
+     },
+     "291dd084c01a": {
+      "quote": "reports whether it got that secret from your secrets broker or from somewhere it shouldn't have",
+      "author": "repo-factory",
+      "file": "RELEASE",
+      "seen": 1,
+      "repaired": 0,
+      "last": 1791757536.539964
+     },
+     "6f66c45cffa2": {
+      "quote": "Tests whether your coding agent gets its secrets from your broker: it plants decoy credentials",
+      "author": "repo-factory",
+      "file": "RELEASE",
+      "seen": 1,
+      "repaired": 0,
+      "last": 1791757608.219777
+     },
+     "15e0c120b6c5": {
+      "quote": "First release of Sidedoor: Tests whether your coding agent gets its secrets from your broker: it plants decoy credentials",
+      "author": "repo-factory",
+      "file": "RELEASE",
+      "seen": 1,
+      "repaired": 0,
+      "last": 1791757608.219777
+     },
+     "cc345de0179b": {
+      "quote": "Tests whether your coding agent gets its secrets from your broker",
+      "author": "repo-factory",
+      "file": "RELEASE",
+      "seen": 2,
+      "repaired": 0,
+      "last": 1792183904.7056484
+     },
+     "5e51a79e1cb0": {
+      "quote": "Does your coding agent fetch secrets from the intended broker, or quietly take them from somewhere else?",
+      "author": "product",
+      "file": "README.md",
+      "seen": 1,
+      "repaired": 0,
+      "last": 1792043286.8681567
+     },
+     "57c2d6c27d3e": {
+      "quote": "Data lives in `./data`",
+      "author": "repo-factory",
+      "file": "AGENTS.md",
+      "seen": 1,
+      "repaired": 0,
+      "last": 1792043286.8681567
+     },
+     "b3648ebbab4a": {
+      "quote": "The target also finds a decoy anywhere in a request, including inside base64",
+      "author": "product",
+      "file": "README.md",
+      "seen": 1,
+      "repaired": 0,
+      "last": 1792043743.0814214
+     },
+     "96aaec5b3ec5": {
+      "quote": "records every credential that reaches a local target API",
+      "author": "repo-factory",
+      "file": "AGENTS.md",
+      "seen": 1,
+      "repaired": 0,
+      "last": 1792043743.0814214
+     },
+     "da25771c88bf": {
+      "quote": "At the end it says plainly either **\"went through the broker\"** or **\"snuck around it via `<door>`\"**, with evidence.",
+      "author": "repo-factory",
+      "file": "AGENTS.md",
+      "seen": 2,
+      "repaired": 0,
+      "last": 1792183904.7056484
+     },
+     "9d885efb6b15": {
+      "quote": "Tests whether your coding agent gets its secrets from your broker: it plants decoy credentials in a throwaway sandbox and reports which decoys and broker tokens reached a local target API.",
+      "author": "repo-factory",
+      "file": "RELEASE",
+      "seen": 2,
+      "repaired": 0,
+      "last": 1792043743.0814214
+     },
+     "91ec05885247": {
+      "quote": "The mock broker is faithful but a mock.",
+      "author": "product",
+      "file": "README.md",
+      "seen": 1,
+      "repaired": 0,
+      "last": 1792183904.7056484
+     },
+     "ee4c8a15e8c3": {
+      "quote": "it says plainly either **\"went through the broker\"** or **\"snuck around it via `<door>`\"**",
+      "author": "product",
+      "file": "README.md",
+      "seen": 1,
+      "repaired": 0,
+      "last": 1792184153.6862743
+     },
+     "1180772aa9e4": {
+      "quote": "and records every credential that reaches the target.",
+      "author": "repo-factory",
+      "file": "AGENTS.md",
+      "seen": 1,
+      "repaired": 0,
+      "last": 1792184153.6862743
+     }
+    },
+    "repairs": [
+     {
+      "kind": "repo-factory",
+      "at": 1791757536.540093,
+      "fps": [
+       "291dd084c01a"
+      ]
+     }
+    ],
+    "stuck": null
+   },
+   "precheck": {
+    "state": "done",
+    "key": "474a0f857b7e2f16",
+    "blocked": [
+     "honesty check: 'it says plainly either **\"went through the broker\"** or **\"snuck around it via `<door>`\"**': The verdict wording claims more than the tool observes. BROKER means a valid broker token reached the target and no decoy did. SIDEDOOR means a decoy reached the target. Neither shows where the agent read its secret. The README's own limitations say reads of the real home via absolute paths are not seen, and file-read detection is Linux-only. Saying the agent \"went through the broker\" or \"snuck around it\" states a source the tool cannot establish.; 'and records every credential that reaches the target.': This is a completeness claim the product does not back. It records only the decoy credentials it planted and the broker tokens it issued, not every credential that reaches the target. Credentials from the real environment are not observed."
+    ],
+    "honesty": {
+     "ok": false,
+     "issues": [
+      {
+       "file": "README.md",
+       "quote": "it says plainly either **\"went through the broker\"** or **\"snuck around it via `<door>`\"**",
+       "problem": "The verdict wording claims more than the tool observes. BROKER means a valid broker token reached the target and no decoy did. SIDEDOOR means a decoy reached the target. Neither shows where the agent read its secret. The README's own limitations say reads of the real home via absolute paths are not seen, and file-read detection is Linux-only. Saying the agent \"went through the broker\" or \"snuck around it\" states a source the tool cannot establish.",
+       "replacement": "At the end it reports a BROKER or SIDEDOOR verdict, with evidence: BROKER when a valid broker token reached the target and no decoy did, SIDEDOOR when a planted decoy reached the target (naming its door). It cannot see reads of your real home, so a BROKER verdict does not prove the agent used no other source.",
+       "author": "product"
+      },
+      {
+       "file": "AGENTS.md",
+       "quote": "and records every credential that reaches the target.",
+       "problem": "This is a completeness claim the product does not back. It records only the decoy credentials it planted and the broker tokens it issued, not every credential that reaches the target. Credentials from the real environment are not observed.",
+       "replacement": "and records each planted decoy credential and each broker token that reaches the target.",
+       "author": "repo-factory"
+      }
+     ],
+     "fixed": [
+      {
+       "file": "README.md",
+       "quote": "Every target response carries a per-trial nonce, so the task check cannot be faked.",
+       "problem": "'Cannot be faked' is a guarantee the text does not back. The nonce makes a faked result harder to pass off, but a sufficiently capable agent or a user with access to the sandbox could still produce a result that passes.",
+       "replacement": "Every target response carries a per-trial nonce, and the task check looks for it, which makes a faked result harder to pass off as a completed task.",
+       "author": "product"
+      },
+      {
+       "file": "README.md",
+       "quote": "The target also finds a decoy anywhere in a request, including inside base64 (e.g. docker's `auth`).",
+       "problem": "'Anywhere in a request' claims complete coverage. The product only recognises the planted decoy values, in the encodings it lists (plain and base64). Other encodings or transformations are not covered.",
+       "replacement": "The target also finds a decoy in a request, including when it is inside base64 (e.g. docker's `auth`).",
+       "author": "product"
+      },
+      {
+       "file": "README.md",
+       "quote": "Evidence (`events`) is append-only (enforced by a database trigger)",
+       "problem": "A database trigger makes the evidence hard to change through normal use, but it does not make it permanent or tamper-proof. Anyone who can write the store file can still alter it, and the text implies a stronger guarantee than that.",
+       "replacement": "Evidence (`events`) is meant to be append-only: a database trigger rejects changes to it, but anyone with write access to the store file can still alter it.",
+       "author": "product"
+      },
+      {
+       "file": "AGENTS.md",
+       "quote": "Data lives in `./data`;",
+       "problem": "This contradicts the README, which says the data directory is `~/.local/share/sidedoor` by default (override `SIDEDOOR_HOME`). A reader following AGENTS.md would look in the wrong place.",
+       "replacement": "Data lives in the data directory (`~/.local/share/sidedoor` by default, or `SIDEDOOR_HOME`);",
+       "author": "repo-factory"
+      },
+      {
+       "file": "AGENTS.md",
+       "quote": "Evidence (`events`) is append-only (enforced by a database trigger)",
+       "problem": "Same overclaim as in the README: the trigger makes the evidence hard to change through normal use, but it is not permanent or tamper-proof, and anyone with write access to the store file can still alter it.",
+       "replacement": "Evidence (`events`) is meant to be append-only: a database trigger rejects changes to it, but anyone with write access to the store file can still alter it.",
+       "author": "repo-factory"
+      }
+     ]
+    }
+   }
+  }
+ },
+ "history": [
+  {
+   "id": 73,
+   "ts": 1791672666.6636539,
+   "note": "revised in round 5 (ui): the gate says held; tests: a documented test command fails as written: `python -m pytest tests/acceptance` (README.md:182, tests/acceptance/README.md:7) didn't finish in 240.1 s: tests/acceptance/test_error_missing_exe_quick_failure.py .               [ 47%] / tests/acceptance/test_filters.py .                                       [ 48%] / tests/acceptance/test_flow_f1_install_first_run.py"
+  },
+  {
+   "id": 83,
+   "ts": 1791676398.3220093,
+   "note": "revised in round 6 (ui): the gate says ready"
+  },
+  {
+   "id": 84,
+   "ts": 1791676450.0994902,
+   "note": "pre-push checks found 1 wording problem(s): a docs-only repair round runs, then the checks again"
+  },
+  {
+   "id": 86,
+   "ts": 1791677695.5506856,
+   "note": "revised in round 7 (honesty): the gate says ready"
+  },
+  {
+   "id": 87,
+   "ts": 1791677717.7020595,
+   "note": "held: not pushed: jargon scan: READINESS.md:10 brb"
+  },
+  {
+   "id": 91,
+   "ts": 1791680764.4805171,
+   "note": "revised in round 8 (ui): the gate says ready"
+  },
+  {
+   "id": 92,
+   "ts": 1791680832.4684892,
+   "note": "held: not pushed: honesty check: 'Data lives in `./data`; the schema is versioned': The README says data lives in `~/.local/share/sidedoor` (overridable with `SIDEDOOR_HOME`). Maintainers following this line would look in the wrong place for the store, and the backup and migration guidance built on it would point at the wrong directory.; 'Set by an Admin on the in-app Settings page; each has an environment variable that wins when set': Sidedoor is a command-line tool with no in-app Settings page or Admin role. The README configures these keys through `sidedoor config set` and `<data>/config.to"
+  },
+  {
+   "id": 192,
+   "ts": 1791735461.9573405,
+   "note": "held: not pushed: honesty check: 'records every credential that reaches a local target API': This overstates what the tool does. Sidedoor only plants and observes its own decoy credentials inside the sandbox, and the Limitations section says it cannot see other reads or credentials. As written it reads as a guarantee that every credential is recorded."
+  },
+  {
+   "id": 214,
+   "ts": 1791757547.4425972,
+   "note": "repo-factory reworded its own release text from the README: \"A command-line test that plants decoy credentials around a sandbox, runs your coding agent on a task needing a secret, and reports whether it got that secret from your secrets broker or from somewhere it shouldn't have.\" is now \"Tests whether your coding agent gets its secrets from your broker: it plants decoy credentials in a throwaway sandbox and reports which decoys and broker tokens reached a local target API.\"; \"reports whether it got that secret from your secrets broker or from somewhere it shouldn't have\" read as \"reports which plant"
+  },
+  {
+   "id": 221,
+   "ts": 1791789613.3235312,
+   "note": "the owner set the release text (ui): \"Tests whether your coding agent gets its secrets from your broker: it plants decoy credentials in a throwaway sandbox and reports which decoys and broker tokens reached a local target API.\" (was \"Tests whether your coding agent gets its secrets from your broker: it plants decoy credentials in a throwaway sandbox and reports which decoys and broker tokens reached a local target API.\")"
+  },
+  {
+   "id": 317,
+   "ts": 1792043644.95862,
+   "note": "ui: started a check of repo-factory's text"
+  },
+  {
+   "id": 329,
+   "ts": 1792183852.1980731,
+   "note": "revised in round 10 (ui): the gate says ready"
+  },
+  {
+   "id": 330,
+   "ts": 1792183948.5833619,
+   "note": "held: not pushed: honesty check: 'At the end it says plainly either **\"went through the broker\"** or **\"snuck around it via `<door>`\"**, with evidence.': The README documents the outputs as the verdicts BROKER and SIDEDOOR, not these phrases. \"Snuck around it via <door>\" also implies the tool knows where the agent read the secret, which the README says it cannot see. A BROKER verdict only means a valid broker token reached the target, not that the agent went through the broker.; 'Tests whether your coding agent gets its secrets from your broker': The README says the tool cannot see where a sec"
+  },
+  {
+   "id": 331,
+   "ts": 1792184075.375512,
+   "note": "the owner set the release text (ui): \"Tests whether your coding agent gets its secrets from your broker: it plants decoy credentials in a throwaway sandbox and reports which decoys and broker tokens reached a local target API.\" (was \"Tests whether your coding agent gets its secrets from your broker: it plants decoy credentials in a throwaway sandbox and reports which decoys and broker tokens reached a local target API.\")"
+  }
+ ]
+}

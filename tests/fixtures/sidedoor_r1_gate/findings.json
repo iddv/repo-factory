@@ -1,0 +1,60 @@
+{
+ "scenarios": [],
+ "blocked": [],
+ "defects": [],
+ "completeness": {
+  "done": 0,
+  "total": 7,
+  "flows": [
+   {
+    "id": "F1",
+    "title": "Install and first run",
+    "status": "unchecked",
+    "scenarios": [],
+    "verifier": null
+   },
+   {
+    "id": "F2",
+    "title": "Manage agent profiles",
+    "status": "unchecked",
+    "scenarios": [],
+    "verifier": null
+   },
+   {
+    "id": "F3",
+    "title": "Run a trial",
+    "status": "unchecked",
+    "scenarios": [],
+    "verifier": null
+   },
+   {
+    "id": "F4",
+    "title": "Inspect a run",
+    "status": "unchecked",
+    "scenarios": [],
+    "verifier": null
+   },
+   {
+    "id": "F5",
+    "title": "Manage doors and tasks",
+    "status": "unchecked",
+    "scenarios": [],
+    "verifier": null
+   },
+   {
+    "id": "F6",
+    "title": "Run history",
+    "status": "unchecked",
+    "scenarios": [],
+    "verifier": null
+   },
+   {
+    "id": "F7",
+    "title": "Report and export",
+    "status": "unchecked",
+    "scenarios": [],
+    "verifier": null
+   }
+  ]
+ }
+}

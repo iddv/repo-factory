@@ -1,0 +1,64 @@
+{
+ "completeness": {
+  "done": 6,
+  "total": 7,
+  "flows": [
+   {
+    "id": "F1",
+    "title": "Install and first run",
+    "status": "broken",
+    "scenarios": [
+     "e31"
+    ]
+   },
+   {
+    "id": "F2",
+    "title": "Add and import items",
+    "status": "works",
+    "scenarios": [
+     "e32"
+    ]
+   },
+   {
+    "id": "F3",
+    "title": "List and find",
+    "status": "works",
+    "scenarios": [
+     "e33"
+    ]
+   },
+   {
+    "id": "F4",
+    "title": "Change an item, by command or by hand",
+    "status": "works",
+    "scenarios": [
+     "e34"
+    ]
+   },
+   {
+    "id": "F5",
+    "title": "Start, finish, drop, reopen, undo",
+    "status": "works",
+    "scenarios": [
+     "e35"
+    ]
+   },
+   {
+    "id": "F6",
+    "title": "What to read next",
+    "status": "works",
+    "scenarios": [
+     "e36"
+    ]
+   },
+   {
+    "id": "F7",
+    "title": "Monthly report and export",
+    "status": "works",
+    "scenarios": [
+     "e37"
+    ]
+   }
+  ]
+ }
+}

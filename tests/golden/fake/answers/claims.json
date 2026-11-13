@@ -1,0 +1,11 @@
+{"claims": [
+  {"id": "c1", "situation": "a file holding four words", "action": "run wordtally on it",
+   "expect": "it prints 4 and the file name", "basis": "spec_explicit",
+   "quote": "get each file's word count", "kind": "requirement", "lessons": []},
+  {"id": "c2", "situation": "two files of two and one words", "action": "run wordtally on both",
+   "expect": "each file's count, then a line with 3 and total", "basis": "spec_explicit",
+   "quote": "and a total", "kind": "requirement", "lessons": []},
+  {"id": "c3", "situation": "a file that does not exist", "action": "run wordtally on it",
+   "expect": "the file is named on stderr and the exit code is 1", "basis": "convention",
+   "quote": "", "kind": "edge", "lessons": []}],
+ "ambiguities": []}

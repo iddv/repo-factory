@@ -1,0 +1,5 @@
+{"what": "a http.server on 127.0.0.1; localhost resolves; the README's systemctl step is not verifiable here, never red; inside the sandbox only the loopback interface exists",
+ "own_green": true,
+ "scenarios": {"l1": "passed"},
+ "readme_tests": ["python3 -m unittest discover -s tests"],
+ "not_verifiable": ["sudo cp srv.service /etc/systemd/system/", "systemctl enable --now srv"]}

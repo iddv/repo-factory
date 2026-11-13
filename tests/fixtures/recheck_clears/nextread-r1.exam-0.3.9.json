@@ -1,0 +1,272 @@
+{
+ "factory_version": "0.3.9",
+ "scenarios": {
+  "q1": {
+   "status": "passed"
+  },
+  "e1": {
+   "status": "passed"
+  },
+  "e2": {
+   "status": "passed"
+  },
+  "e3": {
+   "status": "passed"
+  },
+  "e4": {
+   "status": "passed"
+  },
+  "e5": {
+   "status": "passed"
+  },
+  "e6": {
+   "status": "passed"
+  },
+  "q2": {
+   "status": "passed"
+  },
+  "e7": {
+   "status": "passed"
+  },
+  "q3": {
+   "status": "passed"
+  },
+  "x1": {
+   "status": "passed"
+  },
+  "e8": {
+   "status": "passed"
+  },
+  "q4": {
+   "status": "passed"
+  },
+  "e9": {
+   "status": "passed"
+  },
+  "e10": {
+   "status": "passed"
+  },
+  "q5": {
+   "status": "passed"
+  },
+  "x2": {
+   "status": "passed"
+  },
+  "q6": {
+   "status": "passed"
+  },
+  "e11": {
+   "status": "passed"
+  },
+  "e12": {
+   "status": "passed"
+  },
+  "q7": {
+   "status": "passed"
+  },
+  "e13": {
+   "status": "passed"
+  },
+  "e14": {
+   "status": "passed"
+  },
+  "q8": {
+   "status": "passed"
+  },
+  "e15": {
+   "status": "passed"
+  },
+  "q9": {
+   "status": "passed"
+  },
+  "x3": {
+   "status": "passed"
+  },
+  "e16": {
+   "status": "passed"
+  },
+  "q10": {
+   "status": "passed"
+  },
+  "q11": {
+   "status": "passed"
+  },
+  "x4": {
+   "status": "passed"
+  },
+  "e17": {
+   "status": "passed"
+  },
+  "q12": {
+   "status": "passed"
+  },
+  "q13": {
+   "status": "passed"
+  },
+  "q14": {
+   "status": "passed"
+  },
+  "e18": {
+   "status": "passed"
+  },
+  "e19": {
+   "status": "passed"
+  },
+  "e20": {
+   "status": "passed"
+  },
+  "e21": {
+   "status": "passed"
+  },
+  "q15": {
+   "status": "passed"
+  },
+  "x5": {
+   "status": "passed"
+  },
+  "q16": {
+   "status": "passed"
+  },
+  "e22": {
+   "status": "passed"
+  },
+  "x6": {
+   "status": "passed"
+  },
+  "e23": {
+   "status": "passed"
+  },
+  "e24": {
+   "status": "passed"
+  },
+  "x7": {
+   "status": "passed"
+  },
+  "x8": {
+   "status": "passed"
+  },
+  "e25": {
+   "status": "passed"
+  },
+  "e26": {
+   "status": "passed"
+  },
+  "q17": {
+   "status": "passed"
+  },
+  "e27": {
+   "status": "passed"
+  },
+  "q18": {
+   "status": "passed"
+  },
+  "e28": {
+   "status": "passed"
+  },
+  "e29": {
+   "status": "passed"
+  },
+  "q19": {
+   "status": "passed"
+  },
+  "e30": {
+   "status": "passed"
+  },
+  "q20": {
+   "status": "passed"
+  },
+  "q21": {
+   "status": "passed"
+  },
+  "x9": {
+   "status": "passed"
+  },
+  "e31": {
+   "status": "passed"
+  },
+  "e32": {
+   "status": "passed"
+  },
+  "e33": {
+   "status": "passed"
+  },
+  "e34": {
+   "status": "passed"
+  },
+  "e35": {
+   "status": "passed"
+  },
+  "e36": {
+   "status": "passed"
+  },
+  "e37": {
+   "status": "passed"
+  },
+  "e38": {
+   "status": "passed"
+  },
+  "e39": {
+   "status": "passed"
+  },
+  "e40": {
+   "status": "passed"
+  },
+  "e41": {
+   "status": "passed"
+  },
+  "e42": {
+   "status": "passed"
+  },
+  "e43": {
+   "status": "passed"
+  },
+  "e44": {
+   "status": "passed"
+  },
+  "e45": {
+   "status": "passed"
+  },
+  "e46": {
+   "status": "passed"
+  },
+  "e47": {
+   "status": "passed"
+  },
+  "e48": {
+   "status": "passed"
+  },
+  "e49": {
+   "status": "passed"
+  },
+  "e50": {
+   "status": "passed"
+  },
+  "e51": {
+   "status": "passed"
+  },
+  "e52": {
+   "status": "passed"
+  },
+  "e53": {
+   "status": "passed"
+  },
+  "e54": {
+   "status": "passed"
+  },
+  "e55": {
+   "status": "failed"
+  },
+  "e56": {
+   "status": "failed"
+  }
+ },
+ "own": {
+  "commands": [
+   {
+    "cmd": "python3 -m unittest discover -s tests -t . -v",
+    "verdict": "green",
+    "status": "ok"
+   }
+  ]
+ }
+}

@@ -1,0 +1,102 @@
+/* repo-factory.css: the page's tokens, its resets and small utilities, and the help page's rules
+   repo-factory serves it at static/repo-factory.css, before the first paint with theme.js;
+   /help reads it alone. The app's own rules
+   (the frame, the lists, the panes) are ui/web/src/lib/base.css, in the built app (FE-13).
+   The palette is UI-v4.md section 1, from the logo: its blue, violet and navy as ink in the
+   light theme and as pastel on navy in the dark one. A pastel is never the only carrier of
+   meaning (status is an icon and a word); text on a pastel chip is --chip-text. Every pair
+   the UI uses is checked for AA by tests/test_palette.py, which reads this file.
+   The theme is the OS's (prefers-color-scheme) unless Settings › Appearance sets
+   html[data-theme] (static/theme.js applies it before the first paint). A theme
+   (html[data-look], static/looks.css, loaded after this file) sets the navigator's --side-*
+   tokens, the accent and the page's own tokens below, tinted in its hue, on either base. */
+:root {
+  --bg: #f6f5ff; --box: #fdfdff; --subtle: #efeefc; --head: #e9ebff; --inset: #e4e3f7;
+  --border: #d3d3ee; --border-2: #e3e3f6;
+  --text: #1c1c4b; --muted: #55578a; --ink3: #62618f; --link: #3d44d4;
+  --blue: #3d44d4; --blue-pastel: #aeb6ff; --blue-wash: #e9ebff;
+  --violet: #6a3fd6; --violet-pastel: #cdb8ff; --violet-wash: #f1eaff;
+  --green: #1a7346; --green-pastel: #a8e6c4; --green-wash: #e4f7ec;
+  --amber: #8f5a00; --amber-pastel: #ffd68f; --amber-wash: #fff3da;
+  --red: #b9342a; --red-pastel: #ffb4ab; --red-wash: #ffe9e6;
+  --btn: #fdfdff; --btn-border: #c6c7e6; --primary: #3d44d4; --primary-text: #ffffff;
+  --focus: #6a3fd6; --chip-text: #1c1c4b; --meter: #3d44d4; --counter: #d9dcff;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  /* Open in Claude Code's terminal: dark in both themes (its TUI draws for a dark one) */
+  --term-bg: #0b0b2a; --term-fg: #ececfb;
+  --sans: -apple-system, "Segoe UI", system-ui, Roboto, "Helvetica Neue", sans-serif;
+  color-scheme: light;
+}
+/* the dark theme: chosen in Settings, or the OS's when the choice is auto. The two blocks
+   are the same tokens (the test checks they stay equal). */
+:root[data-theme=dark] {
+  --bg: #0b0b2a; --box: #0b0b2a; --subtle: #12123a; --head: #12123a; --inset: #1b1b48;
+  --border: #2c2c62; --border-2: #222254;
+  --text: #ececfb; --muted: #a9abd4; --ink3: #8a88c4; --link: #aeb6ff;
+  --blue: #aeb6ff; --blue-pastel: #aeb6ff; --blue-wash: #1b1f5c;
+  --violet: #cdb8ff; --violet-pastel: #cdb8ff; --violet-wash: #2a1f5a;
+  --green: #8fe0b4; --green-pastel: #8fe0b4; --green-wash: #143a2a;
+  --amber: #ffd27f; --amber-pastel: #ffd27f; --amber-wash: #3d2e0c;
+  --red: #ffa39a; --red-pastel: #ffa39a; --red-wash: #4a1d1a;
+  --btn: #1b1b48; --btn-border: #3a3a74; --primary: #aeb6ff; --primary-text: #0b0b2a;
+  --term-bg: #0b0b2a; --term-fg: #ececfb;
+  --focus: #cdb8ff; --chip-text: #0b0b2a; --meter: #aeb6ff; --counter: #2a2a66;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme=light]) {
+    --bg: #0b0b2a; --box: #0b0b2a; --subtle: #12123a; --head: #12123a; --inset: #1b1b48;
+    --border: #2c2c62; --border-2: #222254;
+    --text: #ececfb; --muted: #a9abd4; --ink3: #8a88c4; --link: #aeb6ff;
+    --blue: #aeb6ff; --blue-pastel: #aeb6ff; --blue-wash: #1b1f5c;
+    --violet: #cdb8ff; --violet-pastel: #cdb8ff; --violet-wash: #2a1f5a;
+    --green: #8fe0b4; --green-pastel: #8fe0b4; --green-wash: #143a2a;
+    --amber: #ffd27f; --amber-pastel: #ffd27f; --amber-wash: #3d2e0c;
+    --red: #ffa39a; --red-pastel: #ffa39a; --red-wash: #4a1d1a;
+    --btn: #1b1b48; --btn-border: #3a3a74; --primary: #aeb6ff; --primary-text: #0b0b2a;
+    --term-bg: #0b0b2a; --term-fg: #ececfb;
+    --focus: #cdb8ff; --chip-text: #0b0b2a; --meter: #aeb6ff; --counter: #2a2a66;
+    color-scheme: dark;
+  }
+}
+/* the workspace's layout tokens (WORKSPACE.md 7): names for the panes, aliases of the palette */
+:root { --pane: var(--box); --raise: var(--box); --sunk: var(--subtle); --line: var(--border); --line2: var(--border-2); --ink: var(--text); --ink2: var(--muted);
+  --sel: var(--blue-wash); --selbar: var(--blue); --run: var(--violet); --runbg: var(--violet-wash); }
+/* the navigator's tokens: the page's own here; a sidebar theme (static/looks.css) sets each */
+:root { --side-bg: var(--bg); --side-text: var(--text); --side-muted: var(--muted); --side-hover: var(--subtle); --side-active: var(--sel);
+  --side-active-text: var(--text); --side-bar: var(--selbar); --side-border: var(--border); --side-link: var(--link); --side-new: var(--blue);
+  --side-wait: var(--amber); --side-hot: var(--violet); --side-focus: var(--focus); }
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 13px/1.45 var(--sans); font-variant-numeric: tabular-nums; }
+a { color: var(--link); text-decoration: none; }
+a:hover { text-decoration: underline; }
+h1, h2, h3, p, ul, ol, dl, dd { margin: 0; padding: 0; }
+ul, ol { list-style: none; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; border-radius: 4px; }
+.wrap { max-width: 1216px; margin: 0 auto; padding: 0 24px; }
+.muted { color: var(--muted); }
+.mono { font-family: var(--mono); font-size: 12px; }
+.small { font-size: 12px; }
+.grow { flex: 1; }
+.skip { position: absolute; left: -999px; }
+.skip:focus { left: 8px; top: 8px; background: var(--bg); padding: 6px 10px; z-index: 5; }
+/* a text that keeps its line breaks (an observation, a prompt, the help page) */
+.prose { white-space: pre-wrap; overflow-wrap: anywhere; }
+code, .code { font-family: var(--mono); font-size: 12px; background: var(--inset); border-radius: 4px; padding: 0 4px; }
+/* a phone: a larger body text, a narrower margin */
+@media (max-width: 700px) { .wrap { padding: 0 16px; } body { font-size: 15px; } }
+
+/* the library's map: categorical slots 1-8 for the eight largest clusters (the dataviz
+   reference palette, its light and dark steps), a neutral for the rest */
+:root { --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #008300; --s7: #4a3aa7; --s8: #e34948; --s0: #a4aaa3; }
+:root[data-theme=dark] { --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767; --s0: #5b625d; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme=light]) { --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767; --s0: #5b625d; }
+}
+/* /help: the longer explanations, one page, read-only */
+.helpdoc-in { max-width: 720px; margin: 0 auto; padding: 24px 20px 64px; }
+.helpdoc-in h1 { font-size: 22px; margin: 8px 0 12px; }
+.helpdoc-in h2 { font-size: 16px; margin: 28px 0 8px; scroll-margin-top: 16px; }
+.helpdoc-in h2:target { color: var(--link); }
+.helpdoc-in p { margin: 0 0 10px; line-height: 1.55; max-width: 68ch; }

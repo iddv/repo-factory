@@ -1,0 +1,17 @@
+[project]
+name = "wordtally"
+version = "0.1.0"
+description = "Count the words in text files."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+wordtally = "wordtally.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["wordtally"]

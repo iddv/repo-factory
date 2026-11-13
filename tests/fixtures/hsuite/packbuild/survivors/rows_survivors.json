@@ -1,0 +1,1 @@
+[{"row": "s_more/single_word", "situation": "a single word", "action": "count words", "expect": "1 #req", "quote": "returns the number of words"}]

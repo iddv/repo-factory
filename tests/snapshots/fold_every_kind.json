@@ -1,0 +1,1078 @@
+{
+ "1": {
+  "activity": {
+   "calls": {
+    "by_caller": {
+     "build": {
+      "calls": 1,
+      "usd": 0.12
+     }
+    },
+    "failed": 0,
+    "finished": 1,
+    "started": 1
+   },
+   "cost": {
+    "breakdown": {
+     "workers": 2.0
+    },
+    "total": 2.0
+   },
+   "forks": {
+    "forks": [
+     {
+      "candidate": 1,
+      "chosen": true,
+      "hint": 0,
+      "hint_text": "approach a",
+      "node": "n1",
+      "outcome": null,
+      "points": null,
+      "rules": {
+       "active": 3
+      },
+      "started": 1760000024.0,
+      "status": "done",
+      "usd": 0.5,
+      "valid": true
+     },
+     {
+      "candidate": 2,
+      "chosen": false,
+      "hint": 1,
+      "hint_text": "approach b",
+      "node": "n2",
+      "outcome": null,
+      "points": null,
+      "rules": null,
+      "started": 1760000025.5,
+      "status": "done",
+      "usd": 0.25,
+      "valid": false
+     }
+    ],
+    "judging": false,
+    "milestone": "m1",
+    "status": "passed",
+    "task_id": "t1",
+    "title": "Model",
+    "winner": "n1"
+   },
+   "inferred": false,
+   "phase": "done",
+   "progress": {
+    "fraction": 0.6667,
+    "milestone": "review1",
+    "milestones": [
+     2,
+     3
+    ],
+    "tasks": null
+   },
+   "recent": [
+    {
+     "error": null,
+     "finished": 1760000060.0,
+     "kind": "mining",
+     "label": "Mining a after n3",
+     "mined": 3,
+     "ok": true,
+     "usd": 0.3,
+     "wall_s": 1.5
+    },
+    {
+     "finished": 1760000028.5,
+     "kind": "worker",
+     "label": "Worker: t1 \u00b7 way 2 (approach b)",
+     "ok": false,
+     "usd": 0.25,
+     "wall_s": 3.0
+    },
+    {
+     "finished": 1760000027.0,
+     "kind": "worker",
+     "label": "Worker: t1 \u00b7 way 1 (approach a)",
+     "ok": true,
+     "usd": 0.5,
+     "wall_s": 3.0
+    },
+    {
+     "caller": "build",
+     "error": null,
+     "finished": 1760000018.0,
+     "kind": "call",
+     "label": "build",
+     "ok": true,
+     "usd": 0.12,
+     "wall_s": 3.0
+    }
+   ],
+   "running": [],
+   "stage": null
+  },
+  "adr": {
+   "candidates": [
+    "sqlite",
+    "json"
+   ],
+   "decision": "sqlite",
+   "stack": "python"
+  },
+  "assumptions": [
+   "one user",
+   "local only"
+  ],
+  "build": 1,
+  "candidates": [
+   {
+    "acceptance": 0.8,
+    "brief": {
+     "cached": false,
+     "kind": "worker",
+     "lint": [],
+     "model": "m",
+     "summary": "brief",
+     "text": "do it",
+     "unit": "t1",
+     "usd": 0.01
+    },
+    "candidate": 1,
+    "coverage": 0.75,
+    "dropped_tests": 1,
+    "exit_reason": "done",
+    "fix_items": [
+     "x"
+    ],
+    "gate": {
+     "passed": true
+    },
+    "hint": 0,
+    "kind": "worker",
+    "milestone": "m1",
+    "model": "m",
+    "node": "n1",
+    "parent": null,
+    "reason": "ok",
+    "rules": {
+     "active": 3
+    },
+    "run": "r1",
+    "score": 0.95,
+    "started": 1760000024.0,
+    "status": "done",
+    "strategy": "fresh",
+    "task_id": "t1",
+    "usd": 0.5,
+    "user_tests": 10,
+    "valid": true
+   },
+   {
+    "acceptance": null,
+    "candidate": 2,
+    "coverage": null,
+    "dropped_tests": null,
+    "exit_reason": null,
+    "hint": 1,
+    "kind": "worker",
+    "node": "n2",
+    "parent": 1,
+    "run": "r2",
+    "score": 0.1,
+    "started": 1760000025.5,
+    "status": "done",
+    "strategy": "fork",
+    "task_id": "t1",
+    "usd": 0.25,
+    "user_tests": null,
+    "valid": false
+   }
+  ],
+  "cap_usd": 5,
+  "controller": {
+   "backtracks": [
+    {
+     "adr_revision": 2,
+     "at": "m1",
+     "by": "rules",
+     "change": "store",
+     "discard": [
+      "n2"
+     ],
+     "flaws": [
+      "slow"
+     ],
+     "from_milestone": "m1",
+     "kind": "design",
+     "label": "Backtrack",
+     "node": "n1",
+     "number": 1,
+     "reason": "slow",
+     "replan": {
+      "interface_changed": true,
+      "kept": [
+       "m1"
+      ],
+      "retired": [
+       "m2"
+      ],
+      "summary": "s",
+      "version": 2
+     },
+     "target": "m1",
+     "text": "Backtracked to Backtrack: store"
+    }
+   ],
+   "decisions": [
+    {
+     "ambiguous": false,
+     "at": "m1",
+     "by": "rules",
+     "epoch": 0,
+     "label": "Keep going",
+     "menu": [
+      "keep"
+     ],
+     "milestone": "m1",
+     "option": "keep",
+     "params": {},
+     "reason": "green",
+     "task_id": "t1"
+    }
+   ]
+  },
+  "cost_breakdown": {
+   "workers": 2
+  },
+  "cost_usd": 3.21,
+  "delivered": {
+   "branch": "repo-factory/every",
+   "changed": [
+    "a.py"
+   ],
+   "commit": "abc",
+   "held_back": 4,
+   "node": "n4",
+   "out": "/nowhere/out",
+   "report": "REPORT.md",
+   "rules": {
+    "active": 2
+   }
+  },
+  "error": null,
+  "failed_stage": null,
+  "failure": null,
+  "finished": 1760000087.0,
+  "harness": "fake",
+  "kind": "build",
+  "milestones": [
+   {
+    "attempt_reasons": [],
+    "attempts": 1,
+    "coverage": 0.8,
+    "decisions": [
+     {
+      "ambiguous": false,
+      "at": "m1",
+      "by": "rules",
+      "epoch": 0,
+      "label": "Keep going",
+      "menu": [
+       "keep"
+      ],
+      "milestone": "m1",
+      "option": "keep",
+      "params": {},
+      "reason": "green",
+      "task_id": "t1"
+     }
+    ],
+    "id": "m1",
+    "max_turns": 40,
+    "max_usd": 2,
+    "n": 1,
+    "node": "n1",
+    "of": 2,
+    "passed": true,
+    "size": "s",
+    "slice": "all",
+    "status": "passed",
+    "tasks": [
+     {
+      "candidates": [
+       {
+        "node": "n1"
+       },
+       {
+        "node": "n2"
+       }
+      ],
+      "coverage": 0.75,
+      "hints": [
+       "approach a",
+       "approach b"
+      ],
+      "id": "t1",
+      "kind": "design",
+      "n": 1,
+      "reason": "best",
+      "runs": 2,
+      "size": "s",
+      "stage": "judge",
+      "status": "passed",
+      "title": "Model",
+      "usd": 0.75,
+      "winner": "n1"
+     },
+     {
+      "candidates": [],
+      "id": "t2",
+      "kind": "routine",
+      "n": null,
+      "size": "m",
+      "status": "pending",
+      "title": "CLI",
+      "winner": null
+     },
+     {
+      "candidates": [],
+      "coverage": null,
+      "id": "t3",
+      "kind": "routine",
+      "n": 3,
+      "reason": null,
+      "runs": null,
+      "stage": null,
+      "status": "failed",
+      "title": null,
+      "usd": null,
+      "winner": null
+     }
+    ],
+    "title": "Core",
+    "usd": 1.0
+   },
+   {
+    "attempt_reasons": null,
+    "attempts": null,
+    "coverage": null,
+    "decisions": [],
+    "id": "m3",
+    "n": 2,
+    "node": null,
+    "of": 2,
+    "passed": false,
+    "size": "s",
+    "slice": null,
+    "status": "failed",
+    "title": "New",
+    "usd": null
+   },
+   {
+    "decisions": [],
+    "id": "review1",
+    "max_turns": null,
+    "max_usd": null,
+    "n": 3,
+    "size": null,
+    "status": "running",
+    "title": "Review"
+   }
+  ],
+  "note": "first",
+  "parent": null,
+  "pid": 4242,
+  "pipeline": "v4",
+  "plan": {
+   "backtrack": 1,
+   "milestones": [
+    {
+     "id": "m1",
+     "size": "s",
+     "title": "Core"
+    },
+    {
+     "id": "m3",
+     "size": "s",
+     "title": "New"
+    }
+   ],
+   "replanned": true,
+   "version": 2
+  },
+  "plan_review": {
+   "applied": 1,
+   "error": null,
+   "gaps": [
+    "auth"
+   ]
+  },
+  "policy": "policies/v4",
+  "questions": [
+   {
+    "answer": "an answer to a question never logged",
+    "answered": true,
+    "id": "q9",
+    "n": null,
+    "of": null,
+    "text": null
+   },
+   {
+    "answer": "sqlite",
+    "answered": true,
+    "auto_accept_s": 30,
+    "id": "q1",
+    "n": 1,
+    "of": 2,
+    "text": "Which store?"
+   },
+   {
+    "answer": null,
+    "answered": false,
+    "id": "plan",
+    "n": 2,
+    "of": 2,
+    "text": "The plan"
+   }
+  ],
+  "rules": {
+   "active": 2,
+   "candidate": 1,
+   "caught": 1,
+   "disputed": 1,
+   "errors": 1,
+   "held": 1,
+   "last_round": {
+    "code_wrong": 1,
+    "fixed": 1,
+    "passed": 4,
+    "round": 1,
+    "rules": 5,
+    "stop": null
+   },
+   "mined": 4,
+   "mining": {
+    "caught": 1,
+    "error": null,
+    "fix_items": [
+     "f"
+    ],
+    "mined": 3,
+    "point": "harden1.bt1",
+    "running": false,
+    "usd": 0.3
+   },
+   "mining_usd": 0.3,
+   "promoted": [
+    "r5"
+   ],
+   "retired": 1,
+   "review_rounds": 1
+  },
+  "spec": "spec.md",
+  "started": 1760000001.5,
+  "status": "ok",
+  "task": "t-every",
+  "taskdir": "/nowhere/task",
+  "tests": {
+   "held_back": 4,
+   "visible": 12
+  },
+  "title": "Every kind",
+  "v4": {
+   "backtracks": [
+    {
+     "dimension": "store",
+     "final": true,
+     "from": "a",
+     "kept": [
+      "x"
+     ],
+     "number": 1,
+     "reason": "slow",
+     "rebuild": true,
+     "rule": "r1",
+     "to": "b",
+     "why": "w"
+    }
+   ],
+   "build": {
+    "acceptance": null,
+    "coverage": null,
+    "epoch": 1,
+    "exit_reason": null,
+    "held_back": null,
+    "milestone": "m9",
+    "node": "n9",
+    "passed": null,
+    "session_id": null,
+    "status": "done",
+    "turns": null,
+    "usd": null,
+    "user_tests": null,
+    "valid": null,
+    "wall_s": null
+   },
+   "builds": [
+    {
+     "acceptance": 0.9,
+     "coverage": 0.8,
+     "epoch": 0,
+     "exit_reason": "done",
+     "held_back": 4,
+     "max_turns": 50,
+     "max_usd": 3,
+     "milestone": "m1",
+     "model": "m",
+     "node": "n3",
+     "passed": true,
+     "session_id": "s1",
+     "started": 1760000052.5,
+     "status": "done",
+     "turns": 20,
+     "usd": 1.1,
+     "user_tests": 12,
+     "valid": true,
+     "wall_s": 60
+    },
+    {
+     "acceptance": null,
+     "coverage": null,
+     "epoch": 1,
+     "exit_reason": null,
+     "held_back": null,
+     "milestone": "m9",
+     "node": "n9",
+     "passed": null,
+     "session_id": null,
+     "status": "done",
+     "turns": null,
+     "usd": null,
+     "user_tests": null,
+     "valid": null,
+     "wall_s": null
+    },
+    {
+     "epoch": 1,
+     "max_turns": null,
+     "max_usd": null,
+     "milestone": "m1",
+     "model": null,
+     "started": 1760000057.0,
+     "status": "running"
+    }
+   ],
+   "design": {
+    "chosen": "a",
+    "dimensions": 3,
+    "forked": 1,
+    "gaps": 0,
+    "revisions": 1,
+    "running": false,
+    "stand_in": false,
+    "usd": 0.2,
+    "wall_s": 10
+   },
+   "rounds": [
+    {
+     "accepted": true,
+     "after": 0,
+     "before": 1,
+     "code_wrong": null,
+     "design_flaws": null,
+     "design_rules": null,
+     "epoch": 1,
+     "failing": null,
+     "head": null,
+     "mined": null,
+     "node": null,
+     "repaired": null,
+     "round": 1,
+     "status": "done",
+     "stop": null,
+     "why": null
+    },
+    {
+     "accepted": false,
+     "after": null,
+     "before": null,
+     "code_wrong": null,
+     "design_flaws": null,
+     "design_rules": null,
+     "epoch": null,
+     "failing": null,
+     "head": null,
+     "mined": null,
+     "node": null,
+     "repaired": null,
+     "round": 2,
+     "status": "done",
+     "stop": null,
+     "why": null
+    },
+    {
+     "accepted": null,
+     "after": null,
+     "before": null,
+     "code_wrong": null,
+     "design_flaws": null,
+     "design_rules": null,
+     "epoch": null,
+     "failing": null,
+     "head": null,
+     "mined": null,
+     "node": null,
+     "repaired": null,
+     "round": 3,
+     "status": "done",
+     "stop": "budget",
+     "why": null
+    }
+   ],
+   "stage": "Design backtrack 1: store -> b"
+  },
+  "v5": null,
+  "verdict": {
+   "node": "n4",
+   "note": "good",
+   "source": "ui",
+   "verdict": "accept"
+  },
+  "verdicts": [
+   {
+    "node": "n4",
+    "note": "good",
+    "source": "ui",
+    "verdict": "accept"
+   }
+  ],
+  "wall_s": 300,
+  "warnings": [
+   {
+    "budget_usd": 5,
+    "committed_usd": 1,
+    "milestone": "m3",
+    "n": 1,
+    "spent_usd": 4,
+    "task_id": "t9"
+   }
+  ],
+  "worker_cost_usd": 2.0
+ },
+ "2": {
+  "activity": {
+   "calls": {
+    "by_caller": {},
+    "failed": 0,
+    "finished": 0,
+    "started": 0
+   },
+   "cost": {
+    "breakdown": {
+     "judging": 0.0,
+     "mining": 0.0,
+     "other": 0.0,
+     "planning": 0.0,
+     "workers": 0
+    },
+    "total": 0.0
+   },
+   "forks": null,
+   "inferred": true,
+   "phase": "done",
+   "progress": {
+    "fraction": null,
+    "milestone": null,
+    "milestones": [
+     0,
+     0
+    ],
+    "tasks": null
+   },
+   "recent": [],
+   "running": [],
+   "stage": null
+  },
+  "adr": null,
+  "assumptions": null,
+  "build": 2,
+  "candidates": [],
+  "cap_usd": 8,
+  "controller": null,
+  "cost_usd": 0.0,
+  "delivered": {
+   "branch": "repo-factory/every",
+   "changed": null,
+   "commit": "def",
+   "held_back": null,
+   "node": "n9",
+   "out": "/nowhere/out",
+   "report": null,
+   "rules": null
+  },
+  "error": null,
+  "failed_stage": null,
+  "failure": null,
+  "finished": 1760000139.5,
+  "harness": "claude",
+  "kind": "revise",
+  "milestones": [],
+  "note": null,
+  "parent": null,
+  "pid": 4444,
+  "pipeline": "v5",
+  "plan": null,
+  "plan_review": null,
+  "policy": "policies/v5",
+  "questions": [],
+  "revise": {
+   "after": "b",
+   "before": "a",
+   "changed": true,
+   "instructions": "tighten",
+   "mode": "docs",
+   "origin": "ui",
+   "revises": 1,
+   "what": "docs"
+  },
+  "rules": null,
+  "spec": "spec.md",
+  "started": 1760000088.5,
+  "status": "ok",
+  "task": "t-every",
+  "taskdir": null,
+  "tests": null,
+  "title": "Every kind",
+  "v4": null,
+  "v5": {
+   "capabilities": [
+    {
+     "name": "rea",
+     "origin": "owner",
+     "ref": "v2",
+     "stages": [
+      "build",
+      "verify"
+     ],
+     "why": "again"
+    }
+   ],
+   "claims": {
+    "ambiguities": 1,
+    "dedupe": 0,
+    "lessons": [],
+    "n": 5,
+    "samples": [
+     "c"
+    ]
+   },
+   "conflicts": [
+    {
+     "action": "revert",
+     "group": "g",
+     "round": 1,
+     "verdict": "keep",
+     "x": "a",
+     "x_rank": 1,
+     "y": "b",
+     "y_rank": 2
+    }
+   ],
+   "findings": {
+    "blocked": 0,
+    "completeness": 1,
+    "confirmed": 2,
+    "environment": 0,
+    "failing": 2,
+    "incomplete": 0,
+    "interpretation": 0,
+    "new_failing": 2,
+    "retired": 0,
+    "scenarios": 10,
+    "settings": 0,
+    "stage": "verify"
+   },
+   "interpretations": [
+    {
+     "chosen": "a",
+     "forked": false,
+     "implements": "x",
+     "item": "i1",
+     "kind": "setting",
+     "mode": "ask",
+     "setting": "s",
+     "stakes": "low",
+     "status": "chosen"
+    }
+   ],
+   "planned": [
+    "scope",
+    "build",
+    "verify",
+    "repair",
+    "deliver"
+   ],
+   "prompts": {
+    "build": {
+     "additions": 1,
+     "custom": true,
+     "house_rules": true,
+     "n": 2,
+     "stage": "build",
+     "template": "t",
+     "version": 3
+    }
+   },
+   "readiness": {
+    "checks": {
+     "amber": 1,
+     "green": 5,
+     "na": 0,
+     "red": 1,
+     "security": "ok"
+    },
+    "final": {
+     "amber": 0,
+     "green": 7,
+     "na": 0,
+     "red": 0
+    },
+    "repair": {
+     "accepted": true,
+     "fixed": 2,
+     "regressions": 0,
+     "sent": 2,
+     "status": "done",
+     "updated": true,
+     "why": null
+    }
+   },
+   "rounds": [
+    {
+     "accepted": true,
+     "conflicts": null,
+     "fixed": 2,
+     "regressions": null,
+     "reverted": null,
+     "round": 1,
+     "sent": 2,
+     "session": null,
+     "settings": null,
+     "status": "done",
+     "why": null
+    },
+    {
+     "accepted": null,
+     "conflicts": null,
+     "fixed": null,
+     "regressions": null,
+     "reverted": null,
+     "round": 2,
+     "sent": 3,
+     "session": null,
+     "settings": null,
+     "status": "fixing",
+     "why": null
+    }
+   ],
+   "scope": {
+    "called": true,
+    "decision": "go",
+    "dod": [
+     "x"
+    ],
+    "flows": 2,
+    "mode": "auto",
+    "must": [
+     "y"
+    ],
+    "path": "scope.json",
+    "settings": {},
+    "shared_base": false,
+    "verdict": "ok",
+    "why": "small",
+    "words": 100
+   },
+   "security": {
+    "audit": null,
+    "confirmed": null,
+    "critical": null,
+    "high": null,
+    "low": null,
+    "medium": null,
+    "probes": null,
+    "ran": true,
+    "unconfirmed": null
+   },
+   "stage": "Delivering",
+   "stages": {
+    "build": {
+     "agents": {
+      "a": 2
+     },
+     "capabilities": [
+      "rea"
+     ],
+     "runs": 2,
+     "skills": {
+      "s": 3
+     },
+     "stage": "build",
+     "started": 1760000106.5,
+     "status": "done",
+     "tokens_in": 1000,
+     "tokens_out": 500,
+     "tools_by_server": {
+      "rea": 4
+     },
+     "usd": 1.5,
+     "wall_s": 150.0,
+     "why": "again"
+    },
+    "deliver": {
+     "runs": 1,
+     "stage": "deliver",
+     "started": 1760000136.5,
+     "status": "started"
+    },
+    "scope": {
+     "prompts": {
+      "scope": 1
+     },
+     "runs": 1,
+     "stage": "scope",
+     "started": 1760000097.5,
+     "status": "done",
+     "tokens_in": 10,
+     "tokens_out": 5,
+     "usd": 0.1,
+     "wall_s": 5.0
+    },
+    "unknown_stage": {
+     "runs": 1,
+     "stage": "unknown_stage",
+     "started": 1760000117.0,
+     "status": "started"
+    },
+    "verify": {
+     "runs": 1,
+     "stage": "verify",
+     "started": 1760000112.5,
+     "status": "started"
+    }
+   },
+   "study": {
+    "capabilities": [
+     "rea"
+    ],
+    "path": "study.md",
+    "status": "done",
+    "tools_by_server": {
+     "rea": 2
+    },
+    "wall_s": 4
+   }
+  },
+  "verdict": null,
+  "verdicts": [],
+  "wall_s": 20
+ },
+ "3": {
+  "activity": {
+   "calls": {
+    "by_caller": {},
+    "failed": 0,
+    "finished": 0,
+    "started": 1
+   },
+   "cost": {
+    "breakdown": {
+     "judging": 0.0,
+     "mining": 0.0,
+     "other": 0.0,
+     "planning": 0.0,
+     "workers": 0
+    },
+    "total": 0.0
+   },
+   "forks": null,
+   "inferred": false,
+   "phase": "questions",
+   "progress": {
+    "fraction": null,
+    "milestone": null,
+    "milestones": [
+     0,
+     0
+    ],
+    "tasks": null
+   },
+   "recent": [],
+   "running": [
+    {
+     "caller": "build",
+     "id": "c9",
+     "kind": "call",
+     "label": "build",
+     "started": 1760000144.0
+    }
+   ],
+   "stage": null
+  },
+  "adr": null,
+  "assumptions": null,
+  "build": 3,
+  "candidates": [],
+  "controller": null,
+  "cost_usd": 0.0,
+  "delivered": null,
+  "error": null,
+  "finished": null,
+  "harness": null,
+  "kind": "build",
+  "milestones": [],
+  "note": null,
+  "parent": null,
+  "pid": null,
+  "pipeline": "v5",
+  "plan": null,
+  "plan_review": null,
+  "policy": null,
+  "questions": [
+   {
+    "answer": null,
+    "answered": false,
+    "id": "q2",
+    "n": 1,
+    "of": 1,
+    "text": "Ok?"
+   }
+  ],
+  "rules": null,
+  "spec": null,
+  "started": 1760000141.0,
+  "status": "running",
+  "task": "t-every",
+  "taskdir": null,
+  "tests": null,
+  "title": "Running",
+  "v4": null,
+  "v5": {
+   "claims": null,
+   "conflicts": [],
+   "findings": null,
+   "interpretations": [],
+   "planned": [
+    "build"
+   ],
+   "readiness": null,
+   "rounds": [],
+   "scope": null,
+   "security": null,
+   "stage": null,
+   "stages": {}
+  },
+  "verdict": null,
+  "verdicts": [],
+  "wall_s": null
+ }
+}

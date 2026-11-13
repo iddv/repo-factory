@@ -1,0 +1,1227 @@
+{
+ "accept_change": {
+  "calls": [
+   [
+    "app.change_accept",
+    [
+     "c00000001"
+    ],
+    {
+     "origin": "ui"
+    }
+   ]
+  ],
+  "click": "click",
+  "refused_from": [],
+  "result_keys": [
+   "result",
+   "say",
+   "url",
+   "what"
+  ],
+  "runs_on": "new",
+  "subjects": [
+   "new"
+  ]
+ },
+ "accept_claim": {
+  "calls": [
+   [
+    "app.loop_act",
+    [
+     "claim",
+     {
+      "accept": true,
+      "claim": "k1",
+      "id": "i0001"
+     }
+    ],
+    {}
+   ]
+  ],
+  "click": "confirm",
+  "refused_from": [],
+  "result_keys": [
+   "result",
+   "say",
+   "what"
+  ],
+  "runs_on": "rich:published",
+  "subjects": [
+   "build",
+   "idea"
+  ]
+ },
+ "add_idea": {
+  "calls": [
+   [
+    "app.loop_act",
+    [
+     "add",
+     {
+      "text": "a few words of text"
+     }
+    ],
+    {}
+   ]
+  ],
+  "click": "click",
+  "refused_from": [],
+  "result_keys": [
+   "result",
+   "say",
+   "subject",
+   "what"
+  ],
+  "runs_on": "new",
+  "subjects": [
+   "new"
+  ]
+ },
+ "answer": {
+  "calls": [
+   [
+    "app.loop",
+    [],
+    {}
+   ]
+  ],
+  "click": "click",
+  "raises": "KeyError",
+  "refused_from": [],
+  "runs_on": "rich:rejected",
+  "subjects": [
+   "build"
+  ]
+ },
+ "build_anyway": {
+  "calls": [
+   [
+    "app.loop_act",
+    [
+     "send",
+     {
+      "anyway": true,
+      "id": "i0001"
+     }
+    ],
+    {}
+   ]
+  ],
+  "click": "confirm",
+  "refused_from": [],
+  "result_keys": [
+   "result",
+   "say",
+   "what"
+  ],
+  "runs_on": "rich:rejected",
+  "subjects": [
+   "idea"
+  ]
+ },
+ "cancel": {
+  "calls": [
+   [
+    "app.loop_act",
+    [
+     "cancel",
+     {
+      "id": "i0001"
+     }
+    ],
+    {}
+   ],
+   [
+    "app.loop",
+    [],
+    {}
+   ],
+   [
+    "app.loop",
+    [],
+    {}
+   ]
+  ],
+  "click": "confirm",
+  "refused_from": [],
+  "result_keys": [
+   "outcome",
+   "result",
+   "say",
+   "undoable",
+   "what"
+  ],
+  "runs_on": "idea:queued",
+  "subjects": [
+   "build",
+   "idea"
+  ]
+ },
+ "charter_change": {
+  "calls": [
+   [
+    "app.change_charter",
+    [
+     "c00000001",
+     true,
+     ""
+    ],
+    {
+     "origin": "ui"
+    }
+   ]
+  ],
+  "click": "confirm",
+  "refused_from": [],
+  "result_keys": [
+   "result",
+   "say",
+   "what"
+  ],
+  "runs_on": "new",
+  "subjects": [
+   "new"
+  ]
+ },
+ "claude_login_forget": {
+  "calls": [],
+  "click": "confirm",
+  "refused_from": [
+   "agent:rc"
+  ],
+  "result_keys": [
+   "result",
+   "say",
+   "what"
+  ],
+  "runs_on": "loop",
+  "subjects": [
+   "loop"
+  ]
+ },
+ "claude_login_keep": {
+  "calls": [
+   [
+    "app.loop",
+    [],
+    {}
+   ]
+  ],
+  "click": "click",
+  "raises": "ActionError",
+  "refused_from": [
+   "agent:rc"
+  ],
+  "runs_on": "loop",
+  "subjects": [
+   "loop"
+  ]
+ },
+ "close": {
+  "calls": [
+   [
+    "app.loop_act",
+    [
+     "close",
+     {
+      "id": "i0001",
+      "reason": "a few words of reason"
+     }
+    ],
+    {}
+   ]
+  ],
+  "click": "confirm",
+  "refused_from": [],
+  "result_keys": [
+   "result",
+   "say",
+   "what"
+  ],
+  "runs_on": "idea:new",
+  "subjects": [
+   "build",
+   "idea"
+  ]
+ },
+ "cut_ticket": {
+  "calls": [
+   [
+    "app.maintain_issue_create",
+    [
+     {
+      "body": "a few words of text",
+      "labels": [
+       "bug"
+      ],
+      "repo": "o/r",
+      "title": "a few words of issue"
+     }
+    ],
+    {}
+   ]
+  ],
+  "click": "click",
+  "refused_from": [],
+  "result_keys": [
+   "result",
+   "say",
+   "url",
+   "what"
+  ],
+  "runs_on": "rich:published",
+  "subjects": [
+   "build",
+   "idea"
+  ]
+ },
+ "decline_change": {
+  "calls": [
+   [
+    "app.change_decline",
+    [
+     "c00000001",
+     "not_now",
+     ""
+    ],
+    {
+     "origin": "ui"
+    }
+   ]
+  ],
+  "click": "click",
+  "refused_from": [],
+  "result_keys": [
+   "result",
+   "say",
+   "what"
+  ],
+  "runs_on": "new",
+  "subjects": [
+   "new"
+  ]
+ },
+ "edit_brief": {
+  "calls": [
+   [
+    "app.loop_act",
+    [
+     "edit",
+     {
+      "id": "i0001",
+      "text": "a few words of text"
+     }
+    ],
+    {}
+   ]
+  ],
+  "click": "click",
+  "refused_from": [],
+  "result_keys": [
+   "result",
+   "say",
+   "what"
+  ],
+  "runs_on": "idea:new",
+  "subjects": [
+   "idea"
+  ]
+ },
+ "edit_charter": {
+  "calls": [
+   [
+    "app.loop",
+    [],
+    {}
+   ]
+  ],
+  "click": "click",
+  "raises": "ActionError",
+  "refused_from": [],
+  "runs_on": "new",
+  "subjects": [
+   "new"
+  ]
+ },
+ "edit_claim": {
+  "calls": [
+   [
+    "app.loop_act",
+    [
+     "claim",
+     {
+      "claim": "k1",
+      "default": null,
+      "id": "i0001",
+      "text": "a few words of text"
+     }
+    ],
+    {}
+   ]
+  ],
+  "click": "click",
+  "refused_from": [],
+  "result_keys": [
+   "result",
+   "say",
+   "what"
+  ],
+  "runs_on": "rich:published",
+  "subjects": [
+   "build",
+   "idea"
+  ]
+ },
+ "edit_release_text": {
+  "calls": [
+   [
+    "app.loop",
+    [],
+    {}
+   ]
+  ],
+  "click": "click",
+  "raises": "ActionError",
+  "refused_from": [],
+  "runs_on": "rich:building",
+  "subjects": [
+   "build",
+   "idea"
+  ]
+ },
+ "evolve_now": {
+  "calls": [
+   [
+    "app.evolve_now",
+    [
+     "p00000001"
+    ],
+    {
+     "origin": "ui"
+    }
+   ]
+  ],
+  "click": "click",
+  "refused_from": [],
+  "result_keys": [
+   "result",
+   "say",
+   "what"
+  ],
+  "runs_on": "new",
+  "subjects": [
+   "new"
+  ]
+ },
+ "github_app_cancel": {
+  "calls": [
+   [
+    "github_app.store_dir",
+    [],
+    {}
+   ],
+   [
+    "app.loop",
+    [],
+    {}
+   ]
+  ],
+  "click": "click",
+  "raises": "TypeError",
+  "refused_from": [
+   "agent:rc"
+  ],
+  "runs_on": "loop",
+  "subjects": [
+   "loop"
+  ]
+ },
+ "github_app_create": {
+  "calls": [
+   [
+    "github_app.store_dir",
+    [],
+    {}
+   ],
+   [
+    "app.loop",
+    [],
+    {}
+   ]
+  ],
+  "click": "confirm",
+  "raises": "TypeError",
+  "refused_from": [
+   "agent:rc"
+  ],
+  "runs_on": "loop",
+  "subjects": [
+   "loop"
+  ]
+ },
+ "github_app_key": {
+  "calls": [
+   [
+    "github_app.start_key",
+    [
+     "<a key>"
+    ],
+    {}
+   ]
+  ],
+  "click": "confirm",
+  "refused_from": [
+   "agent:rc"
+  ],
+  "result_keys": [
+   "result",
+   "say",
+   "what"
+  ],
+  "runs_on": "loop",
+  "subjects": [
+   "loop"
+  ]
+ },
+ "github_app_link": {
+  "calls": [
+   [
+    "app.loop",
+    [],
+    {}
+   ]
+  ],
+  "click": "confirm",
+  "raises": "ActionError",
+  "refused_from": [
+   "agent:rc"
+  ],
+  "runs_on": "loop",
+  "subjects": [
+   "loop"
+  ]
+ },
+ "github_app_refresh": {
+  "calls": [
+   [
+    "github_app.start_refresh",
+    [],
+    {}
+   ]
+  ],
+  "click": "click",
+  "refused_from": [
+   "agent:rc"
+  ],
+  "result_keys": [
+   "result",
+   "say",
+   "what"
+  ],
+  "runs_on": "loop",
+  "subjects": [
+   "loop"
+  ]
+ },
+ "github_app_remove": {
+  "calls": [
+   [
+    "github_app.start_remove",
+    [],
+    {}
+   ]
+  ],
+  "click": "confirm",
+  "refused_from": [
+   "agent:rc"
+  ],
+  "result_keys": [
+   "result",
+   "say",
+   "what"
+  ],
+  "runs_on": "loop",
+  "subjects": [
+   "loop"
+  ]
+ },
+ "github_connect": {
+  "calls": [
+   [
+    "app.loop",
+    [],
+    {}
+   ]
+  ],
+  "click": "click",
+  "raises": "TypeError",
+  "refused_from": [
+   "agent:rc"
+  ],
+  "runs_on": "loop",
+  "subjects": [
+   "loop"
+  ]
+ },
+ "github_disconnect": {
+  "calls": [
+   [
+    "github_app.store_dir",
+    [],
+    {}
+   ],
+   [
+    "app.loop",
+    [],
+    {}
+   ]
+  ],
+  "click": "confirm",
+  "raises": "TypeError",
+  "refused_from": [
+   "agent:rc"
+  ],
+  "runs_on": "loop",
+  "subjects": [
+   "loop"
+  ]
+ },
+ "keep": {
+  "calls": [
+   [
+    "app.loop_act",
+    [
+     "keep",
+     {
+      "id": "i0001"
+     }
+    ],
+    {}
+   ]
+  ],
+  "click": "click",
+  "refused_from": [],
+  "result_keys": [
+   "result",
+   "say",
+   "what"
+  ],
+  "runs_on": "idea:published",
+  "subjects": [
+   "build",
+   "idea"
+  ]
+ },
+ "later": {
+  "calls": [
+   [
+    "app.loop_act",
+    [
+     "later",
+     {
+      "days": 7,
+      "id": "i0001"
+     }
+    ],
+    {}
+   ]
+  ],
+  "click": "click",
+  "refused_from": [],
+  "result_keys": [
+   "result",
+   "say",
+   "what"
+  ],
+  "runs_on": "idea:new",
+  "subjects": [
+   "idea"
+  ]
+ },
+ "maintain_merge_policy": {
+  "calls": [
+   [
+    "app.maintain_merge_policy",
+    [
+     "o/r",
+     true,
+     []
+    ],
+    {
+     "origin": "ui"
+    }
+   ]
+  ],
+  "click": "confirm",
+  "refused_from": [
+   "agent:rc"
+  ],
+  "result_keys": [
+   "result",
+   "say",
+   "what"
+  ],
+  "runs_on": "new",
+  "subjects": [
+   "new"
+  ]
+ },
+ "maintain_recheck": {
+  "calls": [
+   [
+    "app.maintain_recheck",
+    [
+     "o/r"
+    ],
+    {
+     "origin": "ui"
+    }
+   ]
+  ],
+  "click": "click",
+  "refused_from": [],
+  "result_keys": [
+   "result",
+   "say",
+   "what"
+  ],
+  "runs_on": "new",
+  "subjects": [
+   "new"
+  ]
+ },
+ "make_public": {
+  "calls": [
+   [
+    "app.loop_act",
+    [
+     "approve",
+     {
+      "id": "i0001"
+     }
+    ],
+    {}
+   ],
+   [
+    "app.loop",
+    [],
+    {}
+   ]
+  ],
+  "click": "confirm",
+  "refused_from": [],
+  "result_keys": [
+   "outcome",
+   "result",
+   "say",
+   "url",
+   "what"
+  ],
+  "runs_on": "idea:published",
+  "subjects": [
+   "build",
+   "idea"
+  ]
+ },
+ "pause_maintenance": {
+  "calls": [
+   [
+    "app.maintenance_state",
+    [
+     "p00000001",
+     true
+    ],
+    {
+     "origin": "ui"
+    }
+   ]
+  ],
+  "click": "click",
+  "refused_from": [],
+  "result_keys": [
+   "result",
+   "say",
+   "what"
+  ],
+  "runs_on": "new",
+  "subjects": [
+   "new"
+  ]
+ },
+ "pause_project": {
+  "calls": [
+   [
+    "app.project_state",
+    [
+     "p00000001",
+     "active"
+    ],
+    {
+     "origin": "ui"
+    }
+   ],
+   [
+    "app.loop",
+    [],
+    {}
+   ]
+  ],
+  "click": "click",
+  "raises": "TypeError",
+  "refused_from": [],
+  "runs_on": "new",
+  "subjects": [
+   "new"
+  ]
+ },
+ "pitch_again": {
+  "calls": [
+   [
+    "app.loop_act",
+    [
+     "send",
+     {
+      "id": "i0001"
+     }
+    ],
+    {}
+   ]
+  ],
+  "click": "click",
+  "refused_from": [],
+  "result_keys": [
+   "result",
+   "say",
+   "what"
+  ],
+  "runs_on": "idea:rejected",
+  "subjects": [
+   "idea"
+  ]
+ },
+ "publish": {
+  "calls": [
+   [
+    "app.loop_act",
+    [
+     "publish",
+     {
+      "id": "i0001"
+     }
+    ],
+    {}
+   ],
+   [
+    "app.loop",
+    [],
+    {}
+   ]
+  ],
+  "click": "confirm",
+  "refused_from": [],
+  "result_keys": [
+   "outcome",
+   "result",
+   "say",
+   "url",
+   "what"
+  ],
+  "runs_on": "idea:ready",
+  "subjects": [
+   "build",
+   "idea"
+  ]
+ },
+ "publish_anyway": {
+  "calls": [
+   [
+    "app.loop_act",
+    [
+     "publish-anyway",
+     {
+      "id": "i0001",
+      "reason": "a few words of reason",
+      "yes": true
+     }
+    ],
+    {}
+   ],
+   [
+    "app.loop",
+    [],
+    {}
+   ]
+  ],
+  "click": "confirm",
+  "refused_from": [],
+  "result_keys": [
+   "outcome",
+   "result",
+   "say",
+   "url",
+   "what"
+  ],
+  "runs_on": "rich:held",
+  "subjects": [
+   "build",
+   "idea"
+  ]
+ },
+ "recheck": {
+  "calls": [
+   [
+    "app.loop_act",
+    [
+     "recheck",
+     {
+      "id": "i0001"
+     }
+    ],
+    {}
+   ]
+  ],
+  "click": "click",
+  "refused_from": [],
+  "result_keys": [
+   "result",
+   "say",
+   "what"
+  ],
+  "runs_on": "rich:held",
+  "subjects": [
+   "build",
+   "idea"
+  ]
+ },
+ "redraft_charter": {
+  "calls": [
+   [
+    "app.charter_redraft",
+    [
+     "p00000001"
+    ],
+    {
+     "origin": "ui"
+    }
+   ]
+  ],
+  "click": "click",
+  "refused_from": [],
+  "result_keys": [
+   "result",
+   "say",
+   "what"
+  ],
+  "runs_on": "new",
+  "subjects": [
+   "new"
+  ]
+ },
+ "reject": {
+  "calls": [
+   [
+    "app.loop",
+    [],
+    {}
+   ]
+  ],
+  "click": "click",
+  "raises": "ActionError",
+  "refused_from": [],
+  "runs_on": "idea:published",
+  "subjects": [
+   "build"
+  ]
+ },
+ "restart_revise": {
+  "calls": [
+   [
+    "app.loop_act",
+    [
+     "restart",
+     {
+      "id": "i0001",
+      "mode": "auto",
+      "text": "a few words of instructions"
+     }
+    ],
+    {}
+   ],
+   [
+    "app.loop",
+    [],
+    {}
+   ]
+  ],
+  "click": "confirm",
+  "refused_from": [],
+  "result_keys": [
+   "outcome",
+   "result",
+   "say",
+   "what"
+  ],
+  "runs_on": "rich:building",
+  "subjects": [
+   "build",
+   "idea"
+  ]
+ },
+ "restore_charter": {
+  "calls": [
+   [
+    "app.charter_restore",
+    [
+     "p00000001",
+     1
+    ],
+    {
+     "origin": "ui"
+    }
+   ]
+  ],
+  "click": "click",
+  "refused_from": [],
+  "result_keys": [
+   "result",
+   "say",
+   "what"
+  ],
+  "runs_on": "new",
+  "subjects": [
+   "new"
+  ]
+ },
+ "resume_build": {
+  "calls": [
+   [
+    "app.loop_act",
+    [
+     "resume-build",
+     {
+      "id": "i0001"
+     }
+    ],
+    {}
+   ]
+  ],
+  "click": "click",
+  "refused_from": [],
+  "result_keys": [
+   "outcome",
+   "result",
+   "say",
+   "what"
+  ],
+  "runs_on": "idea:paused",
+  "subjects": [
+   "build",
+   "idea"
+  ]
+ },
+ "retry": {
+  "calls": [
+   [
+    "app.loop_act",
+    [
+     "retry",
+     {
+      "id": "i0001"
+     }
+    ],
+    {}
+   ]
+  ],
+  "click": "click",
+  "refused_from": [],
+  "result_keys": [
+   "note",
+   "result",
+   "say",
+   "what"
+  ],
+  "runs_on": "idea:held",
+  "subjects": [
+   "build",
+   "idea"
+  ]
+ },
+ "revise": {
+  "calls": [
+   [
+    "app.loop_act",
+    [
+     "revise",
+     {
+      "id": "i0001",
+      "mode": "auto",
+      "text": "a few words of instructions"
+     }
+    ],
+    {}
+   ]
+  ],
+  "click": "click",
+  "refused_from": [],
+  "result_keys": [
+   "result",
+   "say",
+   "what"
+  ],
+  "runs_on": "rich:held",
+  "subjects": [
+   "build",
+   "idea"
+  ]
+ },
+ "send_to_build": {
+  "calls": [
+   [
+    "app.loop_act",
+    [
+     "add",
+     {
+      "text": null
+     }
+    ],
+    {}
+   ],
+   [
+    "app.loop_act",
+    [
+     "send",
+     {
+      "id": "job-1"
+     }
+    ],
+    {}
+   ]
+  ],
+  "click": "click",
+  "refused_from": [],
+  "result_keys": [
+   "result",
+   "say",
+   "subject",
+   "what"
+  ],
+  "runs_on": "new",
+  "subjects": [
+   "idea",
+   "new"
+  ]
+ },
+ "stop": {
+  "calls": [
+   [
+    "app.loop",
+    [],
+    {}
+   ]
+  ],
+  "click": "confirm",
+  "raises": "KeyError",
+  "refused_from": [
+   "agent:rc"
+  ],
+  "runs_on": "hand:running",
+  "subjects": [
+   "build"
+  ]
+ },
+ "stop_round": {
+  "calls": [
+   [
+    "app.loop_act",
+    [
+     "stop-round",
+     {
+      "id": "i0001"
+     }
+    ],
+    {}
+   ],
+   [
+    "app.loop",
+    [],
+    {}
+   ],
+   [
+    "app.loop",
+    [],
+    {}
+   ]
+  ],
+  "click": "confirm",
+  "refused_from": [],
+  "result_keys": [
+   "outcome",
+   "result",
+   "say",
+   "undoable",
+   "what"
+  ],
+  "runs_on": "idea:building",
+  "subjects": [
+   "build",
+   "idea"
+  ]
+ },
+ "undo": {
+  "calls": [
+   [
+    "app.loop_act",
+    [
+     "undo",
+     {
+      "id": "i0001"
+     }
+    ],
+    {}
+   ],
+   [
+    "app.loop",
+    [],
+    {}
+   ]
+  ],
+  "click": "click",
+  "refused_from": [],
+  "result_keys": [
+   "outcome",
+   "result",
+   "say",
+   "what"
+  ],
+  "runs_on": "rich:rejected",
+  "subjects": [
+   "build",
+   "idea"
+  ]
+ },
+ "undo_change": {
+  "calls": [
+   [
+    "app.change_undo",
+    [
+     "c00000001"
+    ],
+    {
+     "origin": "ui"
+    }
+   ]
+  ],
+  "click": "click",
+  "refused_from": [],
+  "result_keys": [
+   "result",
+   "say",
+   "what"
+  ],
+  "runs_on": "new",
+  "subjects": [
+   "new"
+  ]
+ }
+}

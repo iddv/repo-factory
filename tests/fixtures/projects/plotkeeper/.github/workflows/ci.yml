@@ -1,0 +1,54 @@
+# ci: install Plotkeeper as the README says and run every suite; scan history for secrets;
+# check that AGENTS.md's commands run as written. GitHub-hosted runners only, on a pinned image
+# so the oldest supported Python stays installable; move it forward on purpose.
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "23 4 * * 1"          # weekly: catches a Python or runner drift
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.12"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Unit tests, as the README says
+        run: ./plotkeeper.sh test
+      - name: Acceptance suite
+        run: |
+          python -m pip install pytest==8.3.3
+          python -m pytest tests/acceptance -q
+
+  agents-md:
+    # AGENTS.md must stay runnable: the first sh fence under "## Setup, run, test" is executed
+    # line by line; every path in "## Architecture in brief" must exist; an open-item test that
+    # passes must have had its mark removed.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - run: python .github/scripts/check_agents_md.py

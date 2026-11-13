@@ -1,0 +1,50 @@
+{
+ "completeness": {
+  "done": 0,
+  "total": 7,
+  "flows": [
+   {
+    "id": "F1",
+    "title": "Install and first run",
+    "status": "unchecked",
+    "scenarios": []
+   },
+   {
+    "id": "F2",
+    "title": "Set up an agent profile",
+    "status": "unchecked",
+    "scenarios": []
+   },
+   {
+    "id": "F3",
+    "title": "Define a scenario",
+    "status": "unchecked",
+    "scenarios": []
+   },
+   {
+    "id": "F4",
+    "title": "Run a trial",
+    "status": "unchecked",
+    "scenarios": []
+   },
+   {
+    "id": "F5",
+    "title": "Abort, clean up and delete runs",
+    "status": "unchecked",
+    "scenarios": []
+   },
+   {
+    "id": "F6",
+    "title": "Read a run's verdict and evidence",
+    "status": "unchecked",
+    "scenarios": []
+   },
+   {
+    "id": "F7",
+    "title": "Summarize and export",
+    "status": "unchecked",
+    "scenarios": []
+   }
+  ]
+ }
+}

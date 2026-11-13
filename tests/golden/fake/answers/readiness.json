@@ -1,0 +1,107 @@
+{
+ "service": false,
+ "install": {
+  "commands": [
+   "pip install ."
+  ],
+  "result": "worked"
+ },
+ "checks": [
+  {
+   "id": "install",
+   "status": "green",
+   "why": "checked by running the command",
+   "evidence": "ran it",
+   "next": "",
+   "fixable": false
+  },
+  {
+   "id": "bind_localhost",
+   "status": "n/a",
+   "why": "checked by running the command",
+   "evidence": "ran it",
+   "next": "",
+   "fixable": false
+  },
+  {
+   "id": "empty_start",
+   "status": "n/a",
+   "why": "checked by running the command",
+   "evidence": "ran it",
+   "next": "",
+   "fixable": false
+  },
+  {
+   "id": "first_admin",
+   "status": "n/a",
+   "why": "checked by running the command",
+   "evidence": "ran it",
+   "next": "",
+   "fixable": false
+  },
+  {
+   "id": "config",
+   "status": "green",
+   "why": "checked by running the command",
+   "evidence": "ran it",
+   "next": "",
+   "fixable": false
+  },
+  {
+   "id": "data_location",
+   "status": "n/a",
+   "why": "checked by running the command",
+   "evidence": "ran it",
+   "next": "",
+   "fixable": false
+  },
+  {
+   "id": "backup_restore",
+   "status": "n/a",
+   "why": "checked by running the command",
+   "evidence": "ran it",
+   "next": "",
+   "fixable": false
+  },
+  {
+   "id": "restart",
+   "status": "n/a",
+   "why": "checked by running the command",
+   "evidence": "ran it",
+   "next": "",
+   "fixable": false
+  },
+  {
+   "id": "shutdown",
+   "status": "n/a",
+   "why": "checked by running the command",
+   "evidence": "ran it",
+   "next": "",
+   "fixable": false
+  },
+  {
+   "id": "health",
+   "status": "n/a",
+   "why": "checked by running the command",
+   "evidence": "ran it",
+   "next": "",
+   "fixable": false
+  },
+  {
+   "id": "logs",
+   "status": "n/a",
+   "why": "checked by running the command",
+   "evidence": "ran it",
+   "next": "",
+   "fixable": false
+  },
+  {
+   "id": "upgrade",
+   "status": "n/a",
+   "why": "checked by running the command",
+   "evidence": "ran it",
+   "next": "",
+   "fixable": false
+  }
+ ]
+}

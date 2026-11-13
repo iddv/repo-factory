@@ -1,0 +1,64 @@
+{
+ "completeness": {
+  "done": 6,
+  "total": 7,
+  "flows": [
+   {
+    "id": "F1",
+    "title": "Install and first run",
+    "status": "works",
+    "scenarios": [
+     "e28"
+    ]
+   },
+   {
+    "id": "F2",
+    "title": "Maintain project overview and current state",
+    "status": "works",
+    "scenarios": [
+     "e29"
+    ]
+   },
+   {
+    "id": "F3",
+    "title": "Record and manage decisions",
+    "status": "works",
+    "scenarios": [
+     "e30"
+    ]
+   },
+   {
+    "id": "F4",
+    "title": "Refresh the structure map",
+    "status": "works",
+    "scenarios": [
+     "e31"
+    ]
+   },
+   {
+    "id": "F5",
+    "title": "Detect drift",
+    "status": "environment",
+    "scenarios": [
+     "e32"
+    ]
+   },
+   {
+    "id": "F6",
+    "title": "Feed the memory to assistants",
+    "status": "works",
+    "scenarios": [
+     "e33"
+    ]
+   },
+   {
+    "id": "F7",
+    "title": "Report and export",
+    "status": "works",
+    "scenarios": [
+     "e34"
+    ]
+   }
+  ]
+ }
+}

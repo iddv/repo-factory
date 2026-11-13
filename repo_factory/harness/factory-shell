@@ -1,0 +1,67 @@
+#!/bin/sh
+# repo-factory's shell prefix (CLAUDE_CODE_SHELL_PREFIX, harness/shell.py): Claude Code runs every tool
+# command, and every MCP server it starts, as `factory-shell '<command line>'`. The command never
+# gets a Claude login: repo-factory hands claude its token through a pipe, and the variables that could
+# carry one are dropped here as well. Inside bubblewrap the command also runs in a nested user,
+# pid and mount namespace with its own /proc, so it sees no other process of the session: not
+# claude, its environment or its memory, nor repo-factory's MCP server or the network bridge.
+#
+# REPO_FACTORY_SHELL picks the namespace:
+#   command  (default; Open in Claude Code) a new namespace per command, killed with it;
+#   session  (builds) one namespace per sandbox, which every command joins, so a server a
+#            command starts in the background is still there for the next one;
+#   plain    (no bubblewrap on this machine) none: the environment is scrubbed, nothing more.
+# REPO_FACTORY_SHELL_ENV picks the environment:
+#   strict   (default) only the variables listed below;
+#   keep     every variable but the login's (a build's capabilities give their MCP servers
+#            variables of their own, which a list here could not know).
+[ $# -eq 1 ] || { echo "factory-shell: expected one command line" >&2; exit 2; }
+unset CLAUDE_CODE_OAUTH_TOKEN ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN \
+  CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR CLAUDE_CODE_API_KEY_FILE_DESCRIPTOR \
+  CLAUDE_CODE_GATEWAY_TOKEN_FILE_DESCRIPTOR CLAUDE_CODE_WEBSOCKET_AUTH_FILE_DESCRIPTOR \
+  XAI_API_KEY EXA_API_KEY BRAVE_API_KEY TAVILY_API_KEY
+line=$1
+set -- /bin/bash -c "$line"
+case "${REPO_FACTORY_SHELL:-command}" in
+  plain)
+    ;;
+  session)
+    # the namespace's first process (a sleep) holds it; its pid is kept in the sandbox's own
+    # /tmp, and a lock makes concurrent commands start only one
+    d="${TMPDIR:-/tmp}/.factory-shell"
+    mkdir -p -m 700 "$d" || exit 2
+    exec 9>"$d/lock"
+    flock 9
+    pid=$(cat "$d/pid" 2>/dev/null)
+    if [ -z "$pid" ] || ! kill -0 "$pid" 2>/dev/null; then
+      setsid unshare --user --map-current-user --pid --fork --mount --mount-proc --kill-child \
+        -- sleep infinity </dev/null >/dev/null 2>&1 9>&- &
+      up=$!
+      pid=""
+      for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
+        pid=$(cut -d' ' -f1 "/proc/$up/task/$up/children" 2>/dev/null)
+        [ -n "$pid" ] && break
+        sleep 0.1
+      done
+      [ -n "$pid" ] || { echo "factory-shell: the session's namespace did not start" >&2; exit 2; }
+      echo "$pid" > "$d/pid"
+    fi
+    exec 9>&-
+    set -- nsenter --target "$pid" --user --pid --mount --preserve-credentials --wd="$PWD" \
+      -- "$@" ;;
+  *)
+    set -- unshare --user --map-current-user --pid --fork --mount --mount-proc --kill-child \
+      -- "$@" ;;
+esac
+if [ "${REPO_FACTORY_SHELL_ENV:-strict}" = keep ]; then
+  exec "$@"
+fi
+exec env -i PATH="$PATH" HOME="$HOME" SHELL=/bin/bash TERM="${TERM:-xterm-256color}" \
+  LANG="${LANG:-C.UTF-8}" TMPDIR="${TMPDIR:-/tmp}" USER="${USER:-user}" LOGNAME="${LOGNAME:-user}" \
+  ${LC_ALL:+LC_ALL=$LC_ALL} ${TZ:+TZ=$TZ} ${COLORTERM:+COLORTERM=$COLORTERM} \
+  ${HTTPS_PROXY:+HTTPS_PROXY=$HTTPS_PROXY} ${HTTP_PROXY:+HTTP_PROXY=$HTTP_PROXY} \
+  ${https_proxy:+https_proxy=$https_proxy} ${http_proxy:+http_proxy=$http_proxy} \
+  ${NO_PROXY:+NO_PROXY=$NO_PROXY} ${no_proxy:+no_proxy=$no_proxy} \
+  ${UV_CACHE_DIR:+UV_CACHE_DIR=$UV_CACHE_DIR} ${UV_LINK_MODE:+UV_LINK_MODE=$UV_LINK_MODE} \
+  ${PYTHONPATH:+PYTHONPATH=$PYTHONPATH} GIT_EDITOR=true CLAUDECODE=1 \
+  "$@"

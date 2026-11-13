@@ -1,0 +1,97 @@
+```json
+{
+  "name": "Receipts",
+  "pitch": "A command-line tool that independently records what a coding agent actually ran and changed during a session, then flags where the agent's own end-of-task summary doesn't match.",
+  "spirit": "Receipts is the record the agent does not write. Its core value is an independent, tamper-evident account of what ran and what changed, set beside what the agent says it did. It checks the agent's report and does not replace the developer's judgement: it flags discrepancies and the developer decides. It stays small, local and predictable, and it states its own blind spots in every report.",
+  "users": [
+    {
+      "who": "Operator: a developer running Claude Code, Codex CLI, Aider, Gemini CLI or another shell-based agent on their own repositories",
+      "needs": "A trustworthy record and a short, clear list of discrepancies, instead of trusting the agent's report."
+    },
+    {
+      "who": "Reviewer: a teammate or CI job receiving an exported report or bundle",
+      "needs": "To read the report or run `receipts verify` on a bundle, with no account and nothing beyond Receipts itself."
+    }
+  ],
+  "promises": [
+    "Records shell commands run through a captured shell, with exit codes, and files created, changed or deleted in the workspace.",
+    "Flags claims the record does not support, and things the agent did but did not mention.",
+    "The session log is append-only and hash-chained; nothing is edited in place, and `receipts verify` reports the first broken event.",
+    "Runs no network services and makes no network calls.",
+    "The agent keeps the real interactive terminal; measured overhead is about 25 ms per command.",
+    "Every report states what capture cannot see.",
+    "Flag IDs stay the same when a report is recomputed.",
+    "Crashed or interrupted sessions keep everything captured up to that point."
+  ],
+  "scope": [
+    "One-command install, `init`, `demo`, and a documented config file",
+    "`receipts run`: shell capture through `SHELL` and PATH shims, with before/after workspace snapshots and text diffs",
+    "Test-run detection and result parsing for the supported runners; other test commands are judged by exit code",
+    "Optional independent re-run of the test command (`verify.rerun_tests`)",
+    "Summary import from Claude Code, Codex CLI, Aider and captured stdout, with file and paste fallback",
+    "Rule-based claim extraction and reconciliation into severity-ranked flags with evidence",
+    "Report with CI-friendly exit codes (0, 1, 2)",
+    "Flag ack/unack with required notes, and session close",
+    "Session list, filters, inspection and confirmed delete",
+    "Hash-chained log, `verify`, and Markdown, JSON, HTML and bundle exports"
+  ],
+  "non_goals": [
+    "LLM-based claim extraction: rule-based is predictable and testable",
+    "Capturing commands spawned without a shell (ptrace, eBPF): heavy and platform-specific",
+    "A local web viewer: CLI and HTML export cover review",
+    "Posting to GitHub PRs or CI integrations: Markdown export and exit codes suffice",
+    "Native Windows support: v1 targets Linux and macOS",
+    "Team or shared stores, and key signing: single local operator",
+    "Automatic retention and pruning: manual delete is enough",
+    "Protection from the agent's OS user: only tamper-evidence, so use a separate user",
+    "Accounts, logins or roles: access is the local OS account",
+    "Judging whether the agent's work is correct: it only compares record and claims"
+  ],
+  "open_directions": [
+    {
+      "direction": "More summary sources for other agents",
+      "why_in_spirit": "Widens where the agent's own words are found without changing how they are checked."
+    },
+    {
+      "direction": "More test runners, build tools and skip markers",
+      "why_in_spirit": "Better evidence from the record, still rule-based."
+    },
+    {
+      "direction": "More claim patterns and fewer false flags",
+      "why_in_spirit": "Improves trust in the comparison while staying predictable and testable."
+    },
+    {
+      "direction": "Better coverage of commands outside the captured shell, if a lightweight method exists",
+      "why_in_spirit": "Narrows a stated limit; the report must keep saying what remains uncaptured."
+    },
+    {
+      "direction": "Safer exports and bundles, such as 0600 permissions and clean errors on hostile input",
+      "why_in_spirit": "Closes the known issues S3 and S4 and protects the record's integrity."
+    },
+    {
+      "direction": "Additional export formats or index fields",
+      "why_in_spirit": "Helps reviewers read the same record; the record itself is unchanged."
+    }
+  ],
+  "constraints": [
+    "Python 3.11+, standard library only; do not add a dependency to fix a bug",
+    "Linux and macOS only",
+    "No network services and no network calls",
+    "Event log is append-only and hash-chained; migrations never rewrite hashed event content",
+    "Reports are always recomputed from events",
+    "Store lives outside the workspace with mode 0700",
+    "Operator settings are config keys with environment overrides, documented in the README and tested for each value; never hard-code one side of a business rule",
+    "Capture stays shell-based and every report states its limits",
+    "Flag IDs derive from kind and subject",
+    "Exit codes: 0 success, 1 flags met threshold or verification failed, 2 usage or input error",
+    "Each behaviour has one acceptance test file; the README quick start must keep working as written"
+  ],
+  "scope_tests": [
+    "Does it help record what the agent really did, or compare that record with what the agent said?",
+    "Does it keep the record independent and tamper-evident, with no way to edit events in place?",
+    "Can it be done locally, with the standard library and no network calls?",
+    "Does it keep the report honest about what was not captured, and keep results predictable?",
+    "Is it for the developer at the terminal or their reviewer, rather than adding teams, accounts or judgement of code quality?"
+  ]
+}
+```

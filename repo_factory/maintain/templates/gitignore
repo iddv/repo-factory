@@ -1,0 +1,10 @@
+# Local data, backups and caches never belong in the repository (AGENTS.md › Maintenance protocol).
+/data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/

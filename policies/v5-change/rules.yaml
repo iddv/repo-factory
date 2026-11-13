@@ -1,0 +1,28 @@
+# v5-change: a revise round of a held or ready v5 build (AR-PLAN.md §2), run by
+# repo_factory/v5/change.py as round r<N+1> of kind revise. The owner (Ask for changes) or the
+# loop's own docs repair (an honesty or jargon hold) asks for the changes in plain words.
+#
+# Scope, claims, oracle and the readiness review are carried from the round it
+# revises: they do not run again.
+# build: the baseline (the whole suite on a clone of the delivered branch, sandboxed, network
+#   off; no model), then one session with the owner's request and the hold reasons. Code mode
+#   with a tests hold and nothing failing now skips the session.
+# verify: no model. Nothing under tests/acceptance/, .github/, LICENSE or NOTICE; docs mode
+#   changes Markdown only (then the jargon scan of what changed); code mode runs the suite
+#   again (nothing that passed may fail; a tests hold needs the own suite green).
+# repair + reverify: one resumed session with the findings, then verify again; still failing:
+#   the round ends error and the delivered branch is as it was.
+# deliver: v5's own delivery on the changed tree (the delivered suite, the readiness scorecard,
+#   SECURITY.md, READINESS.md, the README's commands as written), as a new commit on repo-factory/<id>.
+#
+# No dollar cap (the owner's rule): max_usd null. max_turns and timeout_s stop a runaway.
+# model null: the Claude Code default; the loop's revise.models.{build,repair} overrides.
+pipeline: v5-change
+version: "1.0"
+stages: [build, verify, repair, reverify, deliver]
+max_usd: null
+
+build: {max_usd: null, max_turns: 80, timeout_s: 1800, model: null}
+docs: {max_usd: null, max_turns: 30, timeout_s: 900, model: null}
+repair: {max_usd: null, max_turns: 40, timeout_s: 1800, model: null}
+verify: {timeout_s: 1200}

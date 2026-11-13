@@ -1,0 +1,11 @@
+{"verdict": "accept",
+ "product": "wordtally",
+ "product_type": "cli",
+ "one_liner": "A command-line tool that counts the words in text files.",
+ "who": "Writers and students who need word counts for drafts kept as plain text files.",
+ "why_now": "No evidence given; a small, common need.",
+ "buildability": 0.95,
+ "buildability_reasons": ["one small command", "standard library only", "easy to test"],
+ "risks": ["what counts as a word"],
+ "brief": "People who write in plain text files keep checking how long their drafts are. Build a command-line tool they can install and point at one or more files to get each file's word count and a total.",
+ "claims": []}

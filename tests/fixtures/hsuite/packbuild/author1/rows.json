@@ -1,0 +1,6 @@
+[
+ {"row": "s_counts/two_words", "situation": "a text of two words", "action": "count words", "expect": "2 #req", "quote": "returns the number of words in a string"},
+ {"row": "s_counts/double_space_is_two_words", "situation": "two words separated by two spaces", "action": "count words", "expect": "2 #req", "quote": "returns the number of words"},
+ {"row": "s_counts/empty_is_zero", "situation": "an empty text", "action": "count words", "expect": "0, accepted #req", "quote": "returns the number of words"},
+ {"row": "s_counts/broken_mechanics_row", "situation": "-", "action": "-", "expect": "never reported #req", "quote": ""}
+]

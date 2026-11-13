@@ -1,0 +1,16 @@
+{
+ "security": {
+  "ran": false,
+  "findings": []
+ },
+ "final": {
+  "items": [
+   {
+    "id": "tests_green",
+    "status": "green",
+    "title": "The documented test commands run green, as written",
+    "why": "10 own test(s) pass; the acceptance suite is green (0 pass, 0 known open item(s) marked); the README's test commands run green as written"
+   }
+  ]
+ }
+}

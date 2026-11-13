@@ -1,0 +1,103 @@
+# Trimmed copy for repo_factory's tests (tests/fixtures/projects): function bodies are removed;
+# the module docstring, names, signatures, docstrings and constants are kept.
+"""receipts command-line interface."""
+import sys
+
+
+class Fail(Exception):
+
+    def __init__(self, msg, code=2):
+        ...
+
+def out(s=''):
+    ...
+
+def err(s):
+    ...
+
+def _cfg():
+    ...
+
+def _date(s, tz='utc'):
+    """Start of day ``s`` (YYYY-MM-DD) as epoch seconds, at UTC or local midnight."""
+    ...
+
+def _sid(s):
+    ...
+
+def _tty():
+    ...
+
+def cmd_init(a):
+    ...
+
+def cmd_demo(a):
+    ...
+
+def cmd_config(a):
+    ...
+
+def _print_counts(m):
+    ...
+
+def cmd_run(a):
+    ...
+
+def _summary_flow(sid, cfg, path, replace, yes, after_run=False):
+    ...
+
+def cmd_summary(a):
+    ...
+
+def _report(sid, cfg):
+    ...
+
+def _exit_for(flags, cfg):
+    ...
+
+def cmd_report(a):
+    ...
+
+def _op(fn):
+    ...
+
+def cmd_ack(a):
+    ...
+
+def cmd_unack(a):
+    ...
+
+def cmd_close(a):
+    ...
+
+def _rows(cfg, a):
+    ...
+
+def cmd_list(a):
+    ...
+
+def cmd_show(a):
+    ...
+
+def cmd_delete(a):
+    ...
+
+def _write(path, data, force):
+    ...
+
+def cmd_export(a):
+    ...
+
+def _verify_events(label, events):
+    ...
+
+def cmd_verify(a):
+    ...
+
+def parser():
+    ...
+
+def main(argv=None):
+    ...
+if __name__ == '__main__':
+    sys.exit(main())

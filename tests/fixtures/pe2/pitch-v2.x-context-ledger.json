@@ -1,0 +1,108 @@
+{
+ "verdict": "accept",
+ "product": "Context Ledger",
+ "product_type": "cli",
+ "one_liner": "A command-line tool that reads one coding-agent transcript and prints how many context tokens each step added, what each rewrite cost in reprocessed tokens, and where the context folded.",
+ "who": "A developer running a coding agent on an 8B local model whose sessions fold mid-task and who cannot tell which step filled the context.",
+ "moment": "The session folds mid-task and they cannot tell whether a tool output or a rewrite filled the context window.",
+ "why_now": "Small-model coding harnesses like Reika now publish measured context costs (8,453 tokens reprocessed in one rewrite versus 25 for an append), and a practitioner on r/LocalLLaMA asked this month for a tool that shows which harness step burns the context. That is one asker plus adjacent activity, not broad demand.",
+ "existing": [
+  {
+   "name": "Claude Code /context command",
+   "does": "Shows the current context window broken down by category for a live Claude Code session",
+   "lacks": "No per-step history from a saved transcript, no fold points, no rewrite-versus-append cost, and nothing for local-model harnesses"
+  },
+  {
+   "name": "ccusage",
+   "does": "Reads Claude Code transcripts and reports token usage and cost by day and session",
+   "lacks": "Aggregates for billing rather than attributing context growth to individual steps or locating fold points, and only covers Claude Code"
+  },
+  {
+   "name": "Langfuse / LangSmith tracing",
+   "does": "Record LLM calls with token counts per span when the harness is instrumented",
+   "lacks": "Need instrumentation and a running server, do not read an existing transcript after the fact, and do not compute reprocessed tokens for a rewrite"
+  },
+  {
+   "name": "Reika",
+   "does": "Publishes measured findings on context management costs for small local models",
+   "lacks": "Findings, not a per-step report a user can run on their own sessions"
+  }
+ ],
+ "buildability": 0.8,
+ "insight": 0.5,
+ "differentiation": 0.45,
+ "grounding_score": 0.6,
+ "score_reasons": {
+  "buildability": "Parsing a JSONL transcript, tokenizing each step and printing a table is small. The open questions are how to define a fold point per format and whether the Reika transcript format is available.",
+  "insight": "Treating a context budget like a memory profile is a sensible connection the evidence supports, and the rewrite-versus-append reprocessing cost from E1 gives it a concrete metric. A practitioner would arrive at it fairly quickly, though.",
+  "differentiation": "Claude Code's /context and ccusage already cover the Claude Code side in part. The real gap is per-step attribution with fold points and rewrite cost for local-model harnesses.",
+  "grounding": "The person, the moment and the rewrite-versus-append numbers trace to E1 and E3. Demand rests on a single asker, and the Reika transcript format and the fold-detection mechanism are not in the evidence."
+ },
+ "buildability_reasons": [
+  "One input file, one printed report; no server or external API needed",
+  "Claude Code JSONL transcripts carry per-message structure and usage fields to work from",
+  "Local-model token counts need the model's tokenizer; offering an optional tokenizer with an approximate fallback keeps v1 installable in one command",
+  "The Reika format may not be documented, so v1 may need a simple generic messages format alongside Claude Code"
+ ],
+ "risks": [
+  "Transcript formats differ per harness, and the Reika format may be unavailable to the builder",
+  "Token counts for local models need the right tokenizer; approximate counts may mislead on small budgets",
+  "Fold points are not always marked explicitly and may have to be inferred from context shrinking between steps",
+  "Vendors may add the report themselves (Claude Code already has /context)",
+  "Demand is one asker; the tool may be a one-off curiosity rather than something people rerun"
+ ],
+ "brief": "People running a coding agent on a small local model watch their session fold mid-task and can't tell whether a tool output or a rewrite filled the context. Build something they can point at one Claude Code or Reika transcript that prints how many tokens each step added, marks where the context folded, and shows what each rewrite cost in reprocessed tokens next to what an append would have cost, so the biggest consumer is obvious at a glance.",
+ "grounding": [
+  "A user running a coding agent on an 8B model asks whether any tool shows which step of the harness burns the context window: their sessions fold mid-task and they cannot tell whether a tool output or a rewrite filled it.",
+  "Reika publishes measured findings including 8,453 tokens reprocessed in one rewrite versus 25 for an append.",
+  "Reika is a coding agent CLI designed to work effectively with small local models (8B–35B parameters at Q2–Q4 quantization).",
+  "Speck implements memory, planning and evidence tracking as deterministic runtime mechanisms for 1B-7B local models.",
+  "Smallest useful v1: a script that reads one Claude Code or Reika transcript and prints tokens per step and the fold points.",
+  "Cheapest test: run it on ten of the asker's transcripts; it is real if the top consumer it names lets them cut context use by a third on the next ten.",
+  "Risks: transcript formats differ per harness; vendors may add the report; token counts for local models need the tokenizer."
+ ],
+ "cheapest_test": "Run it on ten of the asker's transcripts; it passes if the top consumer it names lets them cut context use by a third on the next ten.",
+ "evidence_used": [
+  "E3"
+ ],
+ "claims": [
+  {
+   "claim": "which step added how many tokens",
+   "interpreted": "Token counts per step using the named model's tokenizer when one is supplied, otherwise an approximate count that is labelled as approximate",
+   "setting": {
+    "key": "tokens.tokenizer",
+    "default": "approximate",
+    "means": "Which tokenizer is used to count tokens per step; 'approximate' uses a built-in estimate"
+   },
+   "keep_spirit_note": null,
+   "keeps_spirit": true,
+   "why": "The user needs to know which step is the biggest consumer; ranking survives approximation, and exact counts are available when they name the tokenizer."
+  },
+  {
+   "claim": "the fold points",
+   "interpreted": "Points where the transcript records a compaction or summary, or where the context size drops between consecutive steps by more than a set share",
+   "setting": {
+    "key": "fold.min_drop_percent",
+    "default": "30",
+    "means": "How large a drop in context size between steps is reported as a fold when the transcript does not mark one"
+   },
+   "keeps_spirit": true,
+   "why": "Explicit markers catch most folds and the drop rule catches the rest, which is enough to show the user where the session folded."
+  },
+  {
+   "claim": "what a rewrite cost",
+   "interpreted": "Tokens from the first changed position to the end of the context, reported as reprocessed tokens, compared with the tokens an append of the new content would have added",
+   "setting": null,
+   "keeps_spirit": true,
+   "why": "This is the same rewrite-versus-append measure Reika publishes, made available for the user's own sessions."
+  },
+  {
+   "claim": "reads one Claude Code or Reika transcript",
+   "interpreted": "Reads Claude Code JSONL transcripts and a documented generic messages format; Reika is supported if its transcript format can be obtained, otherwise through export to the generic format",
+   "setting": null,
+   "keeps_spirit": true,
+   "why": "The local-model user still gets the ledger even if one named harness format is not available at build time."
+  }
+ ],
+ "reject_reason": ""
+}

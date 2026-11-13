@@ -1,0 +1,138 @@
+```json
+{
+  "ideas": [
+    {
+      "rank": 1,
+      "title": "Handle RecursionError in verify on hostile bundle files",
+      "kind": "maintenance",
+      "class": "patch",
+      "scope_test": "Fixes a documented security finding (S3) without new behaviour, and it is named in the charter's open direction on clean errors for hostile input.",
+      "what": "In the bundle-loading path of `verify` (cli.py:483-488), also catch RecursionError (and treat any JSON decode failure the same way). Print '<file> is not a Receipts bundle' and exit 2 with no traceback. Remove the xfail mark from the existing acceptance test.",
+      "why_now": "S3 is a known open item with a ready, marked-xfail test and a one-line fix. A reviewer runs `verify` on files they received, so hostile input is the realistic case.",
+      "evidence": ["repo:SECURITY.md › S3", "repo:tests/acceptance/README.md › Known open items", "repo:SCOPE.md › F7 When it goes wrong"],
+      "duplicate_of": "SECURITY.md S3",
+      "effort": "S",
+      "confidence": 0.95,
+      "test": "tests/acceptance/test_receipts_verify_hostile_bundle_file_10_000_deep_nested_json.py: with the xfail mark removed it passes (exit 2, 'not a Receipts bundle', no 'Traceback' in stderr).",
+      "risk": "Catching too broadly could hide real bugs, so catch only the decode-related exceptions."
+    },
+    {
+      "rank": 2,
+      "title": "Write exports and bundles with mode 0600",
+      "kind": "maintenance",
+      "class": "patch",
+      "scope_test": "Closes known issue S4 and matches the store's existing 0600 events.jsonl, so no promise changes.",
+      "what": "Create export and bundle output files with `os.open(..., 0o600)` (or chmod after writing), for md, json, html and bundle. Exports can contain command output tails and diffs, so they should not be world-readable. Add a README line saying exports are owner-only and the operator can loosen the mode when sharing.",
+      "why_now": "S4 is open at the last release, and exports leave the 0700 store where the umask-default 0664 exposes them.",
+      "evidence": ["repo:SECURITY.md › S4", "repo:README › Data, integrity and backup"],
+      "duplicate_of": "SECURITY.md S4",
+      "effort": "S",
+      "confidence": 0.9,
+      "test": "Acceptance test: run `receipts export last --bundle --out b.json` and `--format md` under umask 022, then assert stat mode is 0600 for each. With --force over an existing file, the mode is still 0600.",
+      "risk": "A CI job or reviewer who expects group-readable output may need a chmod, so document it."
+    },
+    {
+      "rank": 3,
+      "title": "Make Codex session parsing tolerant of renamed event types",
+      "kind": "maintenance",
+      "class": "patch",
+      "scope_test": "Fixes drift between the importer and the upstream Codex format, with no new behaviour or promise change.",
+      "what": "In sources.py, accept both `type` and legacy `item_type`, and both `agent_message` and `assistant_message`, when reading Codex rollout files. Also read `command_execution` items (`command`, `exit_code`) as tool calls. Add fixtures for both formats.",
+      "why_now": "The upstream Codex format renamed these fields in early 2026, and a silent mismatch would mean no summary is found and no tool calls are compared. That produces misleading flags such as a 'no summary attached' high flag.",
+      "evidence": ["world:Codex CLI session files rename item_type to type, assistant_message to agent_message", "repo:README › Where summaries come from", "repo:receipts/sources.py"],
+      "duplicate_of": null,
+      "effort": "S",
+      "confidence": 0.6,
+      "test": "Unit test in tests/test_units.py: feed one old-format and one new-format rollout JSONL and assert the same summary text and the same tool-call list are extracted.",
+      "risk": "I could not see sources.py, so the importer may already handle both formats and the change would then be a no-op."
+    },
+    {
+      "rank": 4,
+      "title": "Harden Claude Code transcript import against unknown entry types",
+      "kind": "maintenance",
+      "class": "patch",
+      "scope_test": "Keeps an existing import working as the upstream format evolves, so no new behaviour.",
+      "what": "Make the transcript reader skip unknown or malformed entry types and sidechain (subagent) entries instead of failing. Match tool_use blocks to results by id, and read only top-level assistant text for the summary. Add a fixture with sidechain and unknown-type lines.",
+      "why_now": "Upstream states the exact type values evolve with Claude Code versions, which is now at 2.1.29x, and the summary and tool calls both depend on this file.",
+      "evidence": ["world:Claude Code transcripts: exact type values evolve; sidechain entries exist", "repo:README › Where summaries come from"],
+      "duplicate_of": null,
+      "effort": "S",
+      "confidence": 0.55,
+      "test": "Unit test: a transcript with an unknown type, a truncated last line and a sidechain entry still yields the correct final summary and Bash calls, with no exception.",
+      "risk": "Skipping sidechain entries could hide subagent tool calls and so cause 'recorded commands absent from transcript' low flags."
+    },
+    {
+      "rank": 5,
+      "title": "Upgrade pinned pytest from 8.3.3 to 9.x",
+      "kind": "maintenance",
+      "class": "patch",
+      "scope_test": "A test-tooling upkeep item that touches no product behaviour.",
+      "what": "Bump the pytest pin in ci.yml and AGENTS.md to a 9.0.x release, and fix any failures from removed 8.x deprecations in tests/acceptance. Do not change workflow files in a fix PR beyond this pin, per AGENTS.md; the owner may need to apply the ci.yml edit.",
+      "why_now": "pytest 9.0 removed the deprecations that 8.x warned about, and the repo still pins 8.3.3 in both CI and the docs. The pin is exact, so Dependabot's pip config will not catch it in ci.yml.",
+      "evidence": ["world:pytest 9.0 released November 2025, 9.0.2 April 2026", "repo:.github/workflows/ci.yml", "repo:AGENTS.md › Tests"],
+      "duplicate_of": null,
+      "effort": "S",
+      "confidence": 0.7,
+      "test": "CI: `python -m pytest tests/acceptance -q` passes on Python 3.11 and 3.12 with pytest 9.x, and xfail marks still behave as before.",
+      "risk": "81 acceptance files may trip a removed deprecation, which could take longer to fix than a version bump."
+    },
+    {
+      "rank": 6,
+      "title": "Fix README typo and stale text about the witness note",
+      "kind": "maintenance",
+      "class": "patch",
+      "scope_test": "Documentation drift only; no behaviour changes.",
+      "what": "Fix the doubled period ('the process..') and the awkward 'receipts run process's memory' wording in the Witness bullet. Also correct the README, which is out of order (the At a glance block splits the opening sentence from its two flag kinds). Troubleshooting also points to a 'Known limitations' section that exists, so check the other cross-references still resolve. Add a CHANGELOG line.",
+      "why_now": "The README is the first thing the Operator and Reviewer read, and the quick start must work as written. The broken opening paragraph makes the product pitch hard to follow.",
+      "evidence": ["repo:README › top of file", "repo:README › Data, integrity and backup › Witness"],
+      "duplicate_of": null,
+      "effort": "S",
+      "confidence": 0.8,
+      "test": "A docs test (or existing acceptance check) that README quick-start commands still run; reviewer reads the diff.",
+      "risk": "Minimal; the only risk is accidentally changing a documented promise's wording."
+    },
+    {
+      "rank": 7,
+      "title": "Flag skipped or xfail tests that the summary omits",
+      "kind": "feature",
+      "class": "minor",
+      "scope_test": "More skip markers and evidence from the record is a listed open direction, stays rule-based and compares record to claims.",
+      "what": "The record already stores skipped and xfail counts when a runner reports them. Add a medium flag when the final test run reports skips (or a skip count rose against the pre-session baseline) and the summary claims 'all tests pass' without mentioning skips. The flag ID derives from kind and subject like the others. Add it to the README flag table and the claim extractor's docs.",
+      "why_now": "Observations describe agents that finish with polished answers while silently skipping work, and tools such as fakegreen target exactly the fake-green case. Receipts already holds the data and only needs the comparison.",
+      "evidence": ["obs:5726", "obs:440", "repo:SCOPE.md › Test run: skipped or xfail counts are recorded", "repo:README › Claims and flags"],
+      "duplicate_of": null,
+      "effort": "M",
+      "confidence": 0.5,
+      "test": "Acceptance test: a fake agent runs pytest with 3 skipped and the summary says 'all tests pass'; the report has the new flag with a stable ID, and no flag when the summary mentions the skips.",
+      "risk": "Legitimate skips (platform conditions) could raise false flags, so it must stay medium and be ackable."
+    }
+  ],
+  "considered_and_dropped": [
+    {
+      "title": "LLM-based claim extraction or summary judging",
+      "why": "Explicit non-goal; rule-based extraction is a charter promise."
+    },
+    {
+      "title": "ptrace/eBPF capture of non-shell commands",
+      "why": "Explicit non-goal, and the open direction only allows a lightweight method, which the sources don't offer."
+    },
+    {
+      "title": "Live observability, guard hooks or a dashboard (Cockpit, CCC)",
+      "why": "Pre-execution blocking and a web viewer are outside the charter; Receipts is a post-hoc record."
+    },
+    {
+      "title": "Posting reports to GitHub PRs or CI integrations",
+      "why": "Non-goal; the Markdown export and exit codes are the stated answer."
+    },
+    {
+      "title": "Public receipt URLs or signed audit chains with agent identity (obs 7068, 4406)",
+      "why": "Needs network services and key signing, which are both non-goals and conflict with the no-network promise."
+    },
+    {
+      "title": "Gemini CLI summary source",
+      "why": "Gemini is covered via captured stdout; no source here describes a Gemini transcript format, so there is no evidence for a dedicated importer."
+    }
+  ],
+  "notes": "There are no open issues, so no customer_ask items exist; the repo's own open items (S3, S4) lead the ranking. I could not see the source files, so ideas 3 and 4 rest on upstream format facts and may already be handled. Ideas 6 and 7 are lower confidence. The observations are mostly general agent-tooling chatter; few bear directly on Receipts. I did not verify Python 3.13 compatibility or the CI matrix beyond what was given."
+}
+```

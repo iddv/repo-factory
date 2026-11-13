@@ -1,0 +1,2 @@
+{"claims": [{"id": "c3", "situation": "a run", "action": "judge it", "expect": "a verdict"}],
+ "ambiguities": [{"id": "a1", "question": "who breaks ties?"}]}

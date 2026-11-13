@@ -1,0 +1,71 @@
+```json
+{
+  "name": "Plotkeeper",
+  "pitch": "A self-hosted web app that lets a small community garden's volunteer coordinators keep the plot register, waiting list and yearly fees in one place instead of spreadsheets.",
+  "spirit": "Plotkeeper replaces the spreadsheet; it does not replace the coordinator. People still contact each other and decide outcomes; the app keeps the record straight. The money ledger is append-only and every total is computed from it, so the books can always be trusted and explained. It stays small, local and easy for a non-technical volunteer to install and run.",
+  "users": [
+    {"who": "Admin: the garden's lead coordinator", "needs": "Manage staff accounts, operator settings, fee amounts and seasons, plus everything a Coordinator does."},
+    {"who": "Coordinator: a volunteer", "needs": "Maintain plots, gardeners, the waiting list, offers, payments and reports, and see who has paid and who owes."}
+  ],
+  "promises": [
+    "Installs with one command, needs only Python 3.9+, and starts empty with no default password.",
+    "Listens on 127.0.0.1 unless the operator configures otherwise.",
+    "Nothing is deleted in the app: assignments and waiting-list entries are closed, and the money ledger is append-only.",
+    "Every balance and total is computed from ledger entries; money is integer cents.",
+    "The waiting list is first-come; positions are calculated, never stored.",
+    "A season charges each assignment once; a double submit saves once.",
+    "The server checks roles and CSRF on every request, and every change is audited.",
+    "All data lives in one folder, with backup and restore commands and automatic pre-migration backups."
+  ],
+  "scope": [
+    "Single-command install, one-time-code first-run Admin setup, demo-data command",
+    "Plot register with sizes, statuses, search, filters and history",
+    "Gardener records with duplicate warning and archive",
+    "Ordered waiting list with size preference and backdated join dates",
+    "Offer workflow: offer to next in line, accept, decline, withdraw, release, Admin direct assign",
+    "Seasons with fees per plot size and automatic charges for new holders",
+    "Payments, voids, refunds and adjustments in an append-only ledger",
+    "Dues overview, dashboard and four CSV exports",
+    "Admin and Coordinator accounts, operator settings and audit log",
+    "Backup, restore, versioned migrations and an automated test suite"
+  ],
+  "non_goals": [
+    "Gardener self-service portal: needs public exposure and identity handling",
+    "Email or SMS offers and reminders: delivery and consent add a lot",
+    "Online card payments or bank-feed import: needs payment-provider integration",
+    "Discount or concession tiers: Admin adjustments cover individual cases",
+    "Shared plots, multiple plots per gardener, transfers: they complicate list rules",
+    "Spreadsheet import wizard: backdated join dates rebuild the list",
+    "Plot map, work-hour tracking, keys and deposits: beyond the register and fees",
+    "Multiple gardens or hosted multi-tenant service: v1 serves one garden",
+    "PDF receipts and invoices: CSV exports are the v1 output",
+    "Deleting records: history must never be lost"
+  ],
+  "open_directions": [
+    {"direction": "Fix the open security findings (file permissions, huge ids, Content-Length handling)", "why_in_spirit": "Keeps a trusted, safe local record."},
+    {"direction": "Graceful shutdown and a /health check that queries the database", "why_in_spirit": "Makes it easier to run reliably for non-technical operators."},
+    {"direction": "More operator settings for binary rules gardens differ on", "why_in_spirit": "Handles garden differences without hard-coding policy."},
+    {"direction": "More CSV exports or report views computed from the ledger", "why_in_spirit": "Helps coordinators see who has paid without new data."},
+    {"direction": "Simpler install and first-run guidance, clearer troubleshooting", "why_in_spirit": "Install ease is a core promise to volunteers."},
+    {"direction": "Spreadsheet import as a plain helper that still creates ordinary entries", "why_in_spirit": "Speeds leaving spreadsheets; the pitch flagged it as expected."}
+  ],
+  "constraints": [
+    "Python standard library only; do not add a dependency to fix a bug",
+    "SQLite, one process, data in one folder",
+    "Append-only ledger; the database refuses updates and deletes of ledger rows",
+    "Money as integer cents; totals computed from ledger rows, never stored",
+    "Listens on 127.0.0.1 by default; no default password or built-in secret",
+    "Binary business rules are operator settings with an environment override, documented and tested per value",
+    "Roles and CSRF checked server-side on every state-changing request; templates escape everything",
+    "Every change is audited, and each behaviour has one acceptance test file",
+    "Fix PRs never change .github/workflows/ and never push to main"
+  ],
+  "scope_tests": [
+    "Does it help a volunteer coordinator keep plots, the waiting list or fees in order for one garden, even if many others would also use it?",
+    "Does it keep the record intact: nothing deleted, ledger append-only, totals computed from entries?",
+    "Does it keep install and running simple, local and standard-library only?",
+    "Does it leave the coordinator making the decisions, or does it start contacting, paying or deciding for them?",
+    "If gardens differ on the rule, can it be an operator setting rather than a hard-coded choice?"
+  ]
+}
+```

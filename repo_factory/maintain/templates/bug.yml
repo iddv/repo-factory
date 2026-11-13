@@ -1,0 +1,44 @@
+name: Bug
+description: Something in {{product}} does not work as the README or SCOPE.md says
+labels: [triage, bug]
+body:
+  - type: markdown
+    attributes:
+      value: Remove passwords, personal data and private paths from everything you paste. Security problems go to the Security tab, not here.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: The steps, starting from a fresh install or the demo data if you can.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: The release tag (e.g. v0.1.0) or the commit you run.
+    validations:
+      required: true
+  - type: textarea
+    id: how
+    attributes:
+      label: How you run it
+      description: Operating system, Python version, and whether it runs as a service.
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: The error the page or the terminal showed, if any.
+      render: text
