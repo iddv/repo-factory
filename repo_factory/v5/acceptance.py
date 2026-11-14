@@ -1,11 +1,11 @@
 """Plain names for repo-factory's scenarios, and what the maintenance lane still reads from the
 acceptance suites earlier versions delivered.
 
-Since EX-PLAN (2026-10-11) nothing of repo-factory's exam goes into a delivered product: the
+Since 2026-10-11 nothing of repo-factory's exam goes into a delivered product: the
 scenarios, their results and the reports live in the den and ship as the release's checks
 asset (``exam.py``). What is left here: a scenario's plain title (``rule_title``, for the
 evidence's reports and the open items), its file slug, the plain reason of an open item, and
-for published repos that kept the suite they were delivered with (cleanup PRs keep it, §8.1)
+for published repos that kept the suite they were delivered with (cleanup PRs keep it)
 the known-open-item marks the maintenance lane removes once a fix makes a test pass
 (``unmark``, ``readme_remove_open_item``). The jargon scan moved to ``jargon.py`` (exact ids,
 never shapes)."""

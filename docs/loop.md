@@ -38,6 +38,13 @@ core flow of the scope works end to end; the documents exist. What it could not 
 listed, but never on its own holds a build. A build stopped by the spend cap is held, and its
 first reason says so.
 
+**After a hold, a lesson.** The first time the gate holds a round, one short no-tools call reads
+the brief and the holds (quoted as data) and writes at most one lesson: one sentence, general
+enough for any product, about the builder's own work. Holds the builder could not have avoided
+(the spend cap, a security review that did not run, the sign-in, the sandbox) write nothing and
+cost nothing; a lesson already kept is not kept twice. Every later brief carries the lessons that
+are on, under "Lessons from earlier builds", and the build's page lists them.
+
 ## Settings (`~/.repo-factory/loop.yaml`)
 
 The page writes the common ones (Settings); this file holds every one. A key it does not know
@@ -56,6 +63,10 @@ is kept and ignored, and the loop says so once.
 | `publish.approval` | `required` | Making a repository public is your press; `auto` (set here by hand only) makes every published build public without asking |
 | `publish.license` | `MIT` | The licence a published product carries (`MIT`, `Apache-2.0`, `none`) |
 | `publish.owner` | the `gh` login | The account or organisation it publishes under |
+| `lessons.enabled` | `true` | After a build the gate holds, one no-tools call writes at most one lesson into `<home>/lessons.yaml`; later briefs carry the lessons that are on. `false`: no lesson written or carried |
+| `lessons.max_in_brief` | `8` | The newest lessons that are on, at most this many, go into a new brief |
+| `lessons.model` | `claude-sonnet-5-5` | The model that writes a lesson (Settings › Building › Models) |
+| `api.require_token` | `true` | The page's writes need its sign-in token; only `false` (tests, a one-user machine) turns it off |
 | `maintain.enabled` | `false` | Maintenance of published repositories: in the code, not offered yet |
 | `projects.enabled` | `false` | Projects: in the code, not offered yet |
 
@@ -64,6 +75,8 @@ is kept and ignored, and the loop says so once.
 | Command | What it does |
 |---|---|
 | `repo-factory loop add "TEXT"`, `--file spec.md` | Add a task |
+| `repo-factory loop add --from-issue OWNER/REPO#N` | A task from a GitHub issue you opened, or labelled `build` yourself (anyone else's is refused, with the reason); its text is quoted in the brief as data, and the issue is only read |
+| `repo-factory loop lessons`, `lessons on ID`, `lessons off ID` | The lessons from your own builds; switch one on or off (from the next brief) |
 | `repo-factory loop list`, `show ID`, `status` | The tasks; one task as JSON; the loop at a glance |
 | `repo-factory loop run [--once] [--until-idle]` | The loop on its own |
 | `repo-factory loop pause`, `resume`, `stop` | No new briefs or builds; undo; stop the loop and its builds |

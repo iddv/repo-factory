@@ -1,5 +1,5 @@
 """Which build policy a build runs: ``--policy``, else ``$REPO_FACTORY_POLICY``, else v5, the product
-pipeline (decision O-2). Moved from ``problems/repo/build.py`` (S-5a)."""
+pipeline. Moved from ``problems/repo/build.py``."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from pathlib import Path
 
 from .resources import POLICIES
 
-DEFAULT_POLICY = "v5"  # the product pipeline (decision O-2); the research policies
+DEFAULT_POLICY = "v5"  # the product pipeline; the research policies
 # (v1-v4, repo_factory/lab/policies) only by path
 
 

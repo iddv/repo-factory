@@ -1,4 +1,4 @@
-"""Builds that don't stop for the wrong reasons (track X, 2026-10-09).
+"""Builds that don't stop for the wrong reasons.
 
 1. Stage caps are settings, none by default: no cap means no ``--max-budget-usd``; a set cap
    passes the flag; repair windows still work (test_v5_pipeline's round-2 test, with caps).

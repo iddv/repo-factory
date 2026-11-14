@@ -5,7 +5,7 @@ probation lessons from post-mortems, counters from credit, retirements, eviction
 *candidate* next to it, ``lessons.next.yaml`` (version N+1); only ``repo-factory lessons promote`` makes
 a candidate the default (§5.5).
 
-Lessons are plain dicts, exactly the §5.1 YAML shape, so Track D's pipeline can use them as
+Lessons are plain dicts, exactly the §5.1 YAML shape, so the v5 pipeline can use them as
 they are::
 
     {"id": "L007", "text": "...", "applies_to": "claims", "status": "probation",

@@ -188,7 +188,7 @@ actor), not a copy. The rule being replaced:
 Write exactly 1 rule."""
 KIND_OF = {"requirements": "requirement", "interactions": "interaction", "edges": "edge"}
 
-# Build v4 hardening (V4-D): the design's known-critical rules, one scenario each. The
+# Build v4 hardening: the design's known-critical rules, one scenario each. The
 # items are the gaps the final combined design walk still lists (with the walk's why) and
 # every rule the design was walked against (``core.oneshot.design_items``).
 DESIGN_FOCUS = """Focus: KNOWN-CRITICAL RULES, from the design walk. Before any code was
@@ -263,7 +263,7 @@ def design_items_md(items: list[dict]) -> str:
 
 
 def existing_md(rules: list[Rule], lean: bool = False) -> str:
-    """The rules the store has, for the prompt; ``lean``: titles only (build v3 §7c)."""
+    """The rules the store has, for the prompt; ``lean``: titles only (build v3)."""
     return (
         "\n".join(f"- {r.brief()}" if lean else f"- {r.brief()}: {r.expect}" for r in rules)
         or "(none yet)"

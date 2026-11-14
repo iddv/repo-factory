@@ -1,5 +1,4 @@
-"""repo-factory keeps its own fix pull requests mergeable (MAINTAIN.md §5.2, *Keeping repo-factory's pull
-requests current*), whether or not it may merge them.
+"""repo-factory keeps its own fix pull requests mergeable, whether or not it may merge them.
 
 When the owner merges one of repo-factory's fixes, ``main`` moves under the others: they fall behind,
 or conflict. Every poll, for each open pull request repo-factory opened for a fix (label ``repo-factory``, a

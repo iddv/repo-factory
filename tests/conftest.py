@@ -103,6 +103,7 @@ os.environ.setdefault("REPO_FACTORY_PRECHECK_INLINE", "1")
 os.environ["REPO_FACTORY_TOKENS_DIR"] = tempfile.mkdtemp(prefix="repo-factory-tokens-")
 os.environ.setdefault("REPO_FACTORY_RECHECK_SPAWN", "0")  # a re-check press spawns nothing
 os.environ.setdefault("REPO_FACTORY_EXAM_WHEELS", "0")  # the exam fetches no wheels
+os.environ.setdefault("REPO_FACTORY_LESSONS_SPAWN", "0")  # a held build starts no post-mortem
 os.environ.setdefault("REPO_FACTORY_CHARTER", "0")  # no charter drafted unless a
 #                                                           test gives the loop a fake model
 os.environ.setdefault("REPO_FACTORY_PROJECTS_SPAWN", "0")  # a press starts no job process

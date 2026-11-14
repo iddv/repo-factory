@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The type check, with a ratchet (RCA 2026-10-23, A2; repo-factory-notes plans/CTR-DESIGN.md §3.2).
+"""The type check, with a ratchet.
 
 Runs mypy with ``pyproject.toml``'s ``[tool.mypy]`` table and compares each file's error count
 with ``scripts/ci/typecheck_baseline.json`` (the counts on the day the check landed, lowered

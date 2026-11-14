@@ -1,4 +1,4 @@
-"""A project's change ideas and who decides them (PJ-PLAN.md §2.1, §4.5, §5).
+"""A project's change ideas and who decides them.
 
 A change idea is a row of the ledger's ``changes`` table: its project, a fingerprint (``fp``:
 the kind and the title's content words, so a later run that proposes the same thing finds it),
@@ -258,13 +258,13 @@ def decide(cfg: dict, p: dict, card: dict, owned: bool = True) -> tuple[str, str
         return "ask", "the repository is not yours: repo-factory asks first"
     return (
         ("file", "filed on its own (autonomy)") if a == "auto" else ("ask", "waits for your answer")
-    )  # the row names the class already (QA B17)
+    )  # the row names the class already
 
 
 # -- the owner's answers ------------------------------------------------------------------------------
 def accept(loop, cid: str, origin: str = "ui") -> dict:
     """Build it (a minor or patch ask, or a listed idea): the idea is ``queued`` and its issue
-    or request is filed (``filing.file``, PJ-7) at once or on the next tick."""
+    or request is filed (``filing.file``) at once or on the next tick."""
     from .record import Projects
 
     ch = must(loop.ledger, cid)
@@ -281,14 +281,14 @@ def accept(loop, cid: str, origin: str = "ui") -> dict:
     ch = file_now(loop, ch)
     if not ch.get("filed"):
         # filed on a later tick (GitHub refused, or no filer): the press is as undoable as a
-        # filed one, and undoing it has nothing to close (QA B6: no Undo was offered)
+        # filed one, and undoing it has nothing to close (once, no Undo was offered)
         undo_s = float(((loop.cfg.get("build") or {}).get("undo_s")) or 10)
         ch = update(loop.ledger, cid, card={**ch["card"], "undo": {"until": time.time() + undo_s}})
     return ch
 
 
 def file_now(loop, ch: dict) -> dict:
-    """File an accepted idea when the filer is there (PJ-7); else it stays queued."""
+    """File an accepted idea when the filer is there; else it stays queued."""
     try:
         from .filing import file
     except ImportError:

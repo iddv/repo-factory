@@ -119,6 +119,20 @@ def undo_view(u: dict | None) -> dict | None:
 REJECT_CHIPS = ("wrong idea", "wrong scope", "bugs", "install or README", "security", "not for me")
 
 
+def issue_view(idea: dict | None) -> dict | None:
+    """The issue a task came from, as the page shows it: ``{ref, url, author, why}``."""
+    from ..loop.from_issue import of
+
+    got = of(idea or {})
+    return {k: got.get(k) for k in ("ref", "url", "author", "why")} if got else None
+
+
+def build_record(rows: list[dict]) -> dict:
+    from .record import of
+
+    return of(rows)
+
+
 def idea_title(i: dict) -> str:
     """A task's own title, never its product's name: the brief renames the ledger row to the
     product, which names the build; the task keeps the words it was added with."""
@@ -1117,7 +1131,7 @@ class App:
         return None
 
     def spend_breakdown(self, now: float | None = None, builds: int = 30, days: int = 14) -> dict:
-        """Settings › Spend's breakdown (UI-v4.md 2.5) over the loop's ledger and the task
+        """Settings › Spend's breakdown over the loop's ledger and the task
         folders, read the way ``spend_summary`` (the header and Today) reads them, so every
         column sums to its total. By build: each loop idea with spend, its build's model calls
         (the task's ``.den/ledger.jsonl``) and the loop's own calls for it (pitch, checks,
@@ -1271,7 +1285,7 @@ class App:
                 )
         return sorted(out, key=lambda r: -r["all_usd"])
 
-    # ---- maintenance (MAINTAIN.md §8): read from GitHub, kept maintain.cache_s, never stored --
+    # ---- maintenance: read from GitHub, kept maintain.cache_s, never stored ------------------
     def maint_reader(self):
         """The page's GitHub reads (``maintain.github.Reader``), made once per ``gh`` command
         and cache time, kept in ``<home>/maintain/reads.json`` for that identity."""
@@ -2664,6 +2678,19 @@ class App:
             # origin None is repo-factory itself (the brief accepted it, or a retry it made)
             "started_by": started_by(idea),
             "round": ((idea or {}).get("build") or {}).get("round"),
+            # the flow its last round ran (v5, or lean: unproven); None before a build
+            "flow": ((idea or {}).get("build") or {}).get("flow"),
+            # who the published repository will name, said in Publish's confirm (a build that
+            # waits at "Ready: publish?" only): {name, email}
+            "publish_as": self.publish_as() if (idea or {}).get("state") == "ready" else None,
+            # the GitHub issue it came from ({ref, url, author, why}), None for a typed task
+            "issue": issue_view(idea),
+            # the lessons from earlier builds its brief carries ([{id, text}])
+            "lessons": [
+                {"id": x.get("id"), "text": x.get("text")}
+                for x in (((idea or {}).get("pitch") or {}).get("lessons") or [])
+                if isinstance(x, dict) and x.get("text")
+            ],
             # the flash's Undo after Stop round or Cancel: {of, until}
             "undo": undo_view((idea or {}).get("undo")),
             # the pre-push checks of a held or ready build, run when it stopped:
@@ -2812,6 +2839,74 @@ class App:
             "history": hist,
             "maintain": maint,
             "project_asks": self.project_asks(lp),
+            # Builds' head: your own record, from the builds' ledgers
+            "record": build_record(rows),
+        }
+
+    def publish_as(self) -> dict | None:
+        """``publish.identity`` for Publish's confirm, read once a minute (two git calls)."""
+        hit = getattr(self, "_publish_as", None)
+        if hit and time.time() - hit[0] < 60:
+            return hit[1]
+        try:
+            from ..loop.publish import identity
+
+            got = identity(self.loop().cfg)
+        except Exception:  # noqa: BLE001 - the confirm then says nothing of it
+            got = None
+        self._publish_as = (time.time(), got)
+        return got
+
+    # ---- lessons from your own builds (lessons/home.py) --------------------------------------
+    def lessons(self) -> dict:
+        """``GET api/lessons``: every lesson, newest first, where it came from, on or off;
+        and the last post-mortems."""
+        from ..lessons import home as lessons
+
+        lp = self.loop()
+        got = lessons.summary(lp.cfg.home)
+        got["enabled"] = (lp.cfg.get("lessons") or {}).get("enabled") is not False
+        return got
+
+    def lesson_switch(self, data: dict) -> dict:
+        """``POST api/lessons {id, on}``: one lesson on or off, from the next brief."""
+        from ..lessons import home as lessons
+
+        lid, on = (data or {}).get("id"), (data or {}).get("on")
+        if not isinstance(lid, str) or not isinstance(on, bool):
+            raise HttpError(400, "say which lesson (id) and on: true or false")
+        try:
+            x = lessons.switch(self.loop().cfg.home, lid, on)
+        except KeyError:
+            raise HttpError(404, f"no lesson {lid}")
+        except lessons.LessonsError as e:
+            raise HttpError(400, str(e))
+        return {"id": x["id"], "on": x["on"]}
+
+    def new_from_issue(self, ref: str) -> dict:
+        """``POST api/new {issue: "owner/repo#12"}``: a task from an issue you opened or
+        labelled ``build``; refused in words otherwise (``from_issue``). ``{"id",
+        "created", "state", "issue"}``."""
+        from ..loop.from_issue import IssueRefused
+
+        if not isinstance(ref, str) or not ref.strip():
+            raise HttpError(400, "write the issue as owner/repo#12")
+        lp = self.loop()
+        from ..registry import current_origin
+
+        lp.ledger.origin = current_origin() or "ui"
+        try:
+            idea, created = lp.add_issue(ref.strip())
+        except IssueRefused as e:
+            raise HttpError(400, f"Refused: {e}")
+        if not created and idea["state"] in ("rejected", "error", "skipped", "closed"):
+            idea = lp.send(idea["id"])
+        self._ideas = ((), {})
+        return {
+            "id": idea["id"],
+            "created": created,
+            "state": idea["state"],
+            "issue": issue_view(idea),
         }
 
     # ---- projects (repo_factory/projects/; off and unlisted): the ledger and the poll's cache --
@@ -3028,8 +3123,8 @@ class App:
         return p
 
     def maintenance_state(self, pid: str, paused: bool, origin: str = "ui") -> dict:
-        """Pause or resume maintenance on a project's repositories, in repo-factory, at once (the
-        owner, 2026-10-29; ``maintain/pauses.py``): no pull request, the repo's
+        """Pause or resume maintenance on a project's repositories, in repo-factory, at once
+        (``maintain/pauses.py``): no pull request, the repo's
         ``.github/repo-factory.yml`` untouched. An adopted repo's profile is paused too (as Pause on
         Build › Repos), and restored on resume only when this paused it."""
         from ..maintain import pauses
@@ -3279,9 +3374,9 @@ class App:
 
     def project_asks(self, lp) -> list[dict]:
         """What the projects ask: a minor ask (Build it) or a scope ask (the
-        charter diff), never a model call. Needs you folds them into one row per project
-        (GRD-DESIGN §7.3); ``stale``: a minor or patch ask older than ``projects.ask_days`` (14)
-        leaves that row's count and stays on the project's page; a scope ask never ages."""
+        charter diff), never a model call. Needs you folds them into one row per project;
+        ``stale``: a minor or patch ask older than ``projects.ask_days`` (14) leaves that row's
+        count and stays on the project's page; a scope ask never ages."""
         from ..projects import changes as X
         from ..projects.charter import diff, to_text
         from ..projects.record import Projects

@@ -1,9 +1,9 @@
-/* The theme before the first paint (UI-v4.md 1.2, AP): Settings › Appearance keeps two choices
+/* The theme before the first paint: Settings › Appearance keeps two choices
    in localStorage. The base, auto, light or dark: light and dark set html[data-theme], auto leaves
    it to the OS (prefers-color-scheme in repo-factory.css). The sidebar theme sets html[data-look]
    (static/looks.css); a custom one also sets its worked-out colours as --c-* on html. Loaded in
    <head>, before the stylesheets apply, by the app, the classic page and the loop page.
-   The columns too (UX-PLAN.md 4.4, UX-7): the widths the splitters set (repo-factory.layout), clamped to
+   The columns too: the widths the splitters set (repo-factory.layout), clamped to
    this window, so the panes never jump on load; app.js's splitters use the same apply(). */
 "use strict";
 (function () {

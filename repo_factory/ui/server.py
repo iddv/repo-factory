@@ -299,11 +299,13 @@ PORT_TRIES = 20
 
 
 def require_token(loop_home: Path | None) -> bool:
-    """``api.require_token`` in loop.yaml (default true)."""
+    """``api.require_token`` in loop.yaml (default true): only ``false`` turns it off; a
+    missing key, null or any other value keeps the token required."""
     from ..settings.store import Config
 
     try:
-        return bool((Config(loop_home).get("api") or {}).get("require_token", True))
+        api = Config(loop_home).get("api")
+        return not (isinstance(api, dict) and api.get("require_token") is False)
     except Exception:  # noqa: BLE001 - no loop config: the default
         return True
 

@@ -110,6 +110,12 @@ Before your first build, if you signed in to Claude Code with its own sign-in, r
 your sign-in file into each session, where a build's own commands can read it; `doctor`'s
 Claude line says which way builds sign in.
 
+A task can also come from a GitHub issue **you** opened, or labelled `build` yourself:
+`repo-factory loop add --from-issue owner/repo#12`, or **Build from an issue** on the page. Its
+text goes into the brief as quoted data; anyone else's issue is refused. When the checks hold a
+build, it writes one lesson about what went wrong, and the next briefs carry it (the page's
+**Lessons** switches each on or off).
+
 With a release, it will be three commands: `uv tool install <the wheel's address on the
 Releases page>`, `repo-factory doctor`, `repo-factory ui`. Then read
 [docs/first-build.md](docs/first-build.md): what each stage does, the press, and spend.
@@ -122,6 +128,8 @@ Releases page>`, `repo-factory doctor`, `repo-factory ui`. Then read
 | Visibility | **Private**; only you make a repository public |
 | Spend | **$25 a build, $50 a day**; either can be changed or set to none |
 | Maintenance | **Off** until you switch it on for a repository |
+| Lessons | **On:** a held build writes at most one lesson (a few cents), carried into later briefs until you switch it off |
+| Issues | Only an issue **you** opened, or labelled `build` yourself, becomes a task; its text is data |
 | The page | Loopback only (127.0.0.1); writes need a sign-in token |
 
 ## The threat model, in a paragraph

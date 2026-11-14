@@ -207,7 +207,7 @@ def refused(
     ledger, kind: str, title: str, why: str, *, idea: str | None = None, name: str | None = None
 ) -> None:
     """A press that was refused or failed, as an ended run in Activity: "Publish despite the
-    holds · Repo Recall", failed, with why (ASKF: nothing recorded why before)."""
+    holds · Repo Recall", failed, with why (nothing recorded why before)."""
     me = proc.me()
     now = time.time()
     run = f"press-{uuid.uuid4().hex[:12]}"
@@ -312,7 +312,7 @@ def steps(ledger, now: float | None = None) -> tuple[list[dict], list[dict]]:
         st, en = d.get("started"), d.get("ended")
         if st is None:
             continue
-        # one step that cannot be read is listed (in recent) as such (RCA A3)
+        # one step that cannot be read is listed (in recent) as such
         with rowsafe.row(
             recent,
             "run",

@@ -591,7 +591,7 @@ class Run:
         self.scratch.mkdir(exist_ok=True)
         self.ws = self.root / "build"
         self.vws = self.root / "verify"
-        # EX-PLAN §3: the exam lives outside the product. ``exam``: the verifier writes its
+        # The exam lives outside the product. ``exam``: the verifier writes its
         # driver and scenarios into ``verify-exam/_verify`` (bound at /work/exam) and every
         # run lays the product at /work/product. ``inside``: a round from before (its
         # scenarios find the repository from their own path inside it); its runs keep that
@@ -1182,7 +1182,7 @@ class Run:
             )
         scoped = res["decision"] == "scoped"
         if not scoped and not res.get("dod"):
-            # EV7: a spec passed through unchanged gets its definition of done from its own
+            # A spec passed through unchanged gets its definition of done from its own
             # text, so completeness is scored; with nothing to derive it is a gap (gate.py)
             dod = scope_mod.spec_dod(self.idea)
             if dod:
@@ -2250,8 +2250,8 @@ class Run:
             rs.update(next="decide", new=[])
             return False
         if rs["next"] == "reverify" and (why := self.no_further_round(rs["k"])):
-            # Its findings would have nowhere to go but REPORT.md (both h2h runs where it
-            # found one): skipped. Without a global cap only max_rounds can stop it.
+            # Its findings would have nowhere to go but REPORT.md (in both earlier test runs
+            # where it found one): skipped. Without a global cap only max_rounds can stop it.
             self.emit("v5_stage", stage="reverify", status="skipped", usd=0.0, wall_s=0.0, why=why)
             self.stop = self.stop or why
             rs.update(next="decide", new=[])
@@ -2312,7 +2312,7 @@ class Run:
     )
 
     def adopt_step(self) -> bool:
-        """``exam.adopt: all`` (EX-PLAN §4.3): one short session after the repairs asks the
+        """``exam.adopt: all``: one short session after the repairs asks the
         builder for a test of the product's own for every active scenario's behaviour; the
         exam then runs again on the new head as usual. ``fixes`` (the default) and ``off``:
         nothing here (``fixes`` is checked from git at readiness, ``check_adopted``)."""
@@ -2927,7 +2927,7 @@ class Run:
     # -- delivery ----------------------------------------------------------------------------
     def write_findings(self) -> None:
         """``findings.json``: the verifier's file, each scenario with the harness's status,
-        its store id and the panel's class (track E's credit assignment reads it)."""
+        its store id and the panel's class (the lessons' credit assignment reads it)."""
         by_scen = {
             r.origin.get("scenario"): r
             for r in self.store.rules.values()
@@ -3054,15 +3054,15 @@ class Run:
             )
         self.checked = self.checked_counts(rows)
         self.write_findings()
-        # The delivered tree: the head and nothing of repo-factory's (EX-PLAN §4). The exam, its
+        # The delivered tree: the head and nothing of repo-factory's. The exam, its
         # results and the reports go to <round>/exam/evidence/, the release asset.
         art = verify.copy_repo(self.ws, self.root / "deliver")
         shutil.rmtree(art / "acceptance" / "findings", ignore_errors=True)
         if (art / "acceptance").is_dir() and not any((art / "acceptance").iterdir()):
             (art / "acceptance").rmdir()
         shutil.rmtree(art / verify.VERIFY_DIR, ignore_errors=True)
-        # repo-factory's process files (SCOPE.md, its reports, a generated suite, .repo-factory/) move to
-        # the round, in every flow: the delivered tree is the product (track LEAN)
+        # repo-factory's process files (SCOPE.md, its reports, a generated suite, .repo-factory/)
+        # move to the round, in every flow: the delivered tree is the product
         from . import process
 
         moved = process.strip(art, self.root)
@@ -3193,7 +3193,7 @@ class Run:
         """What the round checked, as counts (REPORT.md's first section): the spec's claims,
         the confirmed defects (explore ones included), how many are fixed on the delivered
         head and how many open, the claims the verifier could not check, and what it trusts
-        least (its own words). Facts, not a prediction (AU1 #5)."""
+        least (its own words). Facts, not a prediction."""
         rows = [x for x in rows or [] if x.get("status") != "retired"]
         fixed = sum(1 for x in rows if x.get("status") == "fixed")
         se = self.findings.get("self_estimate") or {}

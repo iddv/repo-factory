@@ -1,4 +1,4 @@
-"""The label scheme (MAINTAIN.md §2): 22 labels in kind, flow, claim, priority, outcome and
+"""The label scheme: 22 labels in kind, flow, claim, priority, outcome and
 learning groups, one hue per group. Labels are the protocol: only people with triage or write
 access can set them, so ``go`` is the owner's signature and issue text never is.
 

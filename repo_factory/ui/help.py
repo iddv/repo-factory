@@ -1,4 +1,4 @@
-"""/help: the longer explanations the app's ? tips link to (UX-PLAN.md 2.4), from ``help.md``
+"""/help: the longer explanations the app's ? tips link to, from ``help.md``
 beside this file, rendered here as a small read-only page in the app's theme. The Markdown is a
 small subset: headings (``## Title {#id}``, the id a tip links to), paragraphs, ``code``,
 **bold** and links. Every text is escaped; nothing from a request goes into the page."""

@@ -1,4 +1,4 @@
-"""The product's largest import cycle stays small (CR-PLAN S-10). Every import counts, the ones
+"""The product's largest import cycle stays small. Every import counts, the ones
 inside a function too: a lazy import still ties the two modules together for a reader and for
 a refactor. When a change breaks more of a cycle, lower ``LARGEST``; never raise it."""
 
@@ -9,7 +9,7 @@ from pathlib import Path
 
 import repo_factory
 
-LARGEST = 18  # 2026-10-14: 73 before S-10 (maintain and projects still need each other)
+LARGEST = 18  # 2026-10-14: 73 before it was cut (maintain and projects still need each other)
 PKG = Path(repo_factory.__file__).parent
 
 

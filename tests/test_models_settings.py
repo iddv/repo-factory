@@ -86,6 +86,7 @@ def test_every_role_says_where_it_is_set(home):
         "pitch",
         "summary",
         "honesty",
+        "lessons",
         "build",
         "claims",
         "verify",

@@ -1,4 +1,4 @@
-"""LoopError (CR-PLAN S-13, CR-REVIEW C-4): a loop step that says no raises LoopError. The
+"""LoopError: a loop step that says no raises LoopError. The
 command line still prints the words and exits 1, the page answers 400, the host's in-process
 command groups still see SystemExit, and a safety net (``except Exception``) catches it."""
 

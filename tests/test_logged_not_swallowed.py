@@ -1,4 +1,4 @@
-"""What used to be swallowed is now said in the log (CR-PLAN P3-4; review C-5), and the
+"""What used to be swallowed is now said in the log, and the
 sandbox probes are bounded: a hung probe means "unavailable", not a hung build."""
 
 import logging

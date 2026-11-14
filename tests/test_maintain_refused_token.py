@@ -1,4 +1,4 @@
-"""A maintenance token GitHub refused (SF item 2): ``maintain.token_env_file``'s token answered
+"""A maintenance token GitHub refused:``maintain.token_env_file``'s token answered
 401 (expired or revoked). With another identity that works (repo-factory's GitHub sign-in here),
 maintenance stops trying it and does not show it as the identity; the doctor names it once, as a
 warning; Settings › Publishing › Maintenance offers Remove this token setting, which goes through

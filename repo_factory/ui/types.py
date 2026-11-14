@@ -89,7 +89,7 @@ class Gate(TypedDict):
     round: int | None
 
 
-# -- a product's Builds (UXI-1, ui/runs.py): Build N is round N of the event log --------------
+# -- a product's Builds (ui/runs.py): Build N is round N of the event log ---------------------
 
 
 # "in" and "from" are Python keywords: those shapes are written in TypedDict's call form
@@ -218,6 +218,67 @@ class BuildRun(TypedDict):
     neighbours: Neighbours
 
 
+class IssueRef(TypedDict):
+    """The GitHub issue a task came from."""
+
+    ref: str | None
+    url: str | None
+    author: str | None
+    why: str | None
+
+
+class PublishAs(TypedDict):
+    """Who a published repository names: its licence and NOTICE (``name``), its commit
+    (``email``)."""
+
+    name: str
+    email: str | None
+
+
+class LessonRef(TypedDict):
+    id: str | None
+    text: str | None
+
+
+class RecordPart(TypedDict):
+    builds: int
+    median_usd: float | None
+    median_s: float | None
+    total_usd: float | None
+
+
+class BuildRecord(TypedDict):
+    """Builds' head (``ui/record.py``): your own builds, from their ledgers."""
+
+    builds: int
+    median_usd: float | None
+    median_s: float | None
+    total_usd: float | None
+    published: int
+    held: int
+    no_cost: int
+    lean: RecordPart | None
+
+
+class Postmortem(TypedDict):
+    idea: str | None
+    round: int | None
+    date: str | None
+    result: str | None
+    usd: float | None
+
+
+class Lessons(TypedDict):
+    """``api/lessons``: every lesson (``lessons/home.py``: id, text, why, on, from, packed),
+    newest first, and the last post-mortems."""
+
+    lessons: list[dict[str, Any]]
+    postmortems: list[Postmortem]
+    error: str | None
+    enabled: bool
+    at: float
+
+
 class BuildRow(TypedDict):
     """One build in ``api/state``' ``builds`` (and ``api/build``'s ``row``)."""
 
@@ -239,6 +300,11 @@ class BuildRow(TypedDict):
     gate: Gate | None
     kind: NotRequired[str]
     builds: NotRequired[RunsBrief | None]
+    # the flow its last round ran ("v5", "lean"); None before a build
+    flow: NotRequired[str | None]
+    issue: NotRequired[IssueRef | None]
+    publish_as: NotRequired[PublishAs | None]
+    lessons: NotRequired[list[LessonRef]]
 
 
 class Pitch(TypedDict):
@@ -351,6 +417,7 @@ class Snapshot(TypedDict):
     history: list[HistoryRow]
     maintain: MaintainToday
     project_asks: list[ProjectAsk]
+    record: BuildRecord
 
 
 class ActionField(TypedDict):
@@ -439,7 +506,7 @@ class OutcomeList(TypedDict):
     now: list[OutcomeNow]
 
 
-# -- agent traces (TRC-DESIGN §8.1): every string redacted on read -----------------------------
+# -- agent traces: every string redacted on read -----------------------------------------------
 
 RunState = Literal["running", "waiting", "ok", "degraded", "failed", "skipped", "stopped"]
 
@@ -687,6 +754,7 @@ RETURNS: dict[str, type] = {
     "api/build/runs": BuildRuns,
     "api/run": BuildRun,
     "api/activity": Activity,
+    "api/lessons": Lessons,
     "/api/whoami": WhoAmI,
 }
 

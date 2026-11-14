@@ -1,4 +1,4 @@
-"""The cleanup PR for a product published before repo-factory's exam moved out (EX-PLAN §8.1, PR 6):
+"""The cleanup PR for a product published before repo-factory's exam moved out:
 repo-factory's scaffolding and documents leave; the adopted suite stays (``--drop-suite`` removes
 it); NOTICE names the checks asset; AGENTS.md is written again. No network: the edits only."""
 

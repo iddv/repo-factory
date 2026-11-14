@@ -1,4 +1,4 @@
-"""Triage (MAINTAIN.md §5.1): a new issue gets a kind, a priority and one comment.
+"""Triage: a new issue gets a kind, a priority and one comment.
 
 ``classify`` asks a **no-tools** model (Haiku 5.5 by default, ``maintain.triage_model``) about
 the issue's text, which sits inside document delimiters: anyone can write an issue, so its text
@@ -272,7 +272,7 @@ def apply(
 ) -> dict:
     """Labels and the comment on GitHub through ``repo`` (a ``github.Repo``); a duplicate is
     closed as not planned only with ``triage.close_duplicates``. ``owner``: the login repo-factory
-    acts as (``revise.trigger: owner`` fixes that login's own issues, MX-PLAN §3.1), never the
+    acts as (``revise.trigger: owner`` fixes that login's own issues), never the
     repository's owner, which for an organisation's repo is the organisation; ``bot``: repo-factory's
     own app, whose issues count as the owner's."""
     d = decide(item, res, policy, writers=writers, owner=owner, bot=bot)

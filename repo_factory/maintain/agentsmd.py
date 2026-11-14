@@ -1,4 +1,4 @@
-"""AGENTS.md (MAINTAIN.md §3): render it from a product's own documents, and report drift.
+"""AGENTS.md: render it from a product's own documents, and report drift.
 
 ``values_from_tree(root)`` reads the values without a model: product, one-liner and audience
 from the README's *At a glance*, commands from its install, tests and command sections, the
@@ -291,7 +291,7 @@ def docstring(p: Path) -> str | None:
 def defines(p: Path) -> str | None:
     """A module described by what it defines, with no model: its public top-level classes and
     functions (``Defines `Store`, `open_db`.``), else None. Never a placeholder the doctor
-    then refuses (AU3 finding 3)."""
+    then refuses."""
     try:
         tree = ast.parse(_read(p))
     except (SyntaxError, ValueError):
@@ -508,7 +508,7 @@ def values_from_tree(root: Path, repo: str | None = None, describe=None) -> dict
                 data_dir = m.group(1)
                 break
     # what the product says of itself, never SCOPE.md's: it was written from the pitch before
-    # the build (AU2 #1: Sidedoor's AGENTS.md said what SCOPE.md meant, not what was built)
+    # the build (an AGENTS.md once said what SCOPE.md meant, not what was built)
     append_only = " ".join(data_rules(sentences(readme))) or (
         "SCOPE.md's domain rules say which records may never be changed or deleted."
     )
@@ -565,7 +565,7 @@ def values_from_tree(root: Path, repo: str | None = None, describe=None) -> dict
         ),
         # none found: a comment line the check skips and the doctor reports, never a guess
         "unit_test_command": test_cmd or NO_TEST,
-        # only where the suite exists (notehatch and nextread have none: AU3 finding 3)
+        # only where the suite exists (some products have none)
         "acceptance_line": (
             f"\npython -m pip install pytest && {ACCEPTANCE_RUN}   # the acceptance suite"
             if (root / "tests" / "acceptance").is_dir()
@@ -618,8 +618,8 @@ def render(values: dict) -> str:
 def _checker():
     """The repo-side check (``templates/check_agents_md.py``) as a module: the doctor reads
     AGENTS.md with its readers, so the two never disagree on which heading, fence or path
-    counts (the owner, 2026-10-17: nextread's "## Set up, run, test" over a bare fence was
-    flagged "no sh fence"). Compiled here, never imported: no ``__pycache__`` in templates/."""
+    counts (a "## Set up, run, test" heading over a bare fence was once flagged "no sh
+    fence"). Compiled here, never imported: no ``__pycache__`` in templates/."""
     import types
 
     path = Path(__file__).with_name("templates") / "check_agents_md.py"

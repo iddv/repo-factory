@@ -1,5 +1,5 @@
 """repo-factory keeps its own fix pull requests mergeable, and merges them on green CI when the repo
-opts in (``current.py``, ``automerge.py``; MAINTAIN.md §5.2). A fake GitHub over a real bare
+opts in (``current.py``, ``automerge.py``). A fake GitHub over a real bare
 git repository (update-branch, squash merges and conflicts are real git), a scripted session
 harness for the refresh: no model, no network, never a live repo."""
 
@@ -612,7 +612,7 @@ def test_four_prs_the_owner_merges_one_the_rest_are_brought_onto_main(world):
 
 # Beliefline's four open fix PRs on 2026-10-16 (#11, #13, #14, #15): each added its line at the top
 # of CHANGELOG's Unreleased, so each merge left the others conflicting in that one file, and each
-# conflict cost a whole model re-do, capped at maintain.refresh_max (AU3 finding 1).
+# conflict cost a whole model re-do, capped at maintain.refresh_max.
 BELIEFLINE_LINES = {
     11: "- README: health endpoint, how to stop the service, `BELIEFLINE_ACCESS_LOG`, "
     "Troubleshooting and Limitations.",
@@ -1073,7 +1073,7 @@ def test_the_switch_is_a_confirm_class_owner_action(world):
 
 
 def test_hands_off_is_gone_and_a_saved_one_reads_as_quiet():
-    """AU3 finding 9: hands-off decided nothing quiet did not; it only showed a button."""
+    """Hands-off decided nothing quiet did not; it only showed a button."""
     from repo_factory.projects import changes
     from repo_factory.settings import write
 

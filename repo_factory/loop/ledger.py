@@ -532,9 +532,9 @@ def first_line(text: str, n: int = 90) -> str:
     return t if len(t) <= n else t[: n - 1].rstrip() + "…"
 
 
-# The spend kinds of maintaining published repos (MAINTAIN.md §5): part of "loop" too.
-MAINTAIN_KINDS = ("triage", "revise", "lesson", "adopt", "notes")  # lesson: §9; adopt, notes: MX
-# The spend kinds of projects (PJ-PLAN.md §4): a charter draft and an evolve run.
+# The spend kinds of maintaining published repos (see docs/maintain.md): part of "loop" too.
+MAINTAIN_KINDS = ("triage", "revise", "lesson", "adopt", "notes")
+# The spend kinds of projects: a charter draft and an evolve run.
 PROJECT_KINDS = ("charter", "evolve")
 
 

@@ -240,6 +240,8 @@ RULES: dict[str, tuple] = {
         for k in ("insight", "differentiation", "grounding", "durability", "breadth")
     },
     "pitch.interpret_claims": ("bool",),
+    "lessons.enabled": ("bool",),
+    "lessons.max_in_brief": ("int", 0, 20),
     "exam.reruns": ("int", 0, 10),
     "exam.intermittent_hold_min": ("int", 1, 5),
     "exam.flaky_retire": ("bool",),

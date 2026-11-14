@@ -1,5 +1,5 @@
 """A repo task directory (contract section 1): load it into a ``Task``, or make a new one
-(``new_task``, ``repo-factory new``). Moved from ``problems/repo/task.py`` and ``cli.py`` (S-5a).
+(``new_task``, ``repo-factory new``). Moved from ``problems/repo/task.py`` and ``cli.py``.
 
 ``owner.md`` and ``reference/`` are never read here: only the simulated owner and the
 task-suite validator may open them."""
@@ -130,7 +130,7 @@ NEW_SPEC = """# {title}
 """
 
 
-# Owner's call (2026-10-03): no spend ceiling unless asked for. A v2 tour is bounded by its
+# A deliberate choice: no spend ceiling unless asked for. A v2 tour is bounded by its
 # shape anyway (each milestone: one retry, then two branches, then move on), and per-run caps
 # by milestone size live in the policy's rules.yaml.
 NEW_TASK_BUDGET_USD = None

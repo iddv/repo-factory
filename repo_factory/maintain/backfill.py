@@ -1,4 +1,4 @@
-"""Backfill (MAINTAIN.md §10): give an existing product everything maintenance needs, in one
+"""Backfill: give an existing product everything maintenance needs, in one
 pull request the owner merges.
 
 ``backfill(gh, repo, work)``:
@@ -58,7 +58,7 @@ IF_MISSING = {
     "CHANGELOG.md": ("CHANGELOG.md.tmpl", "Maintenance files: issue labels"),
 }
 
-# The backfill's policy (§10, D2–D7, D14): maintained, fixes only on `go`, repo-factory never merges.
+# The backfill's policy: maintained, fixes only on `go`, repo-factory never merges.
 POLICY = {"status": "maintained", "revise": {"trigger": "go"}}
 
 
@@ -92,7 +92,7 @@ def write_files(
     """Write every maintenance file into ``root``. ``{"written": [...], "kept": [...],
     "removed": [...]}`` (paths relative to the root). ``only``: just these paths (a publish
     with ``publish.maintenance_files: policy`` writes the machine-read policy and the label
-    scheme, ``POLICY_FILES``; the rest is the product's, EX-PLAN §2)."""
+    scheme, ``POLICY_FILES``; the rest is the product's)."""
     root = Path(root)
     res: dict[str, list[str]] = {"written": [], "kept": [], "removed": []}
     if only is not None:
@@ -122,7 +122,7 @@ def write_files(
         if (root / rel).exists():
             (root / rel).unlink()
             res["removed"].append(rel)
-    # READINESS.md's CI row named the file just removed (AU3 finding 2: 5 doc_paths findings)
+    # READINESS.md's CI row named the file just removed
     ready = root / "READINESS.md"
     if res["removed"] and ready.is_file():
         text = new = ready.read_text()

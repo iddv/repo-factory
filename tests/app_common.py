@@ -1,7 +1,7 @@
 """Shared set-up for the tests that call the app: a loop in a temp dir, the app over it, and
 the fake ``claude`` (``fake_claude_stream.py``) first on PATH, with a config dir of its own (no
 credentials of the owner's are ever copied). It was ``chat_common.py`` while the project chat
-existed (removed in TSI-6)."""
+existed (it has since been removed)."""
 
 import json
 import os

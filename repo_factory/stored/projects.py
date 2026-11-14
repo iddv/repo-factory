@@ -1,4 +1,4 @@
-"""A project's record, its change ideas and the weekly editor's runs (CTR-DESIGN §2.4):
+"""A project's record, its change ideas and the weekly editor's runs:
 ``projects.repos``, ``.charter``, ``.topic``, ``.settings``, ``.stats``; ``changes.card``,
 ``.filed``; ``nominations.bundle``, ``.reply``, ``.nominee``, ``.research``, ``.posted``,
 ``.verdict_data``.

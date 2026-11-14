@@ -30,7 +30,7 @@ def _copy_tree(src: Path, dest: Path) -> None:
         shutil.copy2(src / rel, dest / rel)
 
 
-# What a product's repo never holds (AU2 #6): written as its .gitignore when it has none, so
+# What a product's repo never holds: written as its .gitignore when it has none, so
 # delivery's ``git add -A`` leaves build output out
 IGNORE = (
     "__pycache__/",

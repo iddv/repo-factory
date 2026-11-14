@@ -1,7 +1,7 @@
-"""``repo-factory ui`` and build v5 (docs/design/build-v5.md §3.8, Addendum A): the policy choice, the
-v5 view (stages, findings, settings, rounds, cost, delivered files), the phase
-labels, and that v3/v4 views are unchanged. Offline: v5 dens come from Track D's scripted
-builds (``FakeHarness`` plus ``ScriptedLLM``), never from a real session."""
+"""``repo-factory ui`` and build v5 (docs/design/build-v5.md §3.8, Addendum A): the policy
+choice, the v5 view (stages, findings, settings, rounds, cost, delivered files), the phase
+labels, and that v3/v4 views are unchanged. Offline: v5 dens come from the v5 pipeline's
+scripted builds (``FakeHarness`` plus ``ScriptedLLM``), never from a real session."""
 
 import json
 import os
@@ -166,7 +166,7 @@ def test_cli_refuses_the_fake_harness_and_a_policy_that_is_not_v5(tmp_path):
 
 
 def build_settings_case(root):
-    """Track D's T15 case (Addendum A): two settings, one complex item, no defect."""
+    """The settings case (Addendum A): two settings, one complex item, no defect."""
     d = new_task(root, "holds")
     sol = root.parent / "sol-holds" / "holds"
     sol.mkdir(parents=True)
@@ -187,7 +187,7 @@ def build_settings_case(root):
 
 
 def build_defect_case(root):
-    """Track D's whole offline build: one confirmed defect, fixed by the repair."""
+    """The v5 pipeline's whole offline build: one confirmed defect, fixed by the repair."""
     d = new_task(root, "textstats")
     sol = root.parent / "sol-text" / "textstats"
     sol.mkdir(parents=True)
@@ -238,7 +238,7 @@ def test_the_fold_then_the_api_render_a_v5_build(v5root):
         assert all(x["status"] in ("done", "skipped") for x in v["stages"])
         assert v["stages"][3]["usd"] == pytest.approx(0.5)  # the verifier session
         # the fixture's spec names functions and a file: a spec, passed through, no call;
-        # its two sentences are its definition of done (EV7), which no scenario walked
+        # its two sentences are its definition of done, which no scenario walked
         assert v["scope"]["decision"] == "pass" and v["scope"]["verdict"] == "spec"
         assert v["stages"][0]["usd"] in (None, 0, 0.0)
         assert v["completeness"] == {"done": 0, "total": 2}
@@ -262,7 +262,7 @@ def test_the_fold_then_the_api_render_a_v5_build(v5root):
         assert v["counts"]["complex"] >= 1
         assert [c["item"] for c in v["complex"]] and v["defects"] == []
         assert v["rounds"][0]["accepted"] and v["rounds"][0]["status"] == "done"
-        assert "prediction" not in v  # no p_hidden (AU1 #5): the counts stay
+        assert "prediction" not in v  # no p_hidden: the counts stay
         assert v["claims"]["n"] and v["counts"]["blocked"] is not None
         k = v["cost"]
         # the scripted build stage costs under a cent: no vanilla multiple from it

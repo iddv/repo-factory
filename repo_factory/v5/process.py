@@ -1,10 +1,10 @@
-"""repo-factory's process files stay out of the shipped product, in every flow (track LEAN).
+"""repo-factory's process files stay out of the shipped product, in every flow.
 
-EV8's blind judge marked repo-factory's products down for bloat, and part of it was repo-factory's own
-paperwork shipped in the product: SCOPE.md, the readiness and security reports, the
-assumptions, a generated acceptance suite of about 90 files. Those are records of how the
-product was built, not the product: they belong to the round (``<den>/v5/r<N>/``), where the
-build page, the gate and the evidence read them.
+A blind judge in an earlier experiment marked repo-factory's products down for bloat, and
+part of it was repo-factory's own paperwork shipped in the product: SCOPE.md, the readiness
+and security reports, the assumptions, a generated acceptance suite of about 90 files. Those
+are records of how the product was built, not the product: they belong to the round
+(``<den>/v5/r<N>/``), where the build page, the gate and the evidence read them.
 
 - ``strip(tree, round_dir)``: at delivery, every process file in the tree moves to
   ``<round>/process/`` (the README's lines that ran a moved suite go too);

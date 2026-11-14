@@ -1,7 +1,7 @@
-"""AU1 #3, the case it was written for: Repo Recall, held 105 h on F5 (a flow its sandbox could
-not measure) and still held after 0.3.76 stopped making that hold, because a Re-check compared
-the installed version's run with the installed version's reading of the record (no
-difference) instead of with the verdict the build is held under. And its README quick start was
+"""A Re-check's verdict, the case it was written for: Repo Recall, held 105 h on F5 (a flow its
+sandbox could not measure) and still held after 0.3.76 stopped making that hold, because a
+Re-check compared the installed version's run with the installed version's reading of the
+record (no difference) instead of with the verdict the build is held under. And its README quick start was
 red only by the old harness (exit 127: the install step skipped, nothing in its place), which a
 Re-check never measured again. Its records, trimmed: ``fixtures/recheck_verdict/repo-recall``
 (round 4's flows and scorecard, round 5's quick-start item). The exam and the quick start are

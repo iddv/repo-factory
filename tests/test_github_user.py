@@ -1,5 +1,5 @@
-"""repo-factory's own GitHub connection (WZ-DESIGN §3, WZ-3): the device flow against a fake GitHub on
-loopback, the store's modes, and the token's one place (the canary pattern of TS R1 and TL: a
+"""repo-factory's own GitHub connection: the device flow against a fake GitHub on
+loopback, the store's modes, and the token's one place (the canary pattern: a
 token made at run time is found in its file and in the gh child's GH_TOKEN, nowhere else)."""
 
 from __future__ import annotations

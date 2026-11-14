@@ -1,4 +1,4 @@
-"""The per-repo policy file, ``.github/repo-factory.yml`` (MAINTAIN.md §4).
+"""The per-repo policy file, ``.github/repo-factory.yml``.
 
 ``DEFAULTS`` are the documented values a new file starts from; ``MISSING`` is what a repo
 without the file gets: repo-factory answers and labels, and spends nothing (``status: as-is``,

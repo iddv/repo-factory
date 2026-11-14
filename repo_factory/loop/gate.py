@@ -13,13 +13,13 @@ the exam moved out delivered SECURITY.md and READINESS.md in its tree instead.
 - completeness: no flow in the definition of done is broken (SCOPE.md's, or for a spec that
   passed through, the flows drawn from its own text; with neither it is a gap);
 - it listens on localhost and the README's quick start works as written (``SAFE_ITEMS``: the
-  harness's ``commands`` run; the session's install items are advisory, AU1 #6).
+  harness's ``commands`` run; the session's install items are advisory).
 
-There is no ``p_hidden`` check any more (AU1 #5): it was arithmetic on the claims, not a
+There is no ``p_hidden`` check any more: it was arithmetic on the claims, not a
 measurement, and in 36 recorded rounds it never held a build. A ``gate.json`` from before
 still lists it; it is shown as it was recorded.
 
-Only the product holds a build (AU1 #1), with one exception. What repo-factory itself failed to
+Only the product holds a build, with one exception. What repo-factory itself failed to
 measure is a **gap**, never a hold: a flow of the definition of done the harness could not
 measure (``environment``: its sandbox fails the flow on the build and on the verifier's own
 copy, ``Run.triage``; ``unchecked``: no scenario checked it). No round of the product could
@@ -43,20 +43,20 @@ from .. import gitcmd
 from ..events import load_state
 from ..harness import links
 
-GATE_FILE = "gate.json"  # the verdict beside its round (UXI-1): .den/v5/r<N>/gate.json
+GATE_FILE = "gate.json"  # the verdict beside its round: .den/v5/r<N>/gate.json
 # The scorecard items that hold a build when red: it listens on localhost unless configured
 # (the checks session's, still: the harness sees only ports, not the address bound), and the
 # README's quick start works as written (``commands``: the harness runs it on a fresh copy).
 # The session's own ``install``, ``empty_start`` and ``first_admin`` are advisory rows of the
 # scorecard: it said "install green" in 31 of 32 scorecards while the harness's quick start
-# was red in 22 of 34 (AU1 #6).
+# was red in 22 of 34.
 SAFE_ITEMS = ("bind_localhost", "commands")
 # v5's finding statuses (readiness.py): fixed (a test checks it), passes (its test passes
 # after other fixes), unconfirmed (its probe passed in the harness: not reproduced) are
 # closed; open, and addressed (changed with no test to show it), are not.
 CLOSED = ("fixed", "passes", "unconfirmed")
 # A flow's status (``Run.completeness``) that says the harness could not measure it: a gap,
-# never a hold (AU1 #1), with what the gap line says of it
+# never a hold, with what the gap line says of it
 NOT_MEASURED = {
     "environment": "the sandbox fails {} in both copies",
     "unchecked": "no scenario checked {}",
@@ -164,7 +164,7 @@ def evaluate(task: Path, *, build: int | None = None) -> dict:
     files = delivered_files(out, branch) if branch and (out / ".git").exists() else set()
     checks.update(record_checks(root, files))
     v = _verdict(checks, rnd, branch, str(out), st.get("cost_usd"))
-    # EX-PLAN §7: the gate reads records, so its verdict is the builder's version's
+    # The gate reads records, so its verdict is the builder's version's
     from .recheck import built_by
 
     v["judged_by"] = built_by(root)
@@ -217,8 +217,8 @@ def _records_sig(task: Path, rnd) -> tuple:
 
 
 def now(task, rnd: int | None) -> dict:
-    """The gate on round ``rnd`` as the **installed** repo-factory judges it (``evaluate``), cached
-    on its records (ASKF). Publish anyway's dialog and its press both read this, so what the
+    """The gate on round ``rnd`` as the **installed** repo-factory judges it (``evaluate``),
+    cached on its records. Publish anyway's dialog and its press both read this, so what the
     owner is shown is what the press checks, whatever version judged the build when it
     stopped. ``stored``-only differences (an upgrade that changed a check) show in the dialog;
     they never refuse the press."""
@@ -236,7 +236,7 @@ def now(task, rnd: int | None) -> dict:
 
 
 def judged(task, rnd: int | None, stored: dict | None) -> dict:
-    """The gate Publish anyway's dialog and press both read (ASKF): ``now`` when the round's
+    """The gate Publish anyway's dialog and press both read: ``now`` when the round's
     records are there, else the ``stored`` verdict as it was recorded (a round from before
     the records moved under ``.den/v5``)."""
     if task and rnd and (Path(task) / ".den" / "v5" / f"r{rnd}").is_dir():
@@ -262,10 +262,10 @@ def cant_revise(g: dict | None, task, now: dict | None = None) -> str | None:
     ``unchecked`` in the round's ``findings.json``) and the gate as the installed repo-factory judges
     the round (``now``, ``judged``) holds on nothing a revise could change: no round of the
     product changes it, so neither the owner's Revise nor the automatic repair round is
-    offered (ASKF; a verdict stored before AU1 #1 still holds on such a flow). It ends with the
-    press that helps: Publish anyway or Close, or Re-check when today's gate holds on nothing.
-    None: a revise may help (Repo Recall on 2026-10-28: today's gate held it on a README
-    command, which the console's round 6 fixed)."""
+    offered (a verdict stored before gaps stopped holding still holds on such a flow). It ends
+    with the press that helps: Publish anyway or Close, or Re-check when today's gate holds on
+    nothing. None: a revise may help (Repo Recall on 2026-10-28: today's gate held it on a
+    README command, which the console's round 6 fixed)."""
     sec = ((g or {}).get("checks") or {}).get("security")
     if is_unreviewed(sec):
         # a revise round carries the review from the round it revises: it never runs it
@@ -344,7 +344,7 @@ def record_checks(root: Path, files: set | None = None) -> dict:
     def put(name, ok, detail):
         checks[name] = {"ok": bool(ok), "detail": detail}
 
-    # EX-PLAN §4.4: the reports are the round's evidence, beside the tree (a round from
+    # The reports are the round's evidence, beside the tree (a round from
     # before the exam moved out delivered them into it instead)
     ev = root / "exam" / "evidence"
     have = [n for n in ("security.md", "readiness.md") if (ev / n).is_file()]
@@ -433,8 +433,8 @@ def record_checks(root: Path, files: set | None = None) -> dict:
     elif not sec.get("ran"):
         put("completeness", False, NOTHING_MEASURED)
     else:
-        # EV7: no definition of done (none in the scope, none drawn from the spec) is repo-factory's
-        # own gap, not the product's (AU1 #1, as FX1's environment gaps)
+        # No definition of done (none in the scope, none drawn from the spec) is repo-factory's
+        # own gap, not the product's, like a gap in the check's environment
         put("completeness", True, "not scored: no definition of done")
         checks["completeness"]["gap"] = NO_DOD
     return checks
@@ -513,7 +513,7 @@ def override_plan(checks: dict, prepush: list[str], may_override=None) -> dict:
 
 
 def gaps_of(checks: dict) -> list[str]:
-    """What the factory could not measure (AU1 #1), from the checks' ``gap``: never a hold."""
+    """What the factory could not measure, from the checks' ``gap``: never a hold."""
     return [f"{k}: {v['gap']}" for k, v in (checks or {}).items() if (v or {}).get("gap")]
 
 

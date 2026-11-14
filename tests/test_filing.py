@@ -1,4 +1,4 @@
-"""Filing changes (PJ-PLAN.md §4.7, PJ-7) on an in-process fake GitHub (no network): a patch
+"""Filing changes on an in-process fake GitHub (no network): a patch
 under quiet files an issue with go; a minor change filed after the owner's click gets no go
 because the product's policy excludes features (the policy wins, and the idea says so); an
 adopted repo the owner does not own gets a factory-side request and no issue; hands-on files

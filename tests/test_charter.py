@@ -1,7 +1,7 @@
-"""The charter (PJ-PLAN.md §3, PJ-3), with a fake model replaying the experiment's real replies
+"""The charter, with a fake model replaying the experiment's real replies
 (tests/fixtures/projects/replies/): the shape check, the claims' ids on the promises, versions
-that only grow, the owner's edit, a redraft, restore, NG's Accept writing a version, the draft
-made once per tree in the background, and no request waiting on a model."""
+that only grow, the owner's edit, a redraft, restore, an interpretation's Accept writing a
+version, the draft made once per tree in the background, and no request waiting on a model."""
 
 from pathlib import Path
 

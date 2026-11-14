@@ -51,6 +51,31 @@ export async function sendTask(text: string): Promise<string | null> {
   return id;
 }
 
+/** a task from a GitHub issue you opened or labelled `build` ("owner/repo#12" or its address);
+ * the server reads it and refuses anyone else's issue in words, which are thrown here */
+export async function sendIssue(ref: string): Promise<string | null> {
+  const t = ref.trim();
+  if (!t) throw new Error("Write the issue as owner/repo#12, or paste its address.");
+  const p: Pending = { n: ++n, id: null, title: `Issue ${cut(t, 70)}`, at: Date.now() / 1000 };
+  pending.rows.push(p);
+  let id: string | null = null;
+  try {
+    const r = await post<{ id?: string | null; created?: boolean; state?: string }>("api/new", { issue: t });
+    id = r?.id || null;
+    if (r?.created === false && r?.state && !["new", "queued"].includes(r.state)) {
+      throw new Error(`That issue is already on the list (${r.state}): open it from Builds.`);
+    }
+  } catch (e) {
+    pending.rows = pending.rows.filter((x) => x.n !== p.n);
+    throw e;
+  }
+  pending.rows = pending.rows.map((x) => (x.n === p.n ? { ...x, id } : x));
+  stale(STATE);
+  await load(STATE);
+  if (!id) pending.rows = pending.rows.filter((x) => x.n !== p.n);
+  return id;
+}
+
 /** the text of a chosen file, read in this browser (nothing is uploaded but the text) */
 export async function fileText(f: File): Promise<string> {
   if (f.size > 512 * 1024) throw new Error(`${f.name} is larger than 512 KB: a task is a page or two of text.`);

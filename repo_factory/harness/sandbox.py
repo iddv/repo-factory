@@ -410,7 +410,7 @@ def command(
     and ``factory``: see ``mounts``; ``extra`` (binds) and ``setenv`` (non-secret variables):
     a capability launch's (``capabilities.compose.Launch``). ``workdir``: where the workspace
     appears inside (profile full-v3: ``/work/product``, the same path in every session and in
-    the exam's runs, EX-PLAN §5.3); default its own path. ``caches``: see ``mounts``. ``forwards``: ``(host, port)`` of
+    the exam's runs); default its own path. ``caches``: see ``mounts``. ``forwards``: ``(host, port)`` of
     MCP servers on the host's loopback (``Launch.forwards``): in ``proxy`` mode the bridge
     listens on the sandbox's own 127.0.0.1:port and pipes to the proxy's ``fwd-<port>.sock``.
     ``shell``: the tool commands' shell prefix (``env``). Raises ``SandboxUnavailable``

@@ -288,8 +288,8 @@ def test_assumptions_and_report_describe_only_settings_that_exist():
 def test_a_scenario_finds_the_product_at_its_fixed_path_and_serves_on_loopback(tmp_path):
     # The lending run's q22 passed for the verifier and failed in the harness: it found the
     # repo three directories up from its own file, and the harness ran it one level
-    # shallower. Now the product is at /work/product (REPO_FACTORY_PRODUCT_DIR) for the verifier and
-    # the harness alike (EX-PLAN §3.1), and a server on 127.0.0.1 is allowed.
+    # shallower. Now the product is at /work/product (REPO_FACTORY_PRODUCT_DIR) for the verifier
+    # and the harness alike, and a server on 127.0.0.1 is allowed.
     from repo_factory.harness.isolation import isolation
     from repo_factory.v5 import exam
 
@@ -504,7 +504,7 @@ def test_a_whole_scoped_build_offline(tmp_path):
     assert out["completeness"]["done"] == 3 and out["completeness"]["total"] == 3
     assert [x["status"] for x in out["completeness"]["flows"]] == ["works"] * 3
     assert fold(evs)["v5"]["scope"]["decision"] == "scoped"
-    # delivery: nothing of repo-factory's in the repo, SCOPE.md included (track LEAN: it stays in the
+    # delivery: nothing of repo-factory's in the repo, SCOPE.md included (it stays in the
     # round, beside the copy moved out of the tree); the two still failing scenarios are open
     # items in the evidence (never marks in the tree)
     o = Path(out["out"])
@@ -621,7 +621,7 @@ def test_a_run_saved_before_the_scope_stage_resumes_without_scoping(tmp_path):
     assert not any("task=scope" in p for p in llm.prompts)
 
 
-# -- EV7: a spec that passes through gets its definition of done from its own text -------------
+# -- a spec that passes through gets its definition of done from its own text ------------------
 PROSE_SPEC = (
     "A command-line tool that counts words, for people who edit text. It runs as "
     "`python3 -m wc FILE [--top N]` on Python 3.11 with the standard library only. "

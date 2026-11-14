@@ -1,4 +1,4 @@
-"""The maintenance package's static half (MAINTAIN.md §11, M1): templates, labels, the policy
+"""The maintenance package's static half: templates, labels, the policy
 file, AGENTS.md from a product tree, its drift doctor, check_agents_md.py, and the backfill
 end to end against a fake ``gh`` and a local bare repo. No model, no network."""
 

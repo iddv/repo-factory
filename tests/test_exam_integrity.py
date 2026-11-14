@@ -1,4 +1,4 @@
-"""The exam's integrity (EX-PLAN §3.6): it is read-only where it runs and in a repair session,
+"""The exam's integrity: it is read-only where it runs and in a repair session,
 and a change to it fails the stage."""
 
 import pytest

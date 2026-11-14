@@ -1,5 +1,5 @@
 """Drift checks on trimmed copies of Receipts and Plotkeeper at their 2026-10-12 commits
-(tests/fixtures/projects): the findings the PJ experiment verified by hand come out of code."""
+(tests/fixtures/projects): the findings an earlier experiment verified by hand come out of code."""
 
 from __future__ import annotations
 
@@ -43,7 +43,7 @@ def test_versions_that_agree_give_nothing(tmp_path):
 
 
 def test_factory_own_drift_is_not_found_on_the_projects_it_releases():
-    """AU3 finding 2: 29 of the 46 live findings were repo-factory's own. Its release step writes the
+    """29 of the 46 live findings were repo-factory's own. Its release step writes the
     tag and nothing else, so the version in a file and CHANGELOG's Unreleased fall behind by
     construction; its templates pinned pytest. On Receipts and Plotkeeper as they were on
     2026-10-12 (both `release.on_merge: patch`), none of those is found any more."""

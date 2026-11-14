@@ -7,7 +7,7 @@ cannot reach the den, the repo_factory package or anything else of the user's (#
 run (``require_sandbox``) unless the owner sets ``$REPO_FACTORY_ALLOW_UNSANDBOXED=1``; then it runs
 in a network namespace only, or on the host.
 
-Moved from ``problems/tsp/contract.py`` (S-1): TSP's solver was the first user.
+Moved from ``problems/tsp/contract.py``: TSP's solver was the first user.
 """
 
 from __future__ import annotations
@@ -78,7 +78,7 @@ def bwrap_cmd(
     arguments before the workspace bind, and ``clearenv=False`` keeps the caller's
     environment (the worker's credentials stay out of the command line).
 
-    The exam's contract (EX-PLAN §5.1): ``binds`` are ``(src, dst, read_only)`` triples, so a
+    The exam's contract: ``binds`` are ``(src, dst, read_only)`` triples, so a
     directory can appear at a path other than its own (``/work/product``, ``/work/exam``);
     ``etc`` binds ``/etc`` read-only (``getpass``, ``localhost`` and TLS behave as on a user's
     machine); ``home`` is a private tmpfs used as ``HOME``; ``work_at`` binds ``work`` there

@@ -1,5 +1,5 @@
 """The cost ledger: every ``claude -p`` call a build makes, one JSON line each, in
-``<den>/ledger.jsonl`` (docs/design/build-v3.md §6).
+``<den>/ledger.jsonl``.
 
 Two ways in, both through ``Ledger.append``:
 
@@ -356,6 +356,18 @@ def _said(stdout: str, stderr: str) -> str:
     return (stderr or stdout or "")[-500:]
 
 
+def _failed_cost(stdout: str) -> float | None:
+    """The cost a failed ``claude -p`` still reported in its JSON output, or None."""
+    try:
+        data = json.loads(stdout or "")
+    except (json.JSONDecodeError, TypeError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    usd = data.get("total_cost_usd")
+    return float(usd) if isinstance(usd, (int, float)) and not isinstance(usd, bool) else None
+
+
 def call_claude(
     prompt: str,
     model: str | None = None,
@@ -370,8 +382,9 @@ def call_claude(
 ) -> tuple[str, dict]:
     """``claude -p`` once without tools; returns ``(result text, data)`` where ``data`` is
     the parsed JSON output. Timeouts are retried with more time, a non-zero exit too
-    (``retries`` attempts in all). Every attempt is recorded in the active ledger, failed
-    ones with ``ok: false`` and ``usd: null``. Raises ``RuntimeError`` when all fail.
+    (``retries`` attempts in all; one under ``max_usd``). Every attempt is recorded in the
+    active ledger, failed ones with ``ok: false`` and the cost they reported (``usd: null``
+    when they reported none). Raises ``RuntimeError`` when all fail.
     ``env``: variables added to the process environment (build v5: ``CLAUDE_CONFIG_DIR``,
     so no-tools calls run under a clean config dir too). The Claude token goes through a
     pipe, never in the environment (``harness/handoff.py``). ``tools`` and ``max_usd``: as
@@ -384,6 +397,7 @@ def call_claude(
         for attempt in range(retries):
             t0 = time.time()
             err = None
+            spent = None
             span.attempts += 1
             penv = handoff.process_env(env)
             try:
@@ -426,19 +440,26 @@ def call_claude(
                         return data.get("result") or "", data
                 else:
                     err = f"exit {p.returncode}: {_said(p.stdout, p.stderr)}"
+                    spent = _failed_cost(p.stdout)
             last = err
+            # a failed attempt that still reported what it cost counts that cost toward the
+            # caps; one that reported nothing (a timeout, a crash) is recorded as unknown
+            if spent is not None:
+                span.add(spent)
             record(
                 caller,
                 purpose=purpose,
                 model=model,
                 ok=False,
-                usd=None,
+                usd=spent,
                 wall_s=round(time.time() - t0, 3),
                 chars=len(prompt),
                 attempt=attempt + 1,
                 error=err[:300],
                 **meta,
             )
+            if max_usd is not None:  # under a cap: one failure is not tried again
+                break
         span.error = (last or "")[:300]
         raise RuntimeError(
             f"claude -p failed ({caller or _tags.get().get('caller')}/"

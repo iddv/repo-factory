@@ -1,7 +1,7 @@
 """The README's commands, run as written (docs/design/build-v5.md, Addendum C: the readiness
 stage's ``commands`` step).
 
-All three round-2 h2h products shipped a README whose test command failed as written
+All three products of an earlier comparison shipped a README whose test command failed as written
 (``./shelfdesk.sh test`` and ``unittest discover`` picking up the pytest-only acceptance
 suite; a path that only existed during the build), while their READINESS.md said the
 documented test commands ran green. And the webhook relay couldn't start again for about
@@ -14,8 +14,7 @@ operator would, on a fresh copy of the tree as it will be delivered:
    command ("Start it again later with: npm start") is recorded as another way to start it,
    not run beside it; a step offered with "or" runs only when the step before it failed; an
    example that takes a data file of the user's own (``nextread import tabs.txt``) isn't a
-   failure of the README (track LEAN2). The tree is the product's own (EX-PLAN §4.2):
-   nothing of repo-factory's is in it.
+   failure of the README. The tree is the product's own: nothing of repo-factory's is in it.
 2. **restart** (services): start, use (five requests, each on its own connection), stop
    gracefully (SIGTERM), start again at once and check it serves; use it, SIGKILL it, start
    again at once and check it serves.
@@ -178,7 +177,7 @@ SKIP_TOOLS = {
     "nginx": "a web server",
     "caddy": "a web server",
 }
-# what a step needs that the check's sandbox doesn't have: "not verifiable here" (§5.2)
+# what a step needs that the check's sandbox doesn't have: "not verifiable here"
 NEEDS = {
     "needs root",
     "systemd isn't available in the check's sandbox",
@@ -636,7 +635,7 @@ def extract(root: Path) -> dict:
                 else []
             )
             out["run"].append({**e, "kind": "start", "setup": setup})
-    # EX-PLAN §5.2: a documented step that needs what the check's sandbox doesn't have
+    # A documented step that needs what the check's sandbox doesn't have
     # (root, systemd, Docker, the network, a cluster) is not verifiable here: listed as such,
     # never red, wherever in the README it is
     seen = {e["cmd"] for k in ("quick", "backup", "tests") for e in out[k]}

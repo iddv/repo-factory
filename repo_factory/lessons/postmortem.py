@@ -441,7 +441,7 @@ def apply(
     return added
 
 
-# -- user-found bugs (MAINTAIN.md §9): the `lesson` label on the published repos -----------------
+# -- user-found bugs: the `lesson` label on the published repos ----------------------------------
 # A merged fix of a user-reported bug the build's checks missed carries the ``lesson`` label and
 # a ``<!-- repo-factory:lesson v1 kind= miss= test= pr= -->`` comment (``maintain.release``). This reads
 # each such issue once: one no-tools call over the issue, the fix's diff and its test proposes at
@@ -669,7 +669,7 @@ def issue_lessons(data: dict) -> list[dict]:
 
 def locate(run_dir: Path, name: str) -> Path | None:
     """``claims.json`` / ``findings.json`` / ``score.json`` of a run: at the top of the arm
-    dir, else the newest one below it (Track D writes them under ``den/v5/r<N>/``)."""
+    dir, else the newest one below it (the v5 pipeline writes them under ``den/v5/r<N>/``)."""
     run_dir = Path(run_dir)
     if (run_dir / name).is_file():
         return run_dir / name

@@ -1,4 +1,4 @@
-"""Revise (MAINTAIN.md §5.2): repo-factory fixes an issue the owner labelled ``go``.
+"""Revise: repo-factory fixes an issue the owner labelled ``go``.
 
 GitHub is the record. The queue is a search over the open issues the poll already read
 (``queue``); the lock is the ``claim:repo-factory`` label plus one lease comment (``claim``, ``renew``);
@@ -23,7 +23,7 @@ build page read like any build's (kind *fix*). Its stages (``policies/v5-revise/
 5. **readiness**: no model. ``check_agents_md.py`` runs AGENTS.md's commands exactly as
    written (the quick start, the product's own tests, the acceptance suite) in the sandbox, on
    main and on the fix: a command that ran on main must still run on the fix. One that already
-   fails on main is main's, not the fix's, and holds nothing (AU3 finding 4).
+   fails on main is main's, not the fix's, and holds nothing.
    With ``maintain.exam`` (report, the default, or require), the checks published with the
    latest release run on main and on the fix (``checks.py``); a check that passed on main and
    fails on the fix is in the PR body (report) or stops the fix (require).
@@ -38,7 +38,7 @@ that pull request's own branch with ``--force-with-lease`` (its review history s
 an attempt: it claims nothing and writes no attempt comment on the issue; it reports on the pull
 request (``current.CURRENT``), and when the fix is on ``main`` already it closes the pull request.
 
-Security (§6.2): the sessions run in the build sandbox with no GitHub credential, and with
+Security: the sessions run in the build sandbox with no GitHub credential, and with
 ``maintain.net: allowlist`` their proxy reaches only ``maintain.net_hosts``; the issue's text
 reaches them only inside document delimiters; every GitHub write is the host's, from templates,
 with the model's words sanitised. repo-factory only ever clones ``main`` and pushes ``repo-factory/`` branches;
@@ -188,7 +188,7 @@ def linked(items: list[dict]) -> dict[int, list[int]]:
 
 
 def queue(items: list[dict], pol: dict, now: float, lease=lambda n: None) -> list[dict]:
-    """The §2.2 search over the open issues: labelled ``go`` (the owner's signature: triage's
+    """The search over the open issues: labelled ``go`` (the owner's signature: triage's
     ``auto_go`` and repo-factory's own filing keep to ``revise.kinds``; the owner's go starts any kind),
     not a ``question``, without ``needs-you`` or ``cannot-reproduce``, no assignee (a person's claim
     never expires), no open pull request that fixes it, and no live ``claim:*`` lease
@@ -373,7 +373,7 @@ def norm(s: str) -> str:
 def fails_for(expect: str, detail: str) -> bool:
     """The failure output carries the stated expectation: the phrase itself, or every word of
     it of three letters or more (the harness's check against a test that fails for another
-    reason, §6.2)."""
+    reason)."""
     e, d = norm(expect), norm(detail)
     if not e:
         return False
@@ -384,7 +384,7 @@ def fails_for(expect: str, detail: str) -> bool:
 
 
 def scope_violations(changed: list[str]) -> list[str]:
-    """What a fix's diff may never touch (§6.2): workflows, the policy, the licence and
+    """What a fix's diff may never touch: workflows, the policy, the licence and
     notice, a file outside the repo, a secret-shaped file."""
     from ..loop.secrets import BAD_FILES
     bad = []
@@ -704,7 +704,7 @@ class Fix:
 
     def do_reproduce(self) -> None:
         """The test first: one that reproduces a bug or security report on main, or for any
-        other kind one that specifies the requested behaviour (AU3 findings 5 and 7). Either
+        other kind one that specifies the requested behaviour. Either
         must fail on main for the stated reason."""
         name = "reproduce" if self.kind in REPRODUCE else "specify"
         text = self.prompt(name, issue=doc(self.item))
@@ -731,7 +731,7 @@ class Fix:
 
     def judge_test(self, test: str, got: dict) -> str | None:
         """Why the reproducing test is not accepted, or None: it is one test file of the
-        product's own suite (EX-PLAN §8.1: a repo that kept its acceptance suite has it under
+        product's own suite (a repo that kept its acceptance suite has it under
         ``tests/acceptance/``; a newer one under its own tests directory), the only change,
         and on main it fails (not errors) for the stated reason."""
         from ..v5.exam import is_test_path
@@ -777,7 +777,7 @@ class Fix:
                             "test)") if self.test else self.prompt("fix", "docs"))
         if "check" in [str(x.get("name") if isinstance(x, dict) else x)
                        for x in self.item.get("labels") or []]:
-            # EX-PLAN §6.3: a check of repo-factory's that may have judged a build wrongly
+            # a check of repo-factory's that may have judged a build wrongly
             test += "\n\n" + self.prompt("fix", "check")
         if self.refresh:
             test += "\n\n" + self.refresh_note()
@@ -880,7 +880,7 @@ class Fix:
             p = self.repo / f
             if p.is_file():
                 hits += [f"{f}:{n} {k}" for n, k, _ in scan_text(p.read_text(errors="replace"))]
-        # the provenance scan (EX-PLAN §4.6) over the product's prose this fix changed
+        # the provenance scan over the product's prose this fix changed
         users = {p.relative_to(self.repo).as_posix() for p in jargon.product_files(self.repo)}
         words = jargon.scan(self.repo, {}, [self.repo / f for f in changed if f in users])
         if bad or hits or words:
@@ -908,7 +908,7 @@ class Fix:
         return pr
 
     def charter_problems(self, changed: list[str], base: str = "origin/main") -> list[str]:
-        """The project's charter on this diff (PJ-PLAN.md §5.3): a promise's sentence gone
+        """The project's charter on this diff: a promise's sentence gone
         from the README, a dependency added where the charter says standard library only."""
         from ..projects.charter_check import for_fix
 
@@ -1213,7 +1213,7 @@ class Fix:
 # -- AGENTS.md: a repo-level condition, said on the repo's row -----------------------------------
 # Readiness compares the fix with main, so a missing or broken AGENTS.md holds no fix (until
 # 2026-10-16 it held the whole queue: Driftwatch for 72 hours, including the docs fix that would
-# have repaired it; AU3 finding 4). The row says what is wrong and what fixes it.
+# have repaired it). The row says what is wrong and what fixes it.
 MISSING = "AGENTS.md is missing"
 AGENTS_OK = "<!-- repo-factory:agents-md-ok v1 -->"
 

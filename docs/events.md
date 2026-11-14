@@ -52,7 +52,7 @@ A v5 **revise round** (`repo_factory/v5/change.py`, Ask for changes) starts with
 most 4000 characters) and `stages` (`build`, `verify`, `repair`, `reverify`, `deliver`). The
 stages it carries emit `v5_stage` `skipped` with `why: "carried from round <n>"`. After
 `delivered` it emits `revise_outcome`: `round`, `revises`, `mode`, `origin`, `changed` (the
-files that differ on `brb/<id>`), `before` and `after` (`{"own_failed", "total"}` of the
+files that differ on `repo-factory/<id>`), `before` and `after` (`{"own_failed", "total"}` of the
 product's own tests) and `what` (the session's own summary). A failed round ends
 `build_finished` `error` with `revise failed in <stage>: …`; the branch is as it was.
 
@@ -523,7 +523,7 @@ earlier `build_finished` error of the same round). `retries`: the stage that fai
 
 ### `delivered`
 `node` (the delivered node, or `null` if no candidate was valid; the branch then holds
-the seed), `branch` (`brb/<task>`), `out`, `report` (path to REPORT.md), `held_back`
+the seed), `branch` (`repo-factory/<task>`), `out`, `report` (path to REPORT.md), `held_back`
 (`{"passed", "total", ...}` for the delivered node, or `null`), `changed` (`false` only on
 a revise in which no new candidate was valid, so the branch is unchanged). A revise also
 has `commit` (the new commit hash, or `null`). With a rule set, `rules` is `{"visible":
@@ -687,6 +687,6 @@ terminal.
 {"v": 1, "ts": 1791012260.2, "task": "repo-07", "build": 1, "type": "tests_generated", "visible": 8, "held_back": 3}
 {"v": 1, "ts": 1791012260.3, "task": "repo-07", "build": 1, "type": "candidate_started", "candidate": 1, "run": "r1-5", "strategy": "minimal", "kind": "branch", "parent": null}
 {"v": 1, "ts": 1791012480.9, "task": "repo-07", "build": 1, "type": "candidate_finished", "candidate": 1, "run": "r1-5", "node": 6, "strategy": "minimal", "kind": "branch", "parent": null, "valid": true, "score": 0.93, "user_tests": [4, 4], "acceptance": [7, 8], "coverage": 0.88, "dropped_tests": [], "usd": 0.21, "exit_reason": "ok"}
-{"v": 1, "ts": 1791012900.0, "task": "repo-07", "build": 1, "type": "delivered", "node": 6, "branch": "brb/repo-07", "out": "/w/repo-07-kv-list/out", "report": "/w/repo-07-kv-list/out/REPORT.md", "held_back": {"passed": 3, "total": 3, "rate": 1.0}, "changed": true}
+{"v": 1, "ts": 1791012900.0, "task": "repo-07", "build": 1, "type": "delivered", "node": 6, "branch": "repo-factory/repo-07", "out": "/w/repo-07-kv-list/out", "report": "/w/repo-07-kv-list/out/REPORT.md", "held_back": {"passed": 3, "total": 3, "rate": 1.0}, "changed": true}
 {"v": 1, "ts": 1791012900.1, "task": "repo-07", "build": 1, "type": "build_finished", "status": "ok", "cost_usd": 1.12, "wall_s": 714.0}
 ```

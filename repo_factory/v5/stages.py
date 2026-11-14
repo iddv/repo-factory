@@ -1,11 +1,10 @@
-"""A build flow is data: a list of stages (track LEAN; the owner, 2026-10-19: "you should be
-able to add a stage to the build").
+"""A build flow is data: a list of stages, so a stage can be added to the build.
 
 Each ``Stage`` says what it is called, what it reads and writes (files and folders in the
 round folder, ``<den>/v5/r<N>/``), how it runs (a prompt of the policy, run as one Claude Code
 session in the build workspace, or a code function of the run), its model role (Settings ›
 Models), its own cap and timeout (none by default: the owner's rule), and whether its failure
-holds the build. ``FLOWS`` holds the three shipped flows: ``v5`` (today's), ``simple`` (BF) and
+holds the build. ``FLOWS`` holds the three shipped flows: ``v5`` (today's), ``simple`` and
 ``lean`` (Brief → Build → Harden → Check → Fix once → Publish).
 
 The runner (``pipeline.Run.steps``) walks a flow's list in order; a step it has finished is
@@ -16,7 +15,7 @@ prompt: docs, after: harden, role: build, holds: false, max_turns: 60, timeout_s
 with ``prompts/docs.md`` in the policy (``<<spec>>`` and ``<<flows>>`` are filled in). It runs
 as one session in the build workspace after the stage it names and its work is committed. It
 is first-party only: the policy is the owner's; stages from someone else (cubs) are a later,
-separate design (track BSD), and this shape is kept compatible with it.
+separate design, and this shape is kept compatible with it.
 
 **What a stage writes for repo-factory goes to the round, never into the product.** A prompt stage
 that needs to hand repo-factory a file (the harden stage's map of flows to tests) writes it under
@@ -28,7 +27,7 @@ from __future__ import annotations
 import re
 from dataclasses import asdict, dataclass, field
 
-# The six cells of the build page (BF-0, ``pipe.ts`` ``LEDGER``) a stage lights
+# The six cells of the build page (``pipe.ts`` ``LEDGER``) a stage lights
 CELLS = ("brief", "plan", "build", "check", "fix", "publish")
 NAME = re.compile(r"^[a-z][a-z0-9_]{1,23}$")
 
@@ -78,15 +77,15 @@ class Stage:
 
     @property
     def id(self) -> str:
-        """The stage's public id (BSD-DESIGN §3.1: ``brief``, ``build``, ``harden``,
-        ``check``, ``publish``, the anchors a cub's stage names); the internal name
+        """The stage's public id (``brief``, ``build``, ``harden``, ``check``,
+        ``publish``, the anchors a cub's stage names); the internal name
         otherwise. The records and events keep the internal name (``v5_stage`` ``stage``)."""
         return PUBLIC.get(self.name, self.name)
 
     def to_dict(self) -> dict:
-        """The stage as plain data (``build_started.flow_stages``, the docs), with BSD's
-        fields: ``id``, ``title``, ``owner`` ("core": repo-factory's own or the policy's),
-        ``anchor`` (None for a flow's own stage), ``core``, ``on_fail``."""
+        """The stage as plain data (``build_started.flow_stages``, the docs), with the
+        stage-design fields: ``id``, ``title``, ``owner`` ("core": repo-factory's own or the
+        policy's), ``anchor`` (None for a flow's own stage), ``core``, ``on_fail``."""
         d = {k: v for k, v in asdict(self).items() if k != "extra"}
         d.update(
             kind=self.kind,
@@ -102,7 +101,7 @@ class Stage:
         return d
 
 
-# Internal names whose public id differs (BSD-DESIGN §3.1, ask 5): the lean flow's Brief is
+# Internal names whose public id differs: the lean flow's Brief is
 # today's scope step, its Publish today's delivery
 PUBLIC = {"scope": "brief", "deliver": "publish"}
 
@@ -323,8 +322,9 @@ LEAN = (
         cell="build",
         label="Build",
     ),
-    # Harden: one session (EV7's prompt, adapted): robustness, tests, CI, the docs a user
-    # needs; no invented features or settings. Its map of flows to tests goes to the round.
+    # Harden: one session (an earlier experiment's prompt, adapted): robustness, tests, CI,
+    # the docs a user needs; no invented features or settings. Its map of flows to tests goes
+    # to the round.
     Stage(
         "harden",
         prompt="harden",

@@ -74,8 +74,7 @@ FLOWS = ("v5", "simple", "lean")
 def policy_of(b: dict) -> Path:
     """The policy a new build runs: ``build.policy``; with ``build.flow: simple`` or
     ``lean`` and the policy left at its default (``policies/v5``), that flow's
-    (``policies/simple``, BF-DESIGN; ``policies/lean``, track LEAN). A policy set by hand is
-    used as it is."""
+    (``policies/simple`` or ``policies/lean``). A policy set by hand is used as it is."""
     from ..resources import POLICIES
 
     policy = Path(b["policy"]).expanduser()

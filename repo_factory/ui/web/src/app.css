@@ -98,6 +98,29 @@ pre.cmd, pre.task-text { font-family: var(--mono); font-size: 12px; background: 
 .checks.held li::before { content: "✕ "; color: var(--red); }
 .newtask { max-width: 720px; }
 .newtask .file { margin-top: 6px; }
+.fromissue { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--border-2); }
+.fromissue input { width: 100%; max-width: 360px; font-family: var(--mono); }
+
+/* Builds' head: your own record */
+.record { margin: -4px 0 12px; }
+.record .lean { display: block; }
+
+/* Lessons: one line each, on or off */
+.lessons { max-width: 860px; overflow: auto; }
+.lessons .lead { max-width: 75ch; margin-bottom: 12px; }
+.lesson-list { border-top: 1px solid var(--border-2); }
+.lesson { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border-2); }
+.lesson.off .lesson-text { color: var(--muted); }
+.lesson-main { min-width: 0; }
+.lesson-text { line-height: 1.5; overflow-wrap: anywhere; }
+.lesson-id { font-family: var(--mono); font-size: 12px; }
+.switch { display: inline-flex; gap: 6px; align-items: center; font-weight: 500; margin: 0; white-space: nowrap; }
+.pms { display: flex; flex-direction: column; gap: 3px; }
+
+/* a build's flow when it is not the proven one, the issue it came from, the lessons it carries */
+.flowtag { margin-left: 6px; }
+.carried { margin: 8px 0; }
+.carried li { overflow-wrap: anywhere; }
 
 /* Settings: its pages listed beside the one open */
 .settings { display: grid; grid-template-columns: 200px minmax(0, 1fr); flex: 1; min-height: 0; }
