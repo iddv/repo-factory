@@ -60,13 +60,21 @@ SPEC_INTERFACES = 2  # a short task that names its functions or files is a spec 
 SHAPE = re.compile(r"^Shape:\s*(.+?)\s*$", re.M)
 GROUNDING = re.compile(r"^Grounding:\s*\n(?:[ \t]*[-*][^\n]*(?:\n|$))+", re.M)
 # the pitch's "How the claims are read" (``claims.spec_section``): readings, not a spec's rules
+# the issue a task came from, quoted (loop/from_issue.spec_quote), and the lessons from earlier
+# builds (lessons/home.pack): context the brief carries, never requirements of its own
+ISSUE = re.compile(
+    r"^From GitHub issue [^\n]*, quoted as the person wrote it:\n\n(?:>[^\n]*(?:\n|$))*", re.M
+)
+LESSONS = re.compile(r"^Lessons from earlier builds \([^\n]*\):\n(?:- [^\n]*(?:\n|$))*", re.M)
 CLAIMS = re.compile(r"^## How the claims are read\n.*?(?=^#{1,2}\s|\Z)", re.M | re.S)
 
 
 def carried(text: str) -> dict:
     """What the pitch carries in ``spec.md`` beside the brief (``pitch.spec_text``):
-    ``{"core": the text without them (nor the claims' readings), "shape": the Shape line's
-    value or None, "grounding": [lines]}``."""
+    ``{"core": the text without them (nor the claims' readings, the issue a task came from as
+    quoted, the lessons from earlier builds), "shape": the Shape line's value or None,
+    "grounding": [lines]}``. The definition of done and the scope's heuristic read ``core``
+    only, so quoted text never becomes a flow."""
     t = text or ""
     m = SHAPE.search(t)
     g = GROUNDING.search(t)
@@ -74,6 +82,7 @@ def carried(text: str) -> dict:
         [re.sub(r"^\s*[-*]\s*", "", x).strip() for x in g.group(0).splitlines()[1:]] if g else []
     )
     core = CLAIMS.sub("", GROUNDING.sub("", SHAPE.sub("", t, count=1), count=1), count=1)
+    core = LESSONS.sub("", ISSUE.sub("", core, count=1), count=1)
     return {
         "core": re.sub(r"\n{3,}", "\n\n", core),
         "shape": m.group(1) if m else None,

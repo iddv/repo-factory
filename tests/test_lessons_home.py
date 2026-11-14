@@ -182,6 +182,11 @@ def test_a_held_build_writes_one_lesson_and_the_next_brief_carries_it(tmp_path):
     out = lp.pitch([nxt["id"]])[0]
     spec = (Path(out["task_dir"]) / "spec.md").read_text()
     assert lessons.HEADER in spec and x["text"] in spec
+    # carried as context: not a flow of the definition of done
+    from repo_factory.v5 import scope
+
+    assert x["text"] not in " ".join(f["done_when"] for f in scope.spec_dod(spec))
+    assert lessons.HEADER not in scope.carried(spec)["core"]
     assert out["pitch"]["lessons"] == [{"id": "L1", "text": x["text"]}]
     assert lessons.load(lp.cfg.home)["lessons"][0]["packed"] == 1
 
