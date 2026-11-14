@@ -135,6 +135,7 @@
   200,
   "application/json",
   [
+   "api",
    "build",
    "concurrency",
    "daily_usd",
