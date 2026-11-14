@@ -1,4 +1,4 @@
-"""Settings › Publishing › Projects (PJ-PLAN.md §5.4, PJ-9): every setting readable with its check, written
+"""Settings › Publishing › Projects: every setting readable with its check, written
 factory-wide to loop.yaml or per project, refused in words; the autonomy preview counts what would
 flow with one setting changed (no write, no model); Spend's per-project rows."""
 

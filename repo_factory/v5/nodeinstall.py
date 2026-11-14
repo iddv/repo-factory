@@ -1,4 +1,4 @@
-"""The exam's install phase for Node products (EX-PLAN §5.1, decision 10).
+"""The exam's install phase for Node products.
 
 Python products keep ``candidate_venv`` (installed inside a sandbox like this one, cached by
 requirement set) and get their build backends as wheels (``pyinstall.py``). A product with a

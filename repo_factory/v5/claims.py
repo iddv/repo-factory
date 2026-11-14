@@ -4,7 +4,7 @@
 the injected lessons) and list claims and ambiguities; no code, so the reading isn't anchored
 on what the builder did. With more than one sample, one cheap call deduplicates the union;
 each merged item keeps ``sets`` (which samples produced it). Two samples existed for the
-retired p_hidden estimate's capture-recapture term (AU1 #5)."""
+retired p_hidden estimate's capture-recapture term."""
 
 from __future__ import annotations
 
@@ -24,11 +24,11 @@ KINDS = ("requirement", "interaction", "edge", "input")
 # -- lessons (§5.2) ---------------------------------------------------------------------------
 def load_lessons(path: Path | None, pack: str | None = None) -> list[dict]:
     """The lessons a build may see: status ``active`` or ``probation``, not born on ``pack``
-    (so every dev score is leave-one-pack-out), sorted by hit rate. Track E's
-    ``lessons.store.for_build`` is used when it exists."""
+    (so every dev score is leave-one-pack-out), sorted by hit rate. The lessons
+    store's ``lessons.store.for_build`` is used when it exists."""
     if path is None or not Path(path).exists():
         return []
-    try:  # track E
+    try:  # the lessons store
         from ..lessons.store import for_build
 
         return list(for_build(pack, path=Path(path)))

@@ -1,4 +1,4 @@
-"""The person's repositories, to pick some to onboard as projects (WZ-DESIGN §4, WZ-4).
+"""The person's repositories, to pick some to onboard as projects.
 
 ``listing(gh, org=None, maintained=())`` reads, and only reads: ``GET /user/repos``
 (``affiliation=owner``, newest push first, two pages of 100 at most), or one organisation's

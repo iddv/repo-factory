@@ -1117,7 +1117,7 @@ class App:
         return None
 
     def spend_breakdown(self, now: float | None = None, builds: int = 30, days: int = 14) -> dict:
-        """Settings › Spend's breakdown (UI-v4.md 2.5) over the loop's ledger and the task
+        """Settings › Spend's breakdown over the loop's ledger and the task
         folders, read the way ``spend_summary`` (the header and Today) reads them, so every
         column sums to its total. By build: each loop idea with spend, its build's model calls
         (the task's ``.den/ledger.jsonl``) and the loop's own calls for it (pitch, checks,
@@ -1271,7 +1271,7 @@ class App:
                 )
         return sorted(out, key=lambda r: -r["all_usd"])
 
-    # ---- maintenance (MAINTAIN.md §8): read from GitHub, kept maintain.cache_s, never stored --
+    # ---- maintenance: read from GitHub, kept maintain.cache_s, never stored ------------------
     def maint_reader(self):
         """The page's GitHub reads (``maintain.github.Reader``), made once per ``gh`` command
         and cache time, kept in ``<home>/maintain/reads.json`` for that identity."""
@@ -3028,8 +3028,8 @@ class App:
         return p
 
     def maintenance_state(self, pid: str, paused: bool, origin: str = "ui") -> dict:
-        """Pause or resume maintenance on a project's repositories, in repo-factory, at once (the
-        owner, 2026-10-29; ``maintain/pauses.py``): no pull request, the repo's
+        """Pause or resume maintenance on a project's repositories, in repo-factory, at once
+        (``maintain/pauses.py``): no pull request, the repo's
         ``.github/repo-factory.yml`` untouched. An adopted repo's profile is paused too (as Pause on
         Build › Repos), and restored on resume only when this paused it."""
         from ..maintain import pauses
@@ -3279,9 +3279,9 @@ class App:
 
     def project_asks(self, lp) -> list[dict]:
         """What the projects ask: a minor ask (Build it) or a scope ask (the
-        charter diff), never a model call. Needs you folds them into one row per project
-        (GRD-DESIGN §7.3); ``stale``: a minor or patch ask older than ``projects.ask_days`` (14)
-        leaves that row's count and stays on the project's page; a scope ask never ages."""
+        charter diff), never a model call. Needs you folds them into one row per project;
+        ``stale``: a minor or patch ask older than ``projects.ask_days`` (14) leaves that row's
+        count and stays on the project's page; a scope ask never ages."""
         from ..projects import changes as X
         from ..projects.charter import diff, to_text
         from ..projects.record import Projects

@@ -1,4 +1,4 @@
-"""The loop's own error (CR-REVIEW C-4). A loop or Projects step that refuses (a wrong state, a
+"""The loop's own error. A loop or Projects step that refuses (a wrong state, a
 missing reason, a cap) raises ``LoopError`` with the reason in words for the owner. The
 command line prints it and exits 1, as before; the page answers 400; the daemon's tick logs it
 and keeps going. It is an ``Exception``, so every safety net catches it: a refusal can no

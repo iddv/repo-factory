@@ -1,4 +1,4 @@
-"""Maintenance's polling half (MAINTAIN.md §11, M2): the GitHub client and its cache, triage
+"""Maintenance's polling half: the GitHub client and its cache, triage
 with a no-tools model, Dependabot, the poll in the loop's tick, Today's rows, the Maintenance
 box and Settings › Publishing › Maintenance. A fake GitHub behind a fake ``gh``, a scripted model, fixture
 issues as JSON: no model, no network."""
@@ -686,7 +686,7 @@ def test_snapshot_carries_todays_rows_from_the_poll(app):
     assert got == {("needs_you", 1), ("factory_pr", 40), ("dependabot", 42)}
     assert T.problems(a.snapshot(), T.Snapshot) == [], "the rows have the shape types.py says"
     assert all(r["product"] == "Plotkeeper" and r["repo"] == REPO for r in rows)
-    # repo-factory's own pull request (#40) is listed but is not a Needs you row (GRD-DESIGN §7.3)
+    # repo-factory's own pull request (#40) is listed but is not a Needs you row
     assert a.header()["needs_you"] == 2
     # Try again removes needs-you on GitHub, and the row leaves Today at once
     code, _, body = api.handle(

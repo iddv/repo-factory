@@ -1,4 +1,4 @@
-"""The repository picker's list (WZ-DESIGN §4.1, WZ-4): reads only, through a fake gh that
+"""The repository picker's list: reads only, through a fake gh that
 records every call; forks, archived, empty and already-maintained repositories left out;
 newest push first; two pages at most; one organisation on request; the App's own list."""
 

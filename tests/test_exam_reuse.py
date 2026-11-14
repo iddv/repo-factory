@@ -1,4 +1,4 @@
-"""A docs revise round reuses its parent's exam record (AU1 #8): when only Markdown changed,
+"""A docs revise round reuses its parent's exam record: when only Markdown changed,
 the delivered tree is not measured again; a changed README test command runs alone; any
 other change runs everything. The sandbox is replaced by a counting fake."""
 

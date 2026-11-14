@@ -1,4 +1,4 @@
-"""The provenance scan (EX-PLAN §4.6): does the product's own prose carry repo-factory's process?
+"""The provenance scan: does the product's own prose carry repo-factory's process?
 
 It replaces the jargon regexes of the old ``acceptance.scan`` (shapes such as
 ``(finding|claim|rule) [a-z]{1,2}\\d+``, which also matched a product's own words, "state
@@ -24,9 +24,9 @@ import json
 import re
 from pathlib import Path
 
-# Literals only repo-factory writes. Not here: ``tests/acceptance`` (the published repos keep the
-# suite they were delivered with as their own, EX-PLAN §8.1, and a product may choose that
-# directory for its tests), "the verifier" and "the factory" (plain English an AI-tooling or
+# Literals only repo-factory writes. Not here: ``tests/acceptance`` (the published repos keep
+# the suite they were delivered with as their own, and a product may choose that directory
+# for its tests), "the verifier" and "the factory" (plain English an AI-tooling or
 # a web product says about itself: the ai_tooling fixture).
 VOCABULARY = (
     "_verify",

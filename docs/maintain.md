@@ -321,8 +321,8 @@ picks: `auto` (the default: the app once installed, else the token file below, e
 ("add it to repo-factory's app"), never the login; an app GitHub refuses (uninstalled, suspended, its
 key replaced) makes every maintained repo's row say so, and nothing falls back to the login.
 *Remove repo-factory's app* uninstalls it and deletes the key and record here; the registration is
-deleted on GitHub. `brb github status|refresh|key --file|remove` does the same from the command
-line.
+deleted on GitHub. `repo-factory github status|refresh|key --file|remove` does the same from the
+command line.
 
 repo-factory's GitHub App is not the "repo-factory" OAuth App that *repo-factory's GitHub sign-in* goes through (the
 device flow; Settings › Publishing › GitHub › repo-factory's GitHub sign-in names it and its client id).
@@ -331,7 +331,7 @@ After *Create*, the page waits five minutes for GitHub to send the browser back 
 *Cancel*), then puts Create back and says the try did not finish; a callback GitHub still sends
 within ten minutes is kept, so an app made late is not lost. An app that exists on GitHub but
 not here (a closed tab, a lost record) is **linked, never made twice**: *Link an app you made*
-(or `brb github link --app-id N --file app.pem`) takes its App ID and a private key generated
+(or `repo-factory github link --app-id N --file app.pem`) takes its App ID and a private key generated
 under its settings, checks the pair with `GET /app`, keeps the key at 0600 and reads the
 installation back. Nothing is created on GitHub.
 
@@ -401,4 +401,4 @@ the owner's login.
 Product CI runs on GitHub-hosted runners only; a self-hosted runner is never attached to a
 product repo, and the doctor flags any workflow that names one (in Needs you). Workflows read with
 `contents: read` and check out without persisting credentials. The templates carry nothing
-private (`tests/test_no_secrets.py` scans them). See MAINTAIN.md §6 for the full model.
+private (`tests/test_no_secrets.py` scans them).

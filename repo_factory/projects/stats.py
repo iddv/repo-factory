@@ -1,4 +1,4 @@
-"""A project's numbers and its drift, refreshed by the maintenance tick (PJ-PLAN §2.4, §4.2).
+"""A project's numbers and its drift, refreshed by the maintenance tick.
 
 ``refresh`` writes ``projects.stats`` from reads that already happen: one ``repos/<r>`` call
 through the maintenance ``gh`` (``github``), the poll's cache (counts, Needs-you rows,

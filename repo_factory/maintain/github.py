@@ -1,4 +1,4 @@
-"""The GitHub side of maintenance (MAINTAIN.md §1, §5): one product repository read and written
+"""The GitHub side of maintenance: one product repository read and written
 through the ``gh`` CLI's REST calls, and the poll's disposable cache.
 
 ``Repo`` reads issues, pull requests, labels, collaborators, the latest release and the CI state
@@ -117,7 +117,7 @@ class Repo:
         raw: bool = False,
     ) -> str:
         if SECRETS.search(path.split("?")[0]):
-            # MX-PLAN §3.6: repository and organisation secrets are never read, whoever asks
+            # repository and organisation secrets are never read, whoever asks
             raise GitHubError(f"repo-factory never reads secrets: {path.split('?')[0]}")
         args = ["api"]
         if method != "GET":

@@ -1,4 +1,4 @@
-"""The flake protocol (EX-PLAN §3.3): a failing scenario is run again alone, up to
+"""The flake protocol: a failing scenario is run again alone, up to
 ``exam.reruns`` more times (5 runs in all). Once in five: flaky, repo-factory's own problem, retired
 and listed, never a finding. At least ``exam.intermittent_hold_min`` (3) times: it fails. In
 between: it passes with an amber "intermittent" row. The same rule for an own test command."""

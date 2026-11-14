@@ -1,4 +1,4 @@
-"""The charter, checked on a fix's diff (PJ-PLAN.md §5.3): the model's class is backed by code
+"""The charter, checked on a fix's diff: the model's class is backed by code
 at the moment a change would land.
 
 A maintenance fix (``maintain.revise.Fix``, ``maintain.repofix.RepoFix``) of a repo that is a

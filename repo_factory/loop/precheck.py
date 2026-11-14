@@ -58,7 +58,7 @@ KEEP = (
 # The pitch's fields the checks read: the product's name, the sentences the public text may
 # never copy (describe.pitch_sentences) and the evidence NOTICE names. Not the owner's release
 # text (the push reads it as it is then) nor the claims (read at build start): Sidedoor's two
-# saves of an unchanged release text each started the model again (AU2 #4)
+# saves of an unchanged release text each started the model again
 PITCH_READ = ("product", "one_liner", "brief", "who", "why_now", "evidence_used")
 INLINE_ENV = "REPO_FACTORY_PRECHECK_INLINE"  # "1": the tick runs the checks itself (the tests)
 

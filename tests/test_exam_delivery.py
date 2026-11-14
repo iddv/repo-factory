@@ -1,4 +1,4 @@
-"""What the product ships (EX-PLAN §4, PR 2): nothing of repo-factory's in the tree, the evidence
+"""What the product ships: nothing of repo-factory's in the tree, the evidence
 beside it, adoption of the fixes checked from git, and the files earlier versions of repo-factory
 wrote into a tree recognised and moved out."""
 

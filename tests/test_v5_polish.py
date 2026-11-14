@@ -262,7 +262,7 @@ def test_every_build_takes_one_claim_sample_and_no_dedupe_call(tmp_path):
             list(calls),
             {tuple(c["sets"]) for c in run.claims["claims"]},
         )
-    # one sample, no dedupe, scoped or not: the second sample fed only p_hidden (AU1 #5)
+    # one sample, no dedupe, scoped or not: the second sample fed only p_hidden
     assert got[True] == got[False] == (1, ["claims"], {(1,)})
 
 
@@ -351,7 +351,7 @@ class ReadmeRepair(base.Scripted):
         if fake.REPAIR in prompt and "### tests_green" in prompt:
             self.runs.append(("ready-repair", opts))
             self.saw["brief"] = prompt
-            # nothing of repo-factory's is in the workspace to run the command against (EX-PLAN §4.2)
+            # nothing of repo-factory's is in the workspace to run the command against
             self.saw["acceptance"] = (ws / "tests" / "acceptance").exists()
             if self.fix:
                 r = ws / "README.md"

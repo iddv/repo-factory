@@ -1,6 +1,5 @@
-"""``merge.factory_patch: ci-green`` (MAINTAIN.md §5.2): repo-factory merges its own fix pull requests
-when CI is green, in a repo whose ``.github/repo-factory.yml`` opts in. Off by default (decision D3,
-overruled by the owner on 2026-10-15 as an opt-in per repo).
+"""``merge.factory_patch: ci-green``: repo-factory merges its own fix pull requests when CI is
+green, in a repo whose ``.github/repo-factory.yml`` opts in. Off by default: an opt-in per repo.
 
 Every poll, per repo, the queue is repo-factory's open fix pull requests (``current.own``), oldest
 first. Each is **refused** (it waits for the owner, with the reason on the page) when any of

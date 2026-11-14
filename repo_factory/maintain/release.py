@@ -1,4 +1,4 @@
-"""Release (MAINTAIN.md §5.3) and the lesson label (§9).
+"""Release and the lesson label.
 
 After any merge to ``main`` (repo-factory's pull request, the owner's, a Dependabot one), when
 ``.github/repo-factory.yml`` › ``release.on_merge`` is not ``off``: the newest version tag is compared
@@ -12,7 +12,7 @@ A merged fix of repo-factory's that a user's report started is recorded as a les
 GitHub, never in repo-factory: the issue it fixed gets the ``lesson`` label and one comment with the
 ``<!-- repo-factory:lesson v1 ... -->`` marker, when the issue is a ``bug`` or ``security`` report,
 the fix reproduced it with a test that failed on main, and repo-factory did not open the issue
-itself. The nightly learning job reads the label (track M4)."""
+itself. The nightly learning job reads the label."""
 
 from __future__ import annotations
 
@@ -64,7 +64,7 @@ def kinds_of(r: Repo, prs: list[dict]) -> set[str]:
 
 
 def lesson(r: Repo, pr: dict) -> dict | None:
-    """The lesson candidate of one merged repo-factory fix, when §9's three conditions hold."""
+    """The lesson candidate of one merged repo-factory fix, when the three conditions above hold."""
     m = meta(pr.get("body") or "")
     if not m or "repo-factory" not in pr["labels"] or not m.get("test") or not m.get("issue"):
         return None

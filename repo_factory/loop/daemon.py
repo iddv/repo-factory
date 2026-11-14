@@ -606,7 +606,7 @@ class Loop:
         return self.ledger.all("building")
 
     def revising(self) -> list[dict]:
-        """The maintenance fixes running now (MAINTAIN.md §5.2): they share the build slots."""
+        """The maintenance fixes running now: they share the build slots."""
         from ..maintain.github import Cache
         from ..maintain.revise import running
 
@@ -889,7 +889,7 @@ class Loop:
             history={"failure": True},
         )
 
-    # -- Ask for changes (AR-PLAN.md §2): a revise round of a held or ready build -----------
+    # -- Ask for changes: a revise round of a held or ready build ---------------------------
     def revise(
         self,
         idea_id: str,
@@ -965,7 +965,7 @@ class Loop:
             _json.dumps({"reasons": reasons, "issues": issues, "failing": failing}, indent=1)
         )
         self._snapshot(idea, rec)
-        # reasons: the gate's holds the round starts from, to compare its outcome with (AU1 #2)
+        # reasons: the gate's holds the round starts from, to compare its outcome with
         rec.update(
             change={
                 "k": k,
@@ -1010,14 +1010,14 @@ class Loop:
         return r or "; ".join((idea.get("gate") or {}).get("reasons") or [])
 
     def _auto_repair(self, idea: dict, g: dict) -> dict | None:
-        """AU1 #2: a build the gate holds gets an automatic code revise round (origin
-        ``auto``) with the hold as its brief, as the owner's Ask for changes would; at most
+        """A build the gate holds gets an automatic code revise round (origin ``auto``) with
+        the hold as its brief, as the owner's Ask for changes would; at most
         ``build.auto_repair`` (default 1; 0: off) per build, counted when each starts, and
         ``revise.max_per_build``. Only queued: the loop's pause decides when it runs. Returns
         the idea (queued), or None: it stays held."""
         n = max(0, int(_setting(self.cfg["build"], "auto_repair", 1)))
         if (idea.get("build") or {}).get("flow") in ("simple", "lean"):
-            return None  # the flow's own fix rounds were its repair (BF D7; lean:
+            return None  # the flow's own fix rounds were its repair (lean:
             #                         one fix session, then it holds)
         reasons = list(g.get("reasons") or [])
         if (
@@ -1029,7 +1029,7 @@ class Loop:
         ):
             return None  # a cut-off build: a new build helps, not a fix
         why = gate_mod.cant_revise(g, idea.get("task_dir"), g)
-        if why:  # ASKF: repo-factory's own sandbox; no round changes it
+        if why:  # repo-factory's own sandbox; no round changes it
             log(f"{idea['id']} {idea['title']}: no automatic repair: {why}")
             return None
         rec = dict(idea.get("build") or {})
@@ -1092,7 +1092,7 @@ class Loop:
         return k + 1 if k else 0
 
     def _refuse_identical(self, idea: dict, text: str, hold: str) -> None:
-        """Never a third identical round (NG-PLAN §6): refused when ``revise.max_identical``
+        """Never a third identical round: refused when ``revise.max_identical``
         rounds (default 2; stopped and failed ones count: each request is a history row) were
         already asked against this same hold, which is still here unchanged, with the same
         instructions or the hold's own words. Different instructions are a material change and
@@ -1156,7 +1156,7 @@ class Loop:
             )
             log(f"{idea['id']} {idea['title']}: {said}")
             return out
-        # AU1 #2: the outcome, not the instructions: a round that left the hold exactly as it
+        # The outcome, not the instructions: a round that left the hold exactly as it
         # found it stops the automatic rounds, with one line
         n = (
             self._not_moved(rec["changes"], g["reasons"])
@@ -1279,7 +1279,7 @@ class Loop:
             and not builds.resumable(task, rec.get("round") or 0)
         ):
             # the simple flow: Retry is the loop once more on the delivered tree, the hold as
-            # its brief (BF D6); Retry with a rebuild builds it again
+            # its brief; Retry with a rebuild builds it again
             try:
                 return self.revise(
                     idea["id"],
@@ -1328,7 +1328,7 @@ class Loop:
     # names its task, and only its own process tree) and SIGKILL after ``kill_grace`` by a
     # detached reaper. The idea stays ``building`` with ``build.kill`` ("stopping…") until
     # the loop's watch sees the build gone, then ``_controlled`` makes the change. (Pause build
-    # went into Stop round, AU1 #9: a "pause" kill recorded before that is a stop.)
+    # went into Stop round: a "pause" kill recorded before that is a stop.)
     CONTROL_WORDS = {"stop": "stopping", "pause": "stopping", "restart": "restarting"}
 
     def kill_grace(self) -> float:
@@ -1373,7 +1373,7 @@ class Loop:
         """Stop round: kill this build's workers and put the idea back as it was before the
         round (held or ready, that round's gate, reason and publish record); the stopped
         round stays on disk and in the history, resumable only by the owner's Resume. A
-        build paused before Pause build went into Stop round (AU1 #9) stops at once (nothing
+        build paused before Pause build went into Stop round stops at once (nothing
         runs)."""
         idea = self.ledger.must(idea_id)
         rnd = (idea.get("build") or {}).get("round")
@@ -1537,7 +1537,7 @@ class Loop:
     def resume_build(self, idea_id: str, origin: str = "cli", word: str = "resumed") -> dict:
         """Resume build: a round the owner stopped (Stop round) is queued to continue where it
         stopped, when v5 saved it; so is a build paused before Pause build went into Stop
-        round (AU1 #9).
+        round.
         ``word``: how the history says it ("undone" for the flash's Undo)."""
         idea = self.ledger.must(idea_id)
         rec = dict(idea.get("build") or {})
@@ -1962,10 +1962,10 @@ class Loop:
         )
 
     def _charter_draft(self, idea_id: str, key: str, done: dict) -> None:
-        """PJ-PLAN.md §3.2: a ready build's charter is drafted here, in the background pre-push
-        process, from the idea and the staged tree, once per tree (a Retry, a new round or a
-        changed pitch drafts again); kept as ``publish.charter_draft`` until the publish makes
-        the project. Never holds or fails the checks."""
+        """A ready build's charter is drafted here, in the background pre-push process, from
+        the idea and the staged tree, once per tree (a Retry, a new round or a changed pitch
+        drafts again); kept as ``publish.charter_draft`` until the publish makes the project.
+        Never holds or fails the checks."""
         idea = self.ledger.must(idea_id)
         old = (idea.get("publish") or {}).get("charter_draft") or {}
         if idea["state"] != "ready" or old.get("key") == key or self.charter_model is None:
@@ -2048,12 +2048,12 @@ class Loop:
         if pid:
             log(f"{idea['id']} {idea['title']}: pre-push checks started (pid {pid})")
 
-    # -- re-check with current repo-factory (EX-PLAN §7) -----------------------------------------------
+    # -- re-check with current repo-factory ----------------------------------------------------
     def recheck(self, idea_id: str) -> dict:
         """The installed repo-factory's checks on a held or ready build's delivered tree, compared
         with the version that built it (``recheck.run``): ``gate.recheck`` and a history line.
-        A held build's re-check that only turned holds into passes is its verdict (AU1 #3,
-        ``recheck.clears``): the gate re-recorded, judged by this version, and the build ready
+        A held build's re-check that only turned holds into passes is its verdict
+        (``recheck.clears``): the gate re-recorded, judged by this version, and the build ready
         when nothing else holds it; any other re-check changes nothing about the build. A press
         from the UI, MCP or the chat
         starts it detached (``recheck.spawn``) and returns at once; the command line runs it."""
@@ -2115,7 +2115,7 @@ class Loop:
         if won is None:
             log(f"{idea['id']} {idea['title']}: {said}")
             return self.ledger.update(idea["id"], gate=g, note=said)
-        # AU1 #3: it only turned holds into passes: the verdict, judged by this version
+        # It only turned holds into passes: the verdict, judged by this version
         gate_mod.record(Path(idea["task_dir"]), won)
         said += f"; the verdict is recorded, judged by repo-factory {won['judged_by']}: " + (
             "ready to publish"
@@ -2138,7 +2138,7 @@ class Loop:
         """``(gate.override_plan, the gate)`` for a held idea: the gate evaluated again on
         its delivered round, and the pre-push checks that would hold its push (its current
         ``publish.precheck``; none when they have not run on this tree). The gate is
-        ``gate.now``: the evaluation the page's dialog shows (ASKF)."""
+        ``gate.now``: the evaluation the page's dialog shows."""
         rnd = (idea.get("gate") or {}).get("round") or (idea.get("build") or {}).get("round")
         g = gate_mod.judged(idea.get("task_dir"), rnd, idea.get("gate"))
         if not g.get("checks"):  # no verdict at all: judged on the records
@@ -2156,7 +2156,7 @@ class Loop:
         yes: bool = False,
         holds: list[str] | None = None,
     ) -> dict:
-        """The owner publishes a held build over its holds (AR-PLAN.md §4): into a **private**
+        """The owner publishes a held build over its holds: into a **private**
         repo, with the override recorded and disclosed in its NOTICE and release notes. Only
         the holds in ``publish.anyway.may_override`` are overridden; nothing delivered,
         security, a secrets hit and a red bind_localhost never are. Going public is still the

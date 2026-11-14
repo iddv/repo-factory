@@ -1,4 +1,4 @@
-"""repo-factory's GitHub sign-in renews itself (SF item 1): an OAuth App with expiring tokens gives an
+"""repo-factory's GitHub sign-in renews itself: an OAuth App with expiring tokens gives an
 eight-hour token and a single-use refresh token. repo-factory keeps the refresh token at 0600, renews in
 the token's last half hour under a lock, and says "click Connect again" on the page and in the
 doctor when GitHub refuses. Against a fake GitHub on loopback; no token is printed anywhere."""

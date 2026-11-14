@@ -1,4 +1,4 @@
-"""The evolve run (PJ-PLAN.md §4, §5, PJ-6) with a fake model replaying the experiment's real
+"""The evolve run with a fake model replaying the experiment's real
 replies (tests/fixtures/projects/replies/*.evolve.txt) and a fixed gather (no clone, no
 network): the ideas land with their class and state; a second run raises the agreeing count and
 adds nothing; a minor change asks after two runs; a non-goal match becomes scope; a declined
@@ -99,7 +99,7 @@ def test_the_receipts_run_lands_seven_ideas_with_their_class_and_state(world):
     assert "Nothing from outside the repository was gathered" in prompt
     assert "No ideas have been proposed for this project yet." in prompt
     # quiet: the six patches above the confidence line are filed on their own; the minor
-    # feature asks at once (AU3 finding 8: a second run proposing the same title word for word
+    # feature asks at once (a second run proposing the same title word for word
     # a week later almost never came; Driftwatch's three sat at `agreeing: 1` since 10-13)
     assert states(lp, p["id"]) == [("minor", "new")] + [("patch", "queued")] * 6
     minor = next(ch for ch in X.all_of(lp.ledger, p["id"]) if ch["class"] == "minor")
@@ -428,7 +428,7 @@ def test_the_project_actions_are_in_the_registry_and_an_agent_may_run_them():
     assert "confirm" in R.schema("charter_change")["required"]
 
 
-# -- Needs you by rule (GRD-DESIGN §7.3, GRD-7) ----------------------------------------------------
+# -- Needs you by rule ----------------------------------------------------------------------------
 def test_the_loop_stops_asking_while_the_asks_wait(world):
     """projects.asks_open_max: with that many minor asks unanswered, a run proposes nothing new and
     makes no call (it says why); Check for ideas now still runs."""

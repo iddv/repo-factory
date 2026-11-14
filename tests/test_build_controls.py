@@ -1,4 +1,4 @@
-"""One build's controls (RC): Stop round (Pause build went into it, AU1 #9), Resume build,
+"""One build's controls: Stop round (Pause build went into it), Resume build,
 Cancel build and Restart with new instructions, on the loop (``Loop``), the registry and api/act.
 
 The builds are the fake ``repo-factory build``/``repo-factory revise`` (``fixtures/loop/fake_build.py``), each
@@ -181,7 +181,7 @@ def test_a_build_that_ignores_sigterm_is_killed_after_the_grace(tmp_path):
 
 
 def paused_as_before(lp, a, ta):
-    """An idea paused before Pause build went into Stop round (AU1 #9), as an older ledger
+    """An idea paused before Pause build went into Stop round, as an older ledger
     holds it: ``paused``, its round 2 kept (no stopped.json), resumable."""
     lp.retry(a)
     running(lp, a, ta, LONG)
@@ -377,7 +377,7 @@ def test_the_registry_and_api_act(tmp_path):
     with pytest.raises(api.HttpError) as e:  # confirm class: 409 without confirm
         app.act({"kind": "stop_round", "subject": {"kind": "idea", "id": a}, "origin": "cli"})
     assert e.value.code == 409
-    with pytest.raises(api.HttpError):  # Pause build is gone (AU1 #9)
+    with pytest.raises(api.HttpError):  # Pause build is gone
         app.act(
             {
                 "kind": "pause_build",

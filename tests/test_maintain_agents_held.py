@@ -1,9 +1,9 @@
 """A maintained repo without a working AGENTS.md is a repo-level condition, never a per-issue
-failure (track AM, after Beliefline, 2026-10-13: every fix stopped at readiness with "AGENTS.md
-is missing", spent both attempts on each issue and labelled it needs-you).
+failure (after Beliefline: every fix stopped at readiness with "AGENTS.md is missing", spent
+both attempts on each issue and labelled it needs-you).
 
-Since AU3 finding 4 (2026-10-16) it holds nothing: readiness compares the fix with main, so what
-already fails on main is main's. Driftwatch's queue had been held 72 hours by such a hold,
+Now it holds nothing: readiness compares the fix with main, so what already fails on main is
+main's. Driftwatch's queue had been held 72 hours by such a hold,
 including the docs fix that would have repaired it. One row on the repo says what is wrong, with
 the press that fixes it (the backfill PR, registry ``maintain_backfill``); an issue labelled
 needs-you only for a missing AGENTS.md is told the cause is gone. A fake GitHub behind a fake ``gh``, a local bare repo as the origin: no model,

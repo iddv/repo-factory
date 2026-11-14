@@ -91,7 +91,7 @@ def decision_line(d: dict) -> str:
 
 
 def decision_lines(decisions: list[dict], indent: str = "      ") -> list[str]:
-    """The controller's decisions after a milestone's runs (build v3 §4), the notable ones."""
+    """The controller's decisions after a milestone's runs (build v3), the notable ones."""
     return [indent + decision_line(d) for d in decisions if notable(d)]
 
 
@@ -315,7 +315,7 @@ def v5_lines(v: dict | None) -> list[str]:
 
 
 def task_lines(m: dict, indent: str = "      ") -> list[str]:
-    """A milestone's tasks (build v3 §3) under it; a design task with its N candidates and
+    """A milestone's tasks (build v3) under it; a design task with its N candidates and
     the winner."""
     out = []
     for t in m.get("tasks") or []:

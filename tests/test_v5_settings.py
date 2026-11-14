@@ -1,7 +1,7 @@
 """Addendum A (docs/design/build-v5.md): binary business-rule ambiguities become operator
 settings; complex ones are the implementation's call. Nobody votes, asks or forks.
 
-The motivating case is from Track D's real check on review6/A. The spec-only panel voted 3/3
+The motivating case is from a real check of the v5 pipeline. The spec-only panel voted 3/3
 that a lapsed hold's pickup window chains from the previous expiry. The repair did that and
 regressed hidden topic T15, whose author held the other reading ("a fresh window from
 processing"). Here that case is a binary policy. It becomes the setting

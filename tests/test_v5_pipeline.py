@@ -1,7 +1,7 @@
 """A whole v5 build offline (docs/design/build-v5.md §3): the build through ``FakeHarness``,
 the verifier, the repair and the re-verify through a scripted harness, every no-tools call
-through ``ScriptedLLM``; scenarios really run (``run_rules`` in the sandbox). Then ``brb
-status`` and the fold render the log."""
+through ``ScriptedLLM``; scenarios really run (``run_rules`` in the sandbox). Then
+``repo-factory status`` and the fold render the log."""
 
 import json
 import re
@@ -293,14 +293,14 @@ def test_a_whole_v5_build_offline(task, tmp_path):
         "rule_status",
     ):
         assert t in types, t
-    assert "prediction" not in types  # no p_hidden any more (AU1 #5)
+    assert "prediction" not in types  # no p_hidden any more
     c = next(e for e in evs if e["type"] == "claims")
     assert (c["n"], c["ambiguities"], c["samples"]) == (3, 1, 1)
     claims = json.loads(Path(out["claims"]).read_text())
     assert [x["sets"] for x in claims["claims"]] == [[1], [1], [1]]
     f = next(e for e in evs if e["type"] == "findings" and e["stage"] == "oracle")
     assert (f["confirmed"], f["retired"], f["blocked"]) == (1, 1, 1)
-    assert "mutation" not in types  # the mutants stage is gone (AU1 #4)
+    assert "mutation" not in types  # the mutants stage is gone
     assert not any(e["type"] == "v5_stage" and e["stage"] == "mutants" for e in evs)
     r = [e for e in evs if e["type"] == "repair_round" and e["status"] == "done"][0]
     assert r["accepted"] and r["fixed"] == 1 and r["regressions"] == 0
@@ -318,7 +318,7 @@ def test_a_whole_v5_build_offline(task, tmp_path):
     assert [(r["in_tokens"], r["out_tokens"]) for r in ver] == [(10, 10)]
     assert all("in_tokens" in r for r in recs if r.get("session"))
     assert out["cost_by_stage"]["verify"] == pytest.approx(0.5)
-    # delivery (EX-PLAN §4): the branch has the fix and nothing of repo-factory's; the exam, its
+    # delivery: the branch has the fix and nothing of repo-factory's; the exam, its
     # results and the reports are the round's evidence
     o = Path(out["out"])
     assert "[:n]" in (o / "textstats" / "core.py").read_text()
@@ -341,7 +341,7 @@ def test_a_whole_v5_build_offline(task, tmp_path):
         assert (ev / name).is_file(), name
     man = json.loads((ev / "manifest.json").read_text())
     assert man["commit"] and man["tree"] and man["exam_hash"]
-    # one sandbox run per distinct tree hash and rule set (EX-PLAN §3.2): no record twice
+    # one sandbox run per distinct tree hash and rule set: no record twice
     runs = [json.loads(x) for x in (ev.parent / "runs.jsonl").read_text().splitlines()]
     assert runs and len({r["key"] for r in runs}) == len(runs)
     assert sum(1 for e in read_events(Path(out["events"])) if e["type"] == "exam_run") == len(runs)

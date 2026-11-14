@@ -1,4 +1,4 @@
-"""Ask for changes on the loop (AR-PLAN.md §2.4): ``Loop.revise`` queues a revise round of a
+"""Ask for changes on the loop: ``Loop.revise`` queues a revise round of a
 held or ready build that has no repo, which takes a build slot like any build; ok goes
 through the gate, a failure holds it with the gate of the round it revised, a crash resumes
 it. And #65: an honesty hold first gets one docs-only repair round. The builds are the fake
@@ -232,7 +232,7 @@ def test_a_wording_issue_never_starts_a_round_and_never_holds(tmp_path, fake_gh)
 
 
 def test_an_issue_about_notice_is_none_its_text_is_fixed(tmp_path, fake_gh):
-    """EX-PLAN §4.5–4.6: NOTICE is repo-factory's fixed text, covered by a fixture test, never shown
+    """NOTICE is repo-factory's fixed text, covered by a fixture test, never shown
     to the honesty check; an issue the model raises about it neither holds the push nor
     makes a "repo-factory problem" (there is no such hold)."""
     notice = json.dumps(

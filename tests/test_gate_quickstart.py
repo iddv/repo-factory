@@ -1,7 +1,7 @@
 """The gate holds on the harness's quick start (``commands``: the README's commands, run as
 written on a fresh copy), not on the checks session's ``install``: Sidedoor r10 went "ready"
-with ``./install.sh`` exiting 1 in the harness while the session said "install green" (AU1
-#6). The session's ``install``, ``empty_start`` and ``first_admin`` are advisory rows;
+with ``./install.sh`` exiting 1 in the harness while the session said "install green".
+The session's ``install``, ``empty_start`` and ``first_admin`` are advisory rows;
 ``bind_localhost`` still holds, and is never overridden."""
 
 import json

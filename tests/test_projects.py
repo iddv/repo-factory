@@ -1,4 +1,4 @@
-"""Projects' record (PJ-PLAN.md §2, PJ-1): a published build or a confirmed adopted repo is a
+"""Projects' record: a published build or a confirmed adopted repo is a
 project; a repo maps to one project; the backfill is idempotent; the list and the page read the
 ledger and the poll's cache only (never a model, never GitHub)."""
 

@@ -1,4 +1,4 @@
-"""Numbered migrations for repo_factory's own SQLite files (CR-PLAN S-7, D-8): the loop's ``loop.db``
+"""Numbered migrations for repo_factory's own SQLite files: the loop's ``loop.db``
 (``loop/ledger.py``) and a build's den (``den/store.py``).
 
 A migration is ``(number, SQL, added columns)``. ``apply`` runs, in order, every migration above

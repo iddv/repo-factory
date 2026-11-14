@@ -1,6 +1,6 @@
-"""The harness's read-only profiles (CHAT-PLAN.md section 4, now a project's evolve,
-``evolve.tools``): the ``read`` tool profile (the build sandbox, Read/Glob/Grep only), the
-``none`` fallback, a non-forking resume, partial messages, and a run the caller can stop."""
+"""The harness's read-only profiles (a project's evolve, ``evolve.tools``): the ``read`` tool
+profile (the build sandbox, Read/Glob/Grep only), the ``none`` fallback, a non-forking resume,
+partial messages, and a run the caller can stop."""
 
 import json
 import threading

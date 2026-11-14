@@ -1,4 +1,4 @@
-"""The exam's environment is a contract (EX-PLAN §5): ``/etc`` read-only, a private HOME,
+"""The exam's environment is a contract:``/etc`` read-only, a private HOME,
 loopback only while product code runs, package indexes only during the install phase and only
 through the index proxy, the product at /work/product. Row by row, through scenarios that
 look at the sandbox from inside. No model, no network: the install phase runs offline (a

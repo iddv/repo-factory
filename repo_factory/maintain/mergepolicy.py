@@ -1,7 +1,7 @@
 """The owner's switch, "Merge repo-factory's fixes when CI is green" (registry
 ``maintain_merge_policy``): one small pull request on a product's ``.github/repo-factory.yml``.
 
-The policy lives in the repository (MAINTAIN.md §4), so the switch never flips anything in repo-factory:
+The policy lives in the repository, so the switch never flips anything in repo-factory:
 it opens a pull request that changes ``merge.factory_patch`` (``ci-green`` or ``never``) and
 ``merge.kinds``, on the branch ``repo-factory/policy-merge``, and the owner merges it once. repo-factory never
 merges it itself: auto-merge never takes a change under ``.github/``. Only those lines change;

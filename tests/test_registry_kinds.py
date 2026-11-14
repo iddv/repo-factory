@@ -195,8 +195,8 @@ def test_revise_on_a_held_build_and_a_ticket_on_a_published_one():
 
 
 def test_no_action_runs_without_a_press_and_chat_is_no_longer_an_origin():
-    """TSI-6: the chat's act-without-asking settings (chat.auto) went with it; nothing in the
-    registry reads them, and a request that says origin chat is refused."""
+    """The project chat is gone, and its act-without-asking settings (chat.auto) with it;
+    nothing in the registry reads them, and a request that says origin chat is refused."""
     assert not hasattr(R, "auto_on") and not hasattr(R, "AUTO_DEFAULTS")
     assert all(not hasattr(a, "auto") and not hasattr(a, "chat") for a in R.ACTIONS.values())
     assert "chat" not in R.ORIGINS and not R.valid_origin("chat")

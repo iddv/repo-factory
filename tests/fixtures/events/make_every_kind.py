@@ -141,7 +141,7 @@ ev("v5_stage", b, stage="verify", status="started")
 ev("findings", b, stage="verify", confirmed=2, interpretation=0, settings=0, retired=0,
    incomplete=0, environment=0, completeness=1, blocked=0, scenarios=10, failing=2,
    new_failing=2)
-# the retired mutants stage's event: an old log has it; fold reads it no more (AU1 #4)
+# the retired mutants stage's event: an old log has it; fold reads it no more
 ev("mutation", b, score=0.8, survivors=1, applied=5, killed=4, new_failing=0)
 ev("v5_stage", b, stage="unknown_stage", status="started")
 ev("repair_round", b, round=1, status="repairing", sent=2, fixed=0, regressions=0,
@@ -149,7 +149,7 @@ ev("repair_round", b, round=1, status="repairing", sent=2, fixed=0, regressions=
 ev("conflict", b, round=1, x="a", y="b", group="g", verdict="keep", action="revert",
    x_rank=1, y_rank=2)
 ev("repair_round", b, round=1, status="done", sent=2, fixed=2, accepted=True)
-# the retired p_hidden prediction: an old log has it; fold reads it no more (AU1 #5)
+# the retired p_hidden prediction: an old log has it; fold reads it no more
 ev("prediction", b, p_hidden=0.9, interval80=[0.8, 0.95], expected_hidden_failures_per_100=3,
    features={"a": 1})
 ev("security", b, critical=0, high=1, medium=0, low=2, ran=True, confirmed=1, unconfirmed=0,

@@ -1,4 +1,4 @@
-"""The mutants stage is retired (AU1 #4): its score decided nothing, and across 13 runs it cost
+"""The mutants stage is retired: its score decided nothing, and across 13 runs it cost
 $3.55 and 229 minutes. What an old round recorded stays readable: a real round's log (FrontDesk
 Book r1, the one round whose survivor round ran; trimmed, paths scrubbed) with its ``v5_stage
 stage=mutants`` lines and its ``mutation`` event folds, shows and prints without the stage

@@ -156,7 +156,7 @@ def test_publish_private_then_approve_public(tmp_path, fake_gh):
     assert pub["release_url"].endswith("/releases/tag/v0.1.0")
     r = repos(fake_gh)["owner/clinicbook"]
     assert r["visibility"] == "private" and r["releases"][0]["tag"] == "v0.1.0"
-    # two assets: the source and the checks that ran before the release (EX-PLAN §4.4)
+    # two assets: the source and the checks that ran before the release
     assert [Path(a).name for a in r["releases"][0]["assets"]] == [
         "clinicbook-0.1.0.tar.gz",
         "clinicbook-0.1.0-checks.tar.gz",
@@ -178,7 +178,7 @@ def test_publish_private_then_approve_public(tmp_path, fake_gh):
     ]
     assert not visibility()
     # what was pushed: the product as delivered, LICENSE and NOTICE; no REPORT.md, nothing
-    # inserted into its README (EX-PLAN §4)
+    # inserted into its README
     ls = subprocess.run(
         ["git", "ls-tree", "-r", "--name-only", "main"],
         cwd=r["bare"],
@@ -281,7 +281,7 @@ def test_jargon_never_holds_the_push(tmp_path, fake_gh):
 
 
 def test_the_provenance_scan_holds_only_ids_this_build_minted(tmp_path, fake_gh):
-    """EX-PLAN §4.6: the product's own ids (Repo Recall's "item s9") are its words; an id this
+    """The product's own ids (Repo Recall's "item s9") are its words; an id this
     build minted, next to its kind word, is repo-factory's process in the product's prose."""
     fs = [{"ref": "s1", "id": "S1", "severity": "low", "status": "open", "title": "t"}]
     lp, iid, _ = built(
@@ -433,7 +433,7 @@ def test_notice_lists_only_the_used_evidence_as_showing_the_problem():
     assert "https://example.org/e2" in rest and "describe the problem" not in text
 
 
-# -- publish anyway (AR-PLAN.md §4) ---------------------------------------------------------------
+# -- publish anyway -------------------------------------------------------------------------------
 def held(tmp_path, fake, **over):
     lp, iid, task = built(tmp_path, fake, publish={"enabled": True}, **over)
     out = lp.gate(iid)

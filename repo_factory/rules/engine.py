@@ -68,7 +68,7 @@ class RulesEngine:
         self.mining = dict(MINING_DEFAULTS)  # ``mining:`` settings (rules.schedule)
         self.to_replace: list[str] = []  # promoted held rules awaiting a replacement
         self.spent = 0  # rules mined so far (the budget, schedule.allot)
-        # Build v3 §4: the arbiter may say ``design_flaw`` (only with the controller on);
+        # Build v3: the arbiter may say ``design_flaw`` (only with the controller on);
         # ``adr()`` returns the current ADR text it is validated against.
         self.design_flaw = False
         self.adr = lambda: None
@@ -217,7 +217,7 @@ class RulesEngine:
         batch: int = 10,
         workers: int = 4,
     ) -> dict:
-        """Build v4 hardening (V4-D): a rule for each design item (an open gap of the final
+        """Build v4 hardening: a rule for each design item (an open gap of the final
         design walk, or a rule the design was walked against; ``core.oneshot``), through the
         miner's path: batches of ``batch`` items, one call each, in parallel; then the same
         validation (a)-(d) on the code as mined rules. They are always **visible**: they are

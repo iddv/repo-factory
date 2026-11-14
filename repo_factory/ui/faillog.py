@@ -1,4 +1,4 @@
-"""Why a build failed, in one line, from its ``build.log`` (UI-v4.md 2.2 and 2.5; CLICKS S13).
+"""Why a build failed, in one line, from its ``build.log``.
 
 ``fail_line(path)`` returns ``{"stage", "line", "offset"}``: the last error line the build
 printed, the v5 stage it was printed in (the last ``[stage]`` marker before it, the form

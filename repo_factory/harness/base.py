@@ -26,7 +26,7 @@ class HarnessResult:
     model: str | None = None  # the model the worker actually ran on (its init event)
     num_turns: int | None = None
     resume_failed: bool = False  # a resumed run whose session could not be found (the
-    #                                 executor reruns it fresh, build v3 §3)
+    #                                 executor reruns it fresh, build v3)
     fingerprint: dict | None = None  # profile.launch runs: profile.fingerprint(transcript)
     auth_failed: bool = False  # the run ended because the Claude login failed (an
     #                                 expired OAuth session, a 401): exit_reason "auth"
@@ -44,7 +44,7 @@ class Harness(Protocol):
     #   max_turns, max_usd: per-run caps that override the harness defaults;
     #   session: {"id": uuid, "resume": parent session id or None, "base_cost_usd": the
     #   parent session's cumulative cost}: keep the session and, with "resume", continue
-    #   (fork) the parent's conversation in the same workspace path. Build v3 §3: a design
+    #   (fork) the parent's conversation in the same workspace path. Build v3: a design
     #   task's forks resume from their own copies of the workspace ("lineage": the session
     #   ids up the tree, which the Claude Code harness makes resumable from there).
 

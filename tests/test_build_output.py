@@ -1,4 +1,4 @@
-"""Build output never reaches a published repo (AU2 #6).
+"""Build output never reaches a published repo.
 
 NoteHatch went public with ``build/`` and ``notehatch.egg-info/`` and no ``.gitignore``: its
 delivered tree had its own ``.gitignore`` naming both, and delivery deleted it (``_strip_scaffold``

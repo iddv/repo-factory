@@ -492,7 +492,7 @@ Reference point: vanilla on lending is $3.70 and 20 minutes; the 3× limit is $1
 | 8 | **Calibrate, report, deliver** | none | $0 | $0.10 | 1 min |
 | | **Total** | | **$8.30 (2.2×)** | **hard $11.00** | **≈ 55 min (2.8×)** |
 
-**Stage 4 (mutants) was removed on 2026-10-16** (AU1 #4): its score decided nothing (no gate, repair or retire decision read it), and across 13 runs it cost $3.55 and 229 minutes of wall clock.
+**Stage 4 (mutants) was removed on 2026-10-16**: its score decided nothing (no gate, repair or retire decision read it), and across 13 runs it cost $3.55 and 229 minutes of wall clock.
 
 - The global cap is `min(max_usd, 2.95 × pack vanilla mean)` when the bench supplies a vanilla mean, else `v5.max_usd` (default 11.0). It is enforced by `CostCapHarness` for sessions and by a check before each no-tools call.
 - Reserve rule: stage 6 starts only if `spent + repair cap ≤ cap`; a second repair round only if `spent + $2.00 ≤ cap`.
@@ -632,7 +632,7 @@ Two details:
 |---|---|
 | `ask` (an owner is reachable: `--owner human|queue|sim`) | Ask the top `max_questions` items by stakes, through the existing oracle (`oracle/human.py` queue or stdin; `oracle/sim_owner.py` reads the pack's `owner.md` on the bench). The answer is rank 1. |
 | `auto` (default; the closed loop) | Three no-tools votes on "which reading would the person who wrote this spec expect?". If ≥ 2 agree and the build implements the other reading, queue a repair of class `interpretation` (rank 5). Otherwise leave the build as is. Either way, write the item to `ASSUMPTIONS.md` with both readings. |
-| **fork** | Only when all hold: no reading gets 2 of the 3 votes, `stakes: high` (the change touches a public operation or the schema: the one-way door), and the reserve allows one more repair. Then deliver the build's reading on `brb/<id>` and the other reading on `brb/<id>--alt-<item>` (one repair on a copy), and say so at the top of `REPORT.md`. At most `fork.max` per build. The bench scores the main branch; the alt branch is scored for information. |
+| **fork** | Only when all hold: no reading gets 2 of the 3 votes, `stakes: high` (the change touches a public operation or the schema: the one-way door), and the reserve allows one more repair. Then deliver the build's reading on `repo-factory/<id>` and the other reading on `repo-factory/<id>--alt-<item>` (one repair on a copy), and say so at the top of `REPORT.md`. At most `fork.max` per build. The bench scores the main branch; the alt branch is scored for information. |
 
 This is the owner's "fork only where a decision is one-way and ambiguous", applied to readings of the spec. Opinion: expect zero or one fork on most specs.
 
@@ -651,7 +651,7 @@ Default: **repair**. Regeneration is off in v5.0 (`regenerate: off`) and is turn
 
 **Stop** when any holds: re-verify finds no new confirmed defect; the reserve rule blocks the next stage; `repair.max_rounds` is reached; or the verifier's last `stop.yield_window_usd` of spend confirmed no new defect (the orienteering rule: stop when the prize rate hits zero).
 
-**Calibration was removed on 2026-10-16** (AU1 #5): the v5.0 predictor below never got bench data, came out 0.958–0.99 in all 36 recorded rounds (0.99 with nothing checked), and its gate check never held a build; REPORT.md now states the counts (claims checked, defects found, fixed, open), claims take one sample, and `stop.yield_window_usd`, `repair.rounds`, `interpret.fork` and `regenerate` (never read) are gone from `rules.yaml`.
+**Calibration was removed on 2026-10-16**: the v5.0 predictor below never got bench data, came out 0.958–0.99 in all 36 recorded rounds (0.99 with nothing checked), and its gate check never held a build; REPORT.md now states the counts (claims checked, defects found, fixed, open), claims take one sample, and `stop.yield_window_usd`, `repair.rounds`, `interpret.fork` and `regenerate` (never read) are gone from `rules.yaml`.
 
 **Calibration** (`calibrate.py`). At delivery write `prediction.json`:
 
@@ -1083,7 +1083,7 @@ dead buttons, missing flows, an early stop. The depth has to come from scoping.
   are findings of class **`incomplete`**: no panel, straight to repair; rank 2 for a
   definition-of-done flow (all must-have), rank 3 otherwise. The **completeness score** is
   flows whose scenarios all pass in the harness's last run / flows in the definition of done.
-- **A spec that passes through has a definition of done too** (EV7, 2026-10-18). Without one
+- **A spec that passes through has a definition of done too** (2026-10-18). Without one
   completeness could not be scored, and the gate held every precise spec for it. `do_scope`
   draws it from the spec's own text, with no model (`scope.spec_dod`): its acceptance lines,
   else its numbered or bulleted requirements, else its sentences (a sentence's `; ` parts
@@ -1233,7 +1233,7 @@ False`: connections left in TIME_WAIT block the rebind).
   the `safe_defaults` check; a red quick start may be published over, an exposure never);
   the checks session's own `install`, `empty_start` and `first_admin` are advisory rows,
   shown in READINESS.md but never a hold. The session said "install green" in 31 of 32
-  scorecards while this run was red in 22 of 34 (AU1 #6). `bind_localhost` stays the
+  scorecards while this run was red in 22 of 34. `bind_localhost` stays the
   session's: the run sees which ports listen, not the address they are bound to.
 - **Repair.** The brief quotes the commands, their exit codes and the tail of their
   output. For `tests_green` the delivered `tests/acceptance/` is placed in the workspace for
@@ -1272,7 +1272,7 @@ cost line shows "no cap" (or "cap $X").
   records which and why (`rounds[].session`, the `repair_round` event's `session`, REPORT.md's
   rounds table).
 
-## Addendum D (2026-10-09, track X): no stage caps by default; a failed build stage; the login
+## Addendum D (2026-10-09): no stage caps by default; a failed build stage; the login
 
 **Stage caps are settings, none by default** (the owner's rule: spend is uncapped by default,
 and every cap is configurable). §3.1's fixed caps (build $6.00, verify $2.50, readiness
@@ -1332,12 +1332,11 @@ the history and in Needs you. `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` i
 environment is used as is, with no file copied (OPENSOURCE D11's direction); the copy stays the
 default. No credential is ever logged or printed.
 
-## Addendum E (2026-10-18, track BF): the simple flow, beside today's
+## Addendum E (2026-10-18): the simple flow, beside today's
 
-The owner's ask: "instead of 10 different steps and loops, we can get 80% of the value with 4
-or 5 steps and one loop". BF-DESIGN.md (repo-factory-notes) is the plan; the owner accepted its
-D1-D15 and asked for the simpler flow to be **built beside today's and measured against it**
-before anything flips. So it is a second policy, `policies/simple` (`flow: simple`,
+The ask: "instead of 10 different steps and loops, we can get 80% of the value with 4 or 5
+steps and one loop". The design's decisions are cited below as D1-D15; the simpler flow is
+**built beside today's and measured against it** before anything flips. So it is a second policy, `policies/simple` (`flow: simple`,
 `version: "6.0"`), chosen per build (`repo-factory build --policy policies/simple`, or the loop's
 `build.flow: simple`); `policies/v5` stays the default.
 
@@ -1374,8 +1373,8 @@ conflict. Docs mode changes Markdown only. There is no separate automatic repair
 `readiness.json`, the exam and its evidence, `gate.json`), the event types and `pipeline:
 "v5"` (D10), so the gate, Re-check, the corpus, publish and the build page read either flow.
 The step names are new (`plan`, `check`, `fix`; a round is a `fix_round` event), and the
-build page's six cells read both (BF-0). `SCOPE.md` keeps its name while both flows run: the
+build page's six cells read both. `SCOPE.md` keeps its name while both flows run: the
 comparison shares one plan and one build between them (`repo-factory build --prebuilt <round dir>`
 starts a round after the build with an earlier round's plan and its build before any
-repair). Proofs A and B (BF-DESIGN §8) decide the default; the flip and the removal of
+repair). Two such side-by-side comparisons decide the default; the flip and the removal of
 today's paths are a later change.

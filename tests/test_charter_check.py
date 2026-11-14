@@ -1,4 +1,4 @@
-"""The charter on a fix's diff (PJ-PLAN.md §5.3, PJ-8): a fix that removes a promise's
+"""The charter on a fix's diff: a fix that removes a promise's
 sentence from the README is held with that sentence; one that adds a dependency where the
 charter says standard library only is held; a docs fix that keeps the promises passes; a held
 fix waits for the owner at once (needs-you), not after more attempts."""

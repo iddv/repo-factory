@@ -1,4 +1,4 @@
-"""The latest release of the tools a project pins, for the drift check ``pins`` (PJ-PLAN §4.2).
+"""The latest release of the tools a project pins, for the drift check ``pins``.
 
 ``drift.pins`` compares ``name==X.Y.Z`` pins in the workflows and AGENTS.md with the latest
 release on the index, but drift itself never reads the network. This module does that read:

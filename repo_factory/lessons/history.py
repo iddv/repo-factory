@@ -144,7 +144,7 @@ def row(bench, tag, pack, unit, arm, d, sc, run, base, split) -> dict:
     rnd = int(d.name[1:]) if re.fullmatch(r"r\d+", d.name) else None
     usd = run.get("usd") or {}
     wall = run.get("wall_s") or {}
-    # p_hidden: an old run's prediction.json, kept as data (AU1 #5: no round writes one now)
+    # p_hidden: an old run's prediction.json, kept as data (no round writes one now)
     pred = (
         _read(d / "prediction.json")
         or next((_read(p) for p in sorted(d.glob("den/**/prediction.json"))), None)
@@ -588,7 +588,7 @@ def render_html(ctx: dict) -> str:
     parts = [
         "<!doctype html><html lang=en><head><meta charset=utf-8>",
         "<meta name=viewport content='width=device-width,initial-scale=1'>",
-        # the appearance chosen in Settings, as every served page (QA B18: it drew in the OS's)
+        # the appearance chosen in Settings, as every served page (it once drew in the OS's)
         '<script src="static/theme.js"></script>',
         "<title>repo_factory history</title><style>",
         CSS,

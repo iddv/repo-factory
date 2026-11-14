@@ -1,4 +1,4 @@
-"""repo-factory's own GitHub App (GA-PLAN.md): the store, the manifest, the JWT the fake verifies,
+"""repo-factory's own GitHub App: the store, the manifest, the JWT the fake verifies,
 tokens minted narrow and kept in memory, a refused token, the modes of every file, and no
 secret in app.json or in any answer. The fake GitHub lives on loopback; the key is generated
 when the fake starts."""

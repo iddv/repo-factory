@@ -1,4 +1,4 @@
-"""The exam runner (EX-PLAN §3.2, PR 1): one sandbox run per tree hash, the product's own
+"""The exam runner: one sandbox run per tree hash, the product's own
 tests and the exam told apart, the product at /work/product and the exam at /work/exam."""
 
 import json

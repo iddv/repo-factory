@@ -222,9 +222,9 @@ def test_every_route_answers_as_it_did(app, tmp_path):
 
 
 def test_a_500_says_little_and_logs_the_rest(app, monkeypatch, caplog):
-    """An unexpected error answers repo-factory's error JSON (RCA B3): its id, its type, the version
+    """An unexpected error answers repo-factory's error JSON: its id, its type, the version
     and the report's address; the message (a path, a command line) goes to the server's log,
-    once for the id however often it happens (CR-REVIEW C-1)."""
+    once for the id however often it happens."""
     import logging
 
     from repo_factory import __version__, rowsafe

@@ -65,7 +65,7 @@ def test_the_confirm_class_is_exactly_these_kinds():
 
 
 def test_nothing_runs_on_a_setting():
-    """TSI-6: the chat's act-without-asking settings went with the chat; no action has a
+    """The project chat is gone, and its act-without-asking settings with it; no action has a
     setting that runs it, and none reads loop.yaml's chat.auto."""
     assert not hasattr(R, "auto_on") and not hasattr(R, "AUTO_DEFAULTS")
     assert all("auto" not in R.describe(a) for a in R.ACTIONS.values())
@@ -136,7 +136,7 @@ CHECKED = {"state": "done", "since": 1.0, "holds": []}  # the pre-push checks ra
 @pytest.mark.parametrize(
     "r, enabled",
     [
-        # a held build that delivered: Re-check with current repo-factory too (EX-PLAN §7)
+        # a held build that delivered: Re-check with current repo-factory too
         (
             row("held", "held", gate=GATE_TESTS, precheck=CHECKED),
             {"retry", "close", "publish_anyway", "revise", "recheck"},
@@ -318,7 +318,7 @@ VERBS = {
     # row has not got: tests/test_loop_gate_publish.py presses it on a real build
     "make_public": (lambda lp, i: lp.approve(i), False),
     "reject": (lambda lp, i: lp.reject(i, ["bugs"]), False),
-    # RC: one build's controls (no process runs here: a stop finishes at once)
+    # one build's controls (no process runs here: a stop finishes at once)
     "stop_round": (lambda lp, i: lp.stop_round(i), True),
     "resume_build": (lambda lp, i: lp.resume_build(i), True),
     "cancel": (lambda lp, i: lp.cancel(i), True),

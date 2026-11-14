@@ -1,4 +1,4 @@
-"""The drift doctor on GitHub (MAINTAIN.md §3 "How it stays current", §6.4): each maintained
+"""The drift doctor on GitHub (see docs/maintain.md, "The drift doctor"): each maintained
 repo's ``main`` is checked without a model and without a clone whenever main moved (the poll
 reads its head conditionally every ``maintain.poll_s``), after a backfill, on the owner's
 Re-check (``recheck.py``), and at least every ``maintain.doctor_days`` days; what is wrong

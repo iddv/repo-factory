@@ -1,4 +1,4 @@
-"""Which Claude Code binary repo-factory runs (WZ-DESIGN §2.8).
+"""Which Claude Code binary repo-factory runs.
 
 ``build.claude_command`` in loop.yaml, written by ``repo-factory setup --claude PATH`` or by the wizard
 when it found Claude Code off PATH (the native installer's ``~/.local/bin/claude``, npm's global

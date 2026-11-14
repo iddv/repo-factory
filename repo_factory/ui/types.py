@@ -89,7 +89,7 @@ class Gate(TypedDict):
     round: int | None
 
 
-# -- a product's Builds (UXI-1, ui/runs.py): Build N is round N of the event log --------------
+# -- a product's Builds (ui/runs.py): Build N is round N of the event log ---------------------
 
 
 # "in" and "from" are Python keywords: those shapes are written in TypedDict's call form
@@ -439,7 +439,7 @@ class OutcomeList(TypedDict):
     now: list[OutcomeNow]
 
 
-# -- agent traces (TRC-DESIGN §8.1): every string redacted on read -----------------------------
+# -- agent traces: every string redacted on read -----------------------------------------------
 
 RunState = Literal["running", "waiting", "ok", "degraded", "failed", "skipped", "stopped"]
 

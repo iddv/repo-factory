@@ -80,7 +80,7 @@ def test_page_is_served(ui):
     assert "<title>repo-factory</title>" in html and '<script type="module" src="static/v' in html
     assert re.search(
         r'src="static/v[^/"]+/app/app-[\w-]+\.js"', html
-    )  # this version's address (S-3b, FE-4)
+    )  # this version's address
     assert get(base, "/api/info")["harness"] == "fake"
 
 
@@ -302,7 +302,7 @@ def test_busy_port_moves_to_next(tmp_path):
         blocker.server_close()
 
 
-# -- the page's actions from the registry (AR-PLAN.md §7.4) ---------------------------------------
+# -- the page's actions from the registry ----------------------------------------------------------
 def old_build_acts(b: dict) -> set:
     """What the page's buttons were before the registry: app.js buildActs as it was (PR A),
     transcribed. New kinds (Ask for changes, Publish anyway) are not in it. Since a ready build
@@ -387,11 +387,11 @@ def test_the_registry_shows_what_the_old_page_showed(istate, status, state, repo
         "resume_build",
         "cancel",
         "restart_revise",
-    }  # newer kinds (AR, RC)
+    }  # newer kinds (ask for changes, build controls)
     assert shown == old_build_acts(row), (istate, status, state)
 
 
-# -- the registry's doors: api/actions and api/act (AR-PLAN.md §5) -------------------------------
+# -- the registry's doors: api/actions and api/act -----------------------------------------------
 def test_api_actions_lists_every_action_with_why_not(tmp_path, monkeypatch):
     from .app_common import call, make_app
 

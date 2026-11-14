@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Who reads a stored field (RCA 2026-10-23, A6; repo-factory-notes plans/CTR-DESIGN.md §5).
+"""Who reads a stored field.
 
 A pull request that adds a value or shape to a stored field (null, a new state, a new key) lists
 the field's readers and shows each handles it. This prints them:

@@ -3,7 +3,7 @@
 A pack lives in ``$REPO_FACTORY_PACKS/<id>/`` (default ``~/factory-packs``, a private git repo outside
 every sandbox mount). ``spec.md`` is the only file a builder sees; ``suite/`` (driver,
 contract, conformance, scenarios, manifest) is given to the scorer and, minus the scenarios
-and manifest, to adapter writers. Moved from ``hsuite/`` (S-5b): ``/history`` reads them."""
+and manifest, to adapter writers. Moved from ``hsuite/``: ``/history`` reads them."""
 
 from __future__ import annotations
 

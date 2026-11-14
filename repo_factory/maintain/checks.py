@@ -1,4 +1,4 @@
-"""``maintain.exam`` (EX-PLAN §9, §10): a fix PR checked against the checks repo-factory published
+"""``maintain.exam``: a fix PR checked against the checks repo-factory published
 with the product's latest release (``<name>-<version>-checks.tar.gz``, ``loop/publish.py``).
 
 The product's repository no longer carries repo-factory's checks, so the maintenance lane fetches the

@@ -1,1 +1,1 @@
-"""Helpers for what a model answers (S-5a: out of the research scorer)."""
+"""Helpers for what a model answers (moved out of the research scorer)."""

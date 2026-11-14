@@ -1,4 +1,4 @@
-"""Write the web UI's generated TypeScript from the Python side (FE-PLAN §4.1):
+"""Write the web UI's generated TypeScript from the Python side:
 
 - ``src/api/types.gen.ts``: an interface per TypedDict in ``repo_factory/ui/types.py``, the
   ``Routes`` map (``RETURNS``) and ``API_VERSION``;

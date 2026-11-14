@@ -1,4 +1,4 @@
-"""The lean flow (track LEAN: Brief → Build → Harden → Check → Fix once → Publish) and the flow
+"""The lean flow (Brief → Build → Harden → Check → Fix once → Publish) and the flow
 as data (``stages.py``), offline: the build through ``FakeHarness``, the harden, security and
 fix sessions scripted here; the README's commands, the product's tests and the probes really
 run. Plus repo-factory's process files kept out of the delivered tree (``process.py``)."""
@@ -197,10 +197,10 @@ def test_a_whole_lean_build_offline(built):
 
 
 def test_harden_documents_every_interface_and_closes_the_reviews_holds(built):
-    """LEAN3: the harden prompt asks for each interface in the README (LEAN2's FrontDesk
+    """The harden prompt asks for each interface in the README (an earlier build's FrontDesk
     documented its screens, not its API: 4/13 from the README alone), for what the security
-    review held releases for (LEAN and LEAN2: unbounded bodies, open connections, failed
-    sign-in rows), and for its working habits, with no turn cap."""
+    review held earlier releases for (unbounded bodies, open connections, failed sign-in
+    rows), and for its working habits, with no turn cap."""
     h, _ = built
     p = h.prompts["harden"]
     for words in (
@@ -430,7 +430,7 @@ def test_lean_model_roles_map_todays(monkeypatch):
     assert got["readiness"]["security"]["model"] == "m-check" and got["fix"]["model"] == "m-fix"
 
 
-# -- the brief's two rules and the build's stopping rule (LEAN2) -------------------------------
+# -- the brief's two rules and the build's stopping rule ---------------------------------------
 def test_the_lean_brief_adds_ev8_s_two_rules_and_v5_s_prompt_is_unchanged():
     from types import SimpleNamespace
 
