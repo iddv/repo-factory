@@ -54,7 +54,7 @@
 
     <section class="sec" aria-labelledby="maint-h" id="maintenance">
       <h2 id="maint-h">Maintenance</h2>
-      <p id="maint-state"><strong>{standing(p)}</strong>{#if p.polled} <span class="muted small">· last looked {when(p.polled)}</span>{/if}</p>
+      <p id="maint-state"><strong>{standing(p)}</strong>{#if p.polled}<span class="muted small">{" · last looked " + when(p.polled)}</span>{/if}</p>
       {#each warnings as w, i (i)}<p class="err" role="alert" id="maint-self-hosted">{w.title}: {w.why}</p>{/each}
       <div class="controls">
         {#if !p.switch.on}
@@ -62,7 +62,7 @@
             label="Switch maintenance on"
             id="maint-on"
             primary
-            confirm={`This opens one pull request on ${p.repo} (labels, the policy file, AGENTS.md and CI) and creates its labels. Then, every 15 minutes, it fixes only issues you label go yourself, each as a pull request, under your monthly limit. It writes nothing on any issue.`}
+            confirm={`This opens one pull request on ${p.repo} (labels, the policy file, AGENTS.md and CI) and creates its labels. From the next poll, every 15 minutes, it fixes only issues you labelled go yourself, each as a pull request, under your monthly limit. It writes nothing on any issue.`}
             yes="Switch on"
             run={async () => {
               await switchOn(p.repo, true);
@@ -128,7 +128,7 @@
         {:else}
           <ul class="pms small" id="fixes">
             {#each p.fixes as f (f.issue)}
-              <li>#{f.issue}: {OUTCOME[f.outcome || ""] || f.outcome}{#if f.pr} <a href={f.url || `https://github.com/${p.repo}/pull/${f.pr}`} target="_blank" rel="noopener">#{f.pr} ↗</a>{/if}{#if f.why && f.outcome !== "pr"} ({f.why}){/if} · {usd(f.usd)}{#if f.at} · {when(f.at)}{/if}</li>
+              <li>#{f.issue}: {OUTCOME[f.outcome || ""] || f.outcome}{#if f.pr}{" "}<a href={f.url || `https://github.com/${p.repo}/pull/${f.pr}`} target="_blank" rel="noopener">#{f.pr} ↗</a>{/if}{#if f.why && f.outcome !== "pr"}{` (${f.why})`}{/if}{" · " + usd(f.usd)}{#if f.at}{" · " + when(f.at)}{/if}</li>
             {/each}
           </ul>
         {/if}

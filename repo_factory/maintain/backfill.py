@@ -340,14 +340,12 @@ def pr_body(repo: str, res: dict, footer: str = "") -> str:
         "",
         "**Policy** (`.github/repo-factory.yml`)",
         "",
-        f"- status `{p['status']}`; fixes start only on the `go` label "
-        f"(`revise.trigger: {p['revise']['trigger']}`, `auto_go: {p['revise']['auto_go']}`)",
-        f"- repo-factory never merges its own PRs (`merge.factory_patch: {p['merge']['factory_patch']}`) "
-        f"and never merges Dependabot PRs (`merge.dependabot: {p['merge']['dependabot']}`)",
-        f"- a release follows each merge (`release.on_merge: {p['release']['on_merge']}`; a "
-        "`feature` makes it a minor release)",
-        f"- claims lease for {p['revise']['lease_hours']} hours; duplicates are labelled, "
-        "never closed by repo-factory; no spend cap (`revise.max_usd: null`)",
+        f"- status `{p['status']}`: repo-factory fixes only issues whose `go` label the owner "
+        "put on, each as a pull request; it writes nothing on any issue",
+        "- it merges nothing unless the owner switches on merging its own bug and docs fixes for "
+        "this repository in repo-factory, and then cuts a release after such a merge "
+        f"(`release.on_merge: {p['release']['on_merge']}`)",
+        "- what maintenance may spend is set in repo-factory (a monthly limit and a cap per fix)",
         "",
         "**Labels** (applied through the API, from `.github/labels.yml`)",
         "",
@@ -356,9 +354,10 @@ def pr_body(repo: str, res: dict, footer: str = "") -> str:
     ]
     if lab.get("extra"):
         L.append("- other labels on the repo: " + ", ".join(f"`{x}`" for x in lab["extra"]))
-    L += ["", "**Repository settings**", ""]
-    for k, v in st.items():
-        L.append(f"- `{k}`: " + ("set" if v is True else f"**not set** ({v})"))
+    if st:
+        L += ["", "**Repository settings**", ""]
+        for k, v in st.items():
+            L.append(f"- `{k}`: " + ("set" if v is True else f"**not set** ({v})"))
     L += [
         "",
         "**Checks run before this PR**",
@@ -389,38 +388,28 @@ def pr_body(repo: str, res: dict, footer: str = "") -> str:
         L += ["", "**Notes**", ""] + [f"- {n}" for n in res["notes"]]
     L += [
         "",
-        "**Morning checklist for the owner**",
+        "**For the owner**",
         "",
-        "1. Review and squash-merge this PR.",
-        "2. Optional (D13): prune GitHub's default labels that ours replace:",
+        "1. Review and merge this pull request.",
+        "2. Optional: remove GitHub's default labels that these replace:",
     ]
     cmds = labels.prune_commands(repo, lab.get("extra") or [])
     L += (
         (["", "   ```sh"] + [f"   {c}" for c in cmds] + ["   ```", ""])
         if cmds
-        else ["   nothing to prune."]
+        else ["   nothing to remove."]
     )
-    L += [
-        "   `help wanted` and `good first issue` are worth keeping"
-        + (" for outside contributors." if public else " for when the repo is public.")
-    ]
     if not public:
-        L.append("3. Fix Actions billing, or make the repo public (D5), so CI runs.")
-    L.append(
-        f"{3 if public else 4}. Choose the maintenance identity (D1): a fine-grained token "
-        "or a bot account; until then repo-factory uses the owner's `gh` login."
-    )
+        L.append("3. Check that Actions can run on this private repository, so CI runs.")
     if not_set:
         L.append(
-            f"{4 if public else 5}. Set by hand what the token could not: "
+            f"{3 if public else 4}. Set by hand what could not be set: "
             + ", ".join(f"`{k}`" for k in not_set)
-            + " (Settings › General › *Automatically delete head branches*; Settings › "
-            "Code security › *Dependabot alerts*)."
         )
     L += [
         "",
-        "To try it: label an issue `go`; repo-factory (or `claude` in a checkout) follows "
-        "AGENTS.md › *Maintenance protocol*.",
+        "To use it: label one of your issues `go`; repo-factory proposes a fix as a pull "
+        "request. Any coding agent can follow AGENTS.md › *Maintenance protocol* too.",
     ]
     if footer:
         L += ["", footer]

@@ -1813,8 +1813,9 @@ class App:
         from ..maintain import fixes
 
         repo = self._published(body)
-        n = body.get("number")
-        if not isinstance(n, int) or isinstance(n, bool) or n < 1:
+        raw = body.get("number")
+        n = raw if isinstance(raw, int) and not isinstance(raw, bool) else 0
+        if n <= 0:
             raise HttpError(400, "number must be an issue number")
         fixes.retry(self.loop().cfg.home, repo, n, by="ui")
         return self.maintenance()

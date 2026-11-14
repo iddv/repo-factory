@@ -5,9 +5,11 @@ Nothing here runs while the loop is paused (the daemon checks first), and a repo
 paused (``pauses.py``) or switched off is not read at all. Per repository, with one read of its
 open issues and pull requests:
 
-1. **Its policy** (``.github/repo-factory.yml``). Fixes start only once the setup pull request
-   (``setup.py``: labels, the policy file, AGENTS.md and CI) is merged and the file says
-   ``status: maintained``. A file that cannot be read is a row on the page, never a comment.
+1. **Its policy** (``.github/repo-factory.yml``). Fixes start only while the file says
+   ``status: maintained``: a product repo-factory published carries it from its first commit;
+   any other repository gets it from the setup pull request (``maintain setup``: labels, the
+   policy file, AGENTS.md and CI). A file that cannot be read is a row on the page, never a
+   comment.
 2. **Your word**: an open issue is fixed only when its ``go`` label was put on by you, the login
    maintenance acts for, read from the issue's events. Anyone else's issue, a ``go`` someone
    else put on, and anyone else's pull request are "Waiting for you" rows: no model call, no
@@ -180,7 +182,7 @@ def poll_repo(loop, gh, t: dict, cache: Cache, now: float, slots: list[int], sto
                         "setup",
                         p,
                         p["title"],
-                        "merge it to let maintenance fix issues you label go",
+                        "the setup pull request (labels, AGENTS.md, CI): read it, then merge it",
                     )
                 )
             continue

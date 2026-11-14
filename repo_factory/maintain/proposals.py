@@ -31,6 +31,7 @@ FILE = "proposals.json"
 EVERY_S = 7 * 86400
 RETRY_S = 6 * 3600
 CALL_USD = 0.5
+README_CHARS = 8000
 MAX_ITEMS = 5
 KINDS = ("bug", "docs", "feature", "task", "security")
 TAG = "<!-- repo-factory:proposals v1 -->"
@@ -185,7 +186,16 @@ def prompt(product: str, readme: str, titles: list[str]) -> str:
         tag=TAG,
         n=MAX_ITEMS,
         product=_doc(product)[:120],
-        readme=_doc(readme)[:6000] or "(no README)",
+        readme=(
+            _doc(readme)[:README_CHARS]
+            + (
+                "\n[the README goes on: only its first part is shown here, so do not report "
+                "it as cut off]"
+                if len(readme) > README_CHARS
+                else ""
+            )
+        )
+        or "(no README)",
         titles="\n".join(f"- {_doc(t)[:200]}" for t in titles[:60]) or "(none)",
         kinds=", ".join(KINDS),
     )
@@ -238,7 +248,7 @@ def run(loop, repo: str, model_call=None, now: float | None = None) -> dict:
         return _update(home, repo, state="skipped", error="no money left this month", tried=now)
     try:
         r = Repo(gh_for(loop, repo), repo)
-        readme = r.readme()
+        readme = r.readme(limit=README_CHARS + 1)
         titles = [i["title"] for i in r.issues(state="open") if not i["is_pr"]]
     except GitHubError as e:
         return _update(home, repo, state="failed", error=str(e)[:300], tried=now)

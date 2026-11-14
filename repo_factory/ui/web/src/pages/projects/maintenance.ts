@@ -93,7 +93,7 @@ export function standing(r: Repo): string {
   if (r.paused) return r.paused;
   if (r.setup?.state === "running") return "On: opening the setup pull request…";
   if (r.setup?.state === "failed") return `On, but the setup stopped: ${r.setup.why || "see the log"}`;
-  if (r.rows.some((x) => x.kind === "setup")) return "On: waiting for you to merge the setup pull request";
+  if (r.rows.some((x) => x.kind === "setup")) return "On; the setup pull request waits for your review";
   return r.switch.merge ? "On; merges its own bug and docs fixes when CI is green" : "On; you merge every fix";
 }
 

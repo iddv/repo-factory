@@ -11,9 +11,10 @@ switched on (`<home>/maintain/repos.json`, `maintain/switch.py`) and not paused
 (`<home>/maintain/paused.json`, and the loop's `PAUSE`). Nothing is read while the loop is
 paused, and a repository that is switched off or paused is not read at all. Per repository:
 
-1. **The policy file** `.github/repo-factory.yml` is read. Fixes start only once it says
-   `status: maintained` (the setup pull request below puts it there). A file that cannot be read
-   is a row on the project's page.
+1. **The policy file** `.github/repo-factory.yml` is read. Fixes start only while it says
+   `status: maintained`: a product repo-factory published carries it from its first commit, so
+   fixes may start at the next poll after the switch; for any other repository the setup pull
+   request puts it there. A file that cannot be read is a row on the project's page.
 2. **Your word.** Each open issue labelled `go` has its events read: only a `go` put on by the
    login maintenance acts for (yours, or your GitHub App's) counts. Everything else (anyone
    else's issue, a `go` someone else put on, anyone else's pull request, Dependabot's) is a

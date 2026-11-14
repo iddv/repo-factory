@@ -582,3 +582,11 @@ def test_the_apps_permissions_are_pinned_word_for_word():
         "actions": "read",
     }
     assert {"workflows", "secrets", "administration"} <= set(G.NEVER)
+
+
+def test_a_long_readme_is_said_to_go_on_so_its_cut_is_never_a_proposal():
+    from repo_factory.maintain import proposals
+
+    text = proposals.prompt("Plots", "x" * (proposals.README_CHARS + 50), [])
+    assert "the README goes on" in text
+    assert "the README goes on" not in proposals.prompt("Plots", "short", [])
