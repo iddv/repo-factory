@@ -294,6 +294,13 @@ def _merge(base: dict, over: dict) -> dict:
     return out
 
 
+def _text(f: Path) -> str | None:
+    try:
+        return f.read_text()
+    except OSError:
+        return None
+
+
 _parsed: dict = {}  # loop.yaml by path: (its text, the settings with defaults, problems)
 
 
@@ -318,13 +325,23 @@ class Config:
     def __init__(self, root: str | Path | None = None, overrides: dict | None = None):
         self.home = home(root)
         self.layout = paths.Layout(self.home)
+        self.overrides = overrides
         f = self.layout.settings
+        self.text = _text(f)  # what loop.yaml said when this was read (None: no file)
         data, self.problems = _settings(f)
         self.data = _merge(data, overrides or {}) if overrides else data
         from .schema import describe
 
         if self.problems:
             _say_once(f, describe(self.problems))
+
+    def changed(self) -> bool:
+        """loop.yaml says something else now than when this was read."""
+        return _text(self.layout.settings) != self.text
+
+    def reread(self) -> Config:
+        """The settings as loop.yaml says them now, with the same overrides."""
+        return Config(self.home, self.overrides)
 
     def __getitem__(self, k):
         return self.data[k]

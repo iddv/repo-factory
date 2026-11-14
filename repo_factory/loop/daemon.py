@@ -2653,6 +2653,8 @@ class Loop:
 
     def tick(self, only: list[str] | None = None) -> dict:
         """One pass of the loop."""
+        if self.cfg.changed():  # Settings or a hand edit: from the next brief or build on
+            self.cfg = self.cfg.reread().ensure()
         out: dict = {"watched": [i["id"] for i in self.watch()]}
         if time.time() - float(self.ledger.meta("activity_pruned") or 0) > 86400:
             try:  # the loop's marks past their keep, daily
