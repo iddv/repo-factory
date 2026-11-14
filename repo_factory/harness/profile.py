@@ -223,7 +223,9 @@ class Mirror:
                 pass
 
     def start(self) -> Mirror:
-        self._thread = threading.Thread(target=self._loop, name="repo-factory-cred-mirror", daemon=True)
+        self._thread = threading.Thread(
+            target=self._loop, name="repo-factory-cred-mirror", daemon=True
+        )
         self._thread.start()
         return self
 

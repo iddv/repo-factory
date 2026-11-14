@@ -78,9 +78,7 @@ def test_page_is_served(ui):
     base, _ = ui
     html = get(base, "/")
     assert "<title>repo-factory</title>" in html and '<script type="module" src="static/v' in html
-    assert re.search(
-        r'src="static/v[^/"]+/app/app-[\w-]+\.js"', html
-    )  # this version's address
+    assert re.search(r'src="static/v[^/"]+/app/app-[\w-]+\.js"', html)  # this version's address
     assert get(base, "/api/info")["harness"] == "fake"
 
 

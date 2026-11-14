@@ -6,6 +6,24 @@ All notable changes to this project are written here. Versions follow
 ## Unreleased
 
 ### Added
+- **Lessons from your own builds:** a build the checks hold writes at most one lesson (one
+  no-tools call on its holds; none for a hold the builder could not have avoided), and the next
+  briefs carry the lessons that are on. A new **Lessons** page lists each, where it came from,
+  and switches it on or off; `repo-factory loop lessons [on|off ID]`; `lessons.enabled`,
+  `lessons.max_in_brief` and the Lessons model in Settings › Building.
+- **A task from your own issue:** `repo-factory loop add --from-issue owner/repo#12` and **Build
+  from an issue** on New task. Only an issue you opened, or labelled `build` yourself, is taken;
+  anyone else's is refused in words. The issue's text is quoted in the brief as data.
+- **Your record on Builds' head:** builds, published, held, and a build's median time and cost
+  from the builds' own ledgers; the lean flow counted apart, and labelled "lean (unproven)" on a
+  build's page.
+- Publish's confirm says whose name and address the published repository will carry.
+
+### Changed
+- A model call that failed but reported its cost now counts that cost toward the caps; a call
+  under a cap is not tried again after a failure.
+- `api.require_token` is a known setting; only `false` turns the page's token off.
+- Comments and docstrings say their reason instead of citing notes a reader cannot see.
 - **The engine and the loop**, imported in one commit: the v5 build pipeline (brief, build,
   claims, verify, three votes on each failure, repair, readiness, the gate) and the `lean` flow
   (unproven), the build loop (a typed task in, a private repository out on your press), the

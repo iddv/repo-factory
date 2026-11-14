@@ -85,9 +85,8 @@ def _failing_with_cost(usd):
 def test_a_failed_call_that_reported_its_cost_counts_it(tmp_path, monkeypatch):
     run, calls = _failing_with_cost(0.07)
     monkeypatch.setattr(subprocess, "run", run)
-    with ledger.activate(tmp_path / "ledger.jsonl", 1):
-        with pytest.raises(RuntimeError):
-            ledger.call_claude("x", caller="judge", purpose="p", retries=3)
+    with ledger.activate(tmp_path / "ledger.jsonl", 1), pytest.raises(RuntimeError):
+        ledger.call_claude("x", caller="judge", purpose="p", retries=3)
     recs = ledger.read(tmp_path / "ledger.jsonl")
     assert [r["usd"] for r in recs] == [0.07, 0.07, 0.07] and len(calls) == 3
     assert ledger.summarize(recs)["total_usd"] == pytest.approx(0.21)
@@ -96,8 +95,7 @@ def test_a_failed_call_that_reported_its_cost_counts_it(tmp_path, monkeypatch):
 def test_a_failed_call_under_a_cap_is_not_tried_again(tmp_path, monkeypatch):
     run, calls = _failing_with_cost(None)
     monkeypatch.setattr(subprocess, "run", run)
-    with ledger.activate(tmp_path / "ledger.jsonl", 1):
-        with pytest.raises(RuntimeError):
-            ledger.call_claude("x", caller="judge", purpose="p", retries=3, max_usd=0.5)
+    with ledger.activate(tmp_path / "ledger.jsonl", 1), pytest.raises(RuntimeError):
+        ledger.call_claude("x", caller="judge", purpose="p", retries=3, max_usd=0.5)
     recs = ledger.read(tmp_path / "ledger.jsonl")
     assert len(calls) == 1 and [r["usd"] for r in recs] == [None]

@@ -444,7 +444,8 @@ def make_task(idea: dict, p: dict, tasks_dir: Path, home: Path | None = None, cf
     from ..tasks import new_task, slug
     from . import from_issue
 
-    extra, carried = "", []
+    extra = ""
+    carried: list[dict] = []
     issue = from_issue.of(idea)
     if issue is not None:
         extra += from_issue.spec_quote(issue)

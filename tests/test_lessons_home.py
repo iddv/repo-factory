@@ -28,6 +28,7 @@ LESSON = json.dumps(
 @pytest.fixture(autouse=True)
 def fake_gh(tmp_path, monkeypatch):
     monkeypatch.setenv("FAKE_GH_DIR", str(tmp_path / "gh"))
+    monkeypatch.setenv(lessons.INLINE_ENV, "1")  # the post-mortem runs in the gate, here
 
 
 def built(tmp_path, fake, lesson_reply=LESSON, text=None, **over):
@@ -259,3 +260,24 @@ def test_the_page_reads_and_switches_a_lesson(tmp_path):
 def test_pitch_json_is_unchanged_by_lessons():
     # the brief's own contract is the pitch's; lessons go into spec.md, never the reply
     assert "lessons" not in json.loads(pitch_json())
+
+
+def test_the_gate_starts_the_postmortem_in_a_process_and_never_waits_on_a_model(
+    tmp_path, monkeypatch
+):
+    lp, iid, _ = built(tmp_path, HELD)
+    monkeypatch.delenv(lessons.INLINE_ENV)
+    monkeypatch.setenv(lessons.SPAWN_ENV, "1")
+    started = []
+    monkeypatch.setattr(lessons, "spawn", lambda cfg, i: started.append(i) or 1)
+    assert lp.gate(iid)["state"] == "held"
+    assert started == [iid] and lp._lessons.prompts == []
+    # the process it starts: `repo-factory loop lesson ID`
+    from repo_factory.cli import main
+
+    monkeypatch.setattr("repo_factory.loop.cli._loop", lambda args: lp)
+    main(["loop", "lesson", iid])
+    assert len(lp._lessons.prompts) == 1
+    assert lessons.load(lp.cfg.home)["lessons"][0]["id"] == "L1"
+    main(["loop", "lesson", iid])  # once per round
+    assert len(lp._lessons.prompts) == 1

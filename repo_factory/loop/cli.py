@@ -2,6 +2,9 @@
 
 repo-factory loop add [--file spec.md] TEXT       a task into the ledger (its brief is written
                                                by the daemon)
+repo-factory loop add --from-issue OWNER/REPO#N   a task from a GitHub issue you opened or
+                                               labelled `build` (its text quoted as data)
+repo-factory loop lessons [on|off ID]             what held earlier builds, carried into briefs
 repo-factory loop pitch [ID ...] [--limit N]      write the brief of new tasks now (or these)
 repo-factory loop repitch ID [--later]            write a rejected task's brief again
 repo-factory loop list [--state S] | show ID      the ledger
@@ -49,6 +52,10 @@ def add_loop_group(sub) -> None:
         "in the brief as data",
     )
     a.set_defaults(fn=cmd_add)
+
+    lsn = ls.add_parser("lesson", help=argparse.SUPPRESS)  # the post-mortem's own process
+    lsn.add_argument("id")
+    lsn.set_defaults(fn=cmd_lesson)
 
     les = ls.add_parser(
         "lessons", help="what held earlier builds, carried into the next briefs (on or off)"
@@ -714,3 +721,9 @@ def cmd_lessons(args):
         state = "on " if x["on"] else "off"
         where = f"  (from {frm.get('product')}, {frm.get('date')})" if frm.get("product") else ""
         print(f"{x['id']}  {state}  {x['text']}{where}")
+
+
+def cmd_lesson(args):
+    """The post-mortem of a held build (started by the gate in a process of its own)."""
+    new = _loop(args).lesson_now(args.id)
+    print(f"lesson {new['id']} kept: {new['text']}" if new else "no lesson kept")

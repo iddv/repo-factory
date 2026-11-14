@@ -1278,9 +1278,10 @@ class Loop:
         return self._lessons
 
     def _lesson(self, idea: dict, g: dict) -> dict | None:
-        """The post-mortem of a round the gate held (``lessons/home.py``): at most one lesson,
-        once per round. Never fails the gate: a problem is logged and kept as the round's
-        post-mortem line."""
+        """After a round the gate held: what needs no model is decided here (lessons off, the
+        round already looked at, nothing the builder could have avoided, today's cap); the
+        post-mortem call itself runs in a process of its own (``repo-factory loop lesson ID``,
+        as the pre-push checks do), so the tick never waits on a model. Never fails the gate."""
         from ..lessons import home as lessons
 
         if (self.cfg.get("lessons") or {}).get("enabled") is False:
@@ -1288,11 +1289,9 @@ class Loop:
         rnd = g.get("round") or (idea.get("build") or {}).get("round")
         product = (idea.get("pitch") or {}).get("product") or idea.get("title")
         try:
-            data = lessons.load(self.cfg.home)
-            if lessons.looked_at(data, idea["id"], rnd):
+            if lessons.looked_at(lessons.load(self.cfg.home), idea["id"], rnd):
                 return None
-            reasons = lessons.learnable(list(g.get("reasons") or []))
-            if not reasons:
+            if not lessons.learnable(list(g.get("reasons") or [])):
                 return lessons.record(
                     self.cfg.home,
                     idea=idea["id"],
@@ -1302,6 +1301,32 @@ class Loop:
                     got=None,
                     result="no lesson: nothing in the holds the builder could have avoided",
                 )
+            if os.environ.get(lessons.INLINE_ENV) == "1":
+                return self.lesson_now(idea["id"])
+            if os.environ.get(lessons.SPAWN_ENV) == "0":
+                return None
+            lessons.spawn(self.cfg, idea["id"])
+        except Exception as e:  # noqa: BLE001 - the gate's verdict stands without a lesson
+            log(f"{idea['id']}: no lesson: {type(e).__name__}: {e}"[:300])
+        return None
+
+    def lesson_now(self, idea_id: str) -> dict | None:
+        """The post-mortem of a task's last held round: at most one lesson, once per round
+        (``lessons/home.py``). ``repo-factory loop lesson ID`` runs it; a problem is kept as the
+        round's post-mortem line, never raised."""
+        from ..lessons import home as lessons
+
+        idea = self.ledger.must(idea_id)
+        g = idea.get("gate") or {}
+        rnd = g.get("round") or (idea.get("build") or {}).get("round")
+        product = (idea.get("pitch") or {}).get("product") or idea.get("title")
+        try:
+            data = lessons.load(self.cfg.home)
+            if idea.get("state") != "held" or lessons.looked_at(data, idea["id"], rnd):
+                return None
+            reasons = lessons.learnable(list(g.get("reasons") or []))
+            if not reasons:
+                return None
             if self.over_cap():
                 return lessons.record(
                     self.cfg.home,
@@ -1312,7 +1337,6 @@ class Loop:
                     got=None,
                     result="no lesson: today's spend cap is reached",
                 )
-            brief = ""
             try:
                 brief = (Path(idea["task_dir"]) / "spec.md").read_text()
             except (OSError, KeyError, TypeError):
@@ -1334,7 +1358,7 @@ class Loop:
             if new:
                 self.ledger.note(idea["id"], f"lesson {new['id']} kept: {new['text']}")
             return new
-        except Exception as e:  # noqa: BLE001 - the gate's verdict stands without a lesson
+        except Exception as e:  # noqa: BLE001 - kept as the round's line
             msg = f"{type(e).__name__}: {e}"[:300]
             log(f"{idea['id']}: no lesson: {msg}")
             try:

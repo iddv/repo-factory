@@ -160,7 +160,7 @@ def test_the_first_screen_says_the_notice_and_builds_empty_with_new_task(browser
         assert page.inner_text("#notice").startswith(NOTICE)
         buttons = page.locator("main .btn:not(#notice-dismiss)")
         assert buttons.count() == 1 and buttons.first.inner_text() == "New task"
-        assert page.locator("nav.nav .item").all_inner_texts() == ["Builds", "Settings"]
+        assert page.locator("nav.nav .item").all_inner_texts() == ["Builds", "Lessons", "Settings"]
         problems = look(page, name)
         page.click("#notice-dismiss")
         page.reload()
@@ -282,6 +282,25 @@ def test_every_settings_page_draws_in_light_and_dark_wide_and_on_a_phone(browser
                     == 1
                 )
                 problems += look(page, f"settings/{p} {name} {scheme}")
+            assert theme_is(page, scheme), f"{name} {scheme}: drawn in the other scheme"
+            page.close()
+    assert not problems, problems
+
+
+def test_lessons_and_build_from_an_issue_draw_in_light_and_dark_wide_and_on_a_phone(
+    browser, server
+):
+    problems = []
+    for name, w, h in SIZES:
+        for scheme in SCHEMES:
+            page = open_page(browser, server, w, h, scheme, "#/lessons")
+            until(page, "document.querySelector('#lessons-empty')")
+            assert page.locator('nav.nav .item[aria-current="page"]').inner_text() == "Lessons"
+            problems += look(page, f"lessons {name} {scheme}")
+            page.evaluate("() => { location.hash = '#/builds/new'; }")
+            until(page, "document.querySelector('#issue-build')")
+            assert page.locator("#issue-build").inner_text() == "Build from an issue"
+            problems += look(page, f"new task {name} {scheme}")
             assert theme_is(page, scheme), f"{name} {scheme}: drawn in the other scheme"
             page.close()
     assert not problems, problems

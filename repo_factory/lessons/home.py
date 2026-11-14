@@ -36,9 +36,12 @@ measurement that must not learn as it goes)."""
 
 from __future__ import annotations
 
+import contextlib
+import fcntl
 import json
 import os
 import re
+import sys
 import tempfile
 import time
 from datetime import UTC, datetime
@@ -53,6 +56,8 @@ MAX_WHY = 300
 MAX_POSTMORTEMS = 200
 MAX_IN_BRIEF = 8
 TAG = "[factory-rules task=lesson]"
+SPAWN_ENV = "REPO_FACTORY_LESSONS_SPAWN"  # "0": no post-mortem process is started (the tests)
+INLINE_ENV = "REPO_FACTORY_LESSONS_INLINE"  # "1": the gate runs the post-mortem itself (tests)
 HEADER = "Lessons from earlier builds"
 # holds a builder cannot learn from: the person's own cap, a review the cap or an error kept
 # from running, a build that never got going (the sign-in, the sandbox, a failed process)
@@ -141,6 +146,38 @@ def save(home: Path, data: dict) -> Path:
     return f
 
 
+@contextlib.contextmanager
+def locked(home: Path):
+    """One writer at a time (``<home>/lessons.lock``)."""
+    Path(home).mkdir(parents=True, exist_ok=True)
+    with open(Path(home) / "lessons.lock", "a") as f:
+        fcntl.flock(f, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(f, fcntl.LOCK_UN)
+
+
+def spawn(cfg, idea_id: str) -> int:
+    """Start ``repo-factory loop lesson ID`` detached (its output in ``<home>/lessons.log``)."""
+    from .. import proc
+
+    p = proc.spawn_detached(
+        [
+            sys.executable,
+            "-m",
+            "repo_factory.cli",
+            "loop",
+            "--home",
+            str(cfg.home),
+            "lesson",
+            idea_id,
+        ],
+        log=Path(cfg.home) / "lessons.log",
+    )
+    return p.pid
+
+
 def next_id(data: dict) -> str:
     n = 0
     for x in data.get("lessons") or []:
@@ -156,13 +193,14 @@ def get(data: dict, lid: str) -> dict | None:
 
 def switch(home: Path, lid: str, on: bool) -> dict:
     """Turn one lesson on or off; returns it. ``KeyError`` for an unknown id."""
-    data = load(home)
-    x = get(data, lid)
-    if x is None:
-        raise KeyError(lid)
-    x["on"] = bool(on)
-    x["switched"] = _today()
-    save(home, data)
+    with locked(home):
+        data = load(home)
+        x = get(data, lid)
+        if x is None:
+            raise KeyError(lid)
+        x["on"] = bool(on)
+        x["switched"] = _today()
+        save(home, data)
     return x
 
 
@@ -304,8 +342,10 @@ def postmortem(model, *, brief: str, reasons: list[str], product: str | None, da
             "tokens": tokens,
             "problems": ["the reply had no JSON object"],
         }
-    lesson = got.get("lesson") if isinstance(got.get("lesson"), str) else None
-    why = got.get("why") if isinstance(got.get("why"), str) else ""
+    raw = got.get("lesson")
+    lesson: str | None = raw if isinstance(raw, str) else None
+    raw_why = got.get("why")
+    why: str = raw_why if isinstance(raw_why, str) else ""
     same = got.get("same_as") if isinstance(got.get("same_as"), str) else None
     if same and not get(data, same):
         same = None
@@ -338,61 +378,65 @@ def record(
 ) -> dict | None:
     """Keep what one post-mortem found: a new lesson when ``got`` has text, and one
     ``postmortems`` line either way. Returns the new lesson, or None."""
-    data = load(home)
-    new = None
-    if got and got.get("text"):
-        new = {
-            "id": next_id(data),
-            "text": got["text"],
-            "why": got.get("why") or "",
-            "on": True,
-            "from": {
+    with locked(home):
+        data = load(home)
+        new = None
+        if got and got.get("text"):
+            new = {
+                "id": next_id(data),
+                "text": got["text"],
+                "why": got.get("why") or "",
+                "on": True,
+                "from": {
+                    "idea": idea,
+                    "product": product,
+                    "round": rnd,
+                    "holds": hold_names(reasons),
+                    "date": _today(),
+                },
+                "packed": 0,
+            }
+            data["lessons"].append(new)
+        if result is None:
+            if new:
+                result = f"lesson {new['id']}"
+            elif got and got.get("same_as"):
+                result = f"already said by {got['same_as']}"
+            elif got and got.get("problems"):
+                result = "no lesson kept: " + "; ".join(got["problems"])
+            else:
+                result = "no lesson: " + (
+                    (got or {}).get("why") or "nothing the builder could learn"
+                )
+        data["postmortems"].append(
+            {
                 "idea": idea,
-                "product": product,
                 "round": rnd,
-                "holds": hold_names(reasons),
                 "date": _today(),
-            },
-            "packed": 0,
-        }
-        data["lessons"].append(new)
-    if result is None:
-        if new:
-            result = f"lesson {new['id']}"
-        elif got and got.get("same_as"):
-            result = f"already said by {got['same_as']}"
-        elif got and got.get("problems"):
-            result = "no lesson kept: " + "; ".join(got["problems"])
-        else:
-            result = "no lesson: " + ((got or {}).get("why") or "nothing the builder could learn")
-    data["postmortems"].append(
-        {
-            "idea": idea,
-            "round": rnd,
-            "date": _today(),
-            "result": result,
-            "usd": round(float((got or {}).get("usd") or 0.0), 4),
-        }
-    )
-    save(home, data)
-    return new
+                "result": result,
+                "usd": round(float((got or {}).get("usd") or 0.0), 4),
+            }
+        )
+        save(home, data)
+        return new
 
 
 # -- into the next brief ------------------------------------------------------------------------
 def pack(home: Path, limit: int = MAX_IN_BRIEF) -> tuple[str, list[dict]]:
     """The block a new task's ``spec.md`` carries, and the lessons in it (newest first, on
     only, at most ``limit``); counts each one's ``packed``. ``("", [])`` with none."""
-    data = load(home)
-    on = [x for x in data["lessons"] if x.get("on")]
-    chosen = list(reversed(on))[: max(0, int(limit))]
-    if not chosen:
-        return "", []
-    ids = {x["id"] for x in chosen}
-    for x in data["lessons"]:
-        if x["id"] in ids:
-            x["packed"] = int(x.get("packed") or 0) + 1
-            x["last_packed"] = _today()
-    save(home, data)
+    with locked(home):
+        data = load(home)
+        on = [x for x in data["lessons"] if x.get("on")]
+        chosen = list(reversed(on))[: max(0, int(limit))]
+        if not chosen:
+            return "", []
+        ids = {x["id"] for x in chosen}
+        for x in data["lessons"]:
+            if x["id"] in ids:
+                x["packed"] = int(x.get("packed") or 0) + 1
+                x["last_packed"] = _today()
+        save(home, data)
     block = (
         f"\n{HEADER} (repo-factory's own record of what held a build; follow each where it "
         "applies):\n" + "".join(f"- {x['text']}\n" for x in chosen)
