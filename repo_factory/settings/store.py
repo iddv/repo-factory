@@ -156,6 +156,18 @@ DEFAULTS: dict = {
         "max_per_build": None,
         "max_identical": 2,
     },
+    # The page's server: writes need the page's sign-in token (false only for tests and a
+    # machine of one user; read by ui/server.py, set here by hand)
+    "api": {"require_token": True},
+    # Lessons from your own builds (lessons/home.py): after a build the gate holds, one
+    # no-tools call (model; null: the Claude Code CLI's default) writes at most one lesson
+    # into <home>/lessons.yaml; the next briefs carry the lessons that are on, newest first,
+    # at most max_in_brief. false: no post-mortem and nothing packed.
+    "lessons": {
+        "enabled": True,
+        "model": "claude-sonnet-5-5",
+        "max_in_brief": 8,
+    },
     # Maintaining the published repos through GitHub (off: not offered yet). The tick polls
     # each one every poll_s and triages new issues with a no-tools call (at most
     # triage_max_per_poll a poll); the page's GitHub reads are kept cache_s. repos: more

@@ -61,10 +61,10 @@ afterEach(() => {
 });
 
 describe("the shell", () => {
-  it("has Builds and Settings in its nav, and nothing else", async () => {
+  it("has Builds, Lessons and Settings in its nav, and nothing else", async () => {
     await open("#/builds");
     const items = [...document.querySelectorAll("nav.nav .item")].map((a) => a.textContent);
-    expect(items).toEqual(["Builds", "Settings"]);
+    expect(items).toEqual(["Builds", "Lessons", "Settings"]);
     expect(document.querySelector('nav.nav .item[aria-current="page"]')?.textContent).toBe("Builds");
     expect(text()).not.toMatch(/Projects|Ideas|Today/);
   });
@@ -241,5 +241,73 @@ describe("the shell", () => {
   it("says a page that does not exist does not", async () => {
     await open("#/ideas");
     expect(text()).toContain("No such page");
+  });
+
+  it("lists the lessons, where each came from, and switches one off", async () => {
+    let on = true;
+    routes["api/lessons"] = () => ({ body: { enabled: true, error: null, at: 1,
+      lessons: [{ id: "L1", text: "Install the tool before its first use in the README.", why: "The README used it first.", on, packed: 2,
+        from: { idea: "i1", product: "Foldpage", round: 1, holds: ["safe_defaults"], date: "2026-11-14" } }],
+      postmortems: [{ idea: "i1", round: 1, date: "2026-11-14", result: "lesson L1", usd: 0.02 }] } });
+    routes["POST api/lessons"] = (b) => {
+      on = (b as { on: boolean }).on;
+      return { body: { id: "L1", on } };
+    };
+    await open("#/lessons");
+    await until(() => !!document.querySelector("#lesson-L1"));
+    const row = document.querySelector("#lesson-L1")?.textContent || "";
+    expect(row).toContain("Install the tool before its first use");
+    expect(row).toMatch(/From Foldpage \(held: safe_defaults\), 2026-11-14\./);
+    expect(row).toContain("In 2 briefs so far.");
+    expect(document.querySelector("#postmortems")?.textContent).toContain("lesson L1");
+    (document.querySelector("#lesson-L1 input") as HTMLInputElement).click();
+    await until(() => posts.length === 1);
+    expect(posts[0]).toEqual(["api/lessons", { id: "L1", on: false }]);
+    await until(() => text().includes("L1 is off: from the next brief."));
+    expect(document.querySelector("#lesson-L1")?.className).toContain("off");
+  });
+
+  it("says when there are no lessons yet", async () => {
+    routes["api/lessons"] = () => ({ body: { enabled: true, error: null, at: 1, lessons: [], postmortems: [] } });
+    await open("#/lessons");
+    await until(() => !!document.querySelector("#lessons-empty"));
+    expect(document.title).toContain("Lessons");
+  });
+
+  it("builds from an issue, and says why a stranger's issue is refused", async () => {
+    routes["POST api/new"] = (b) => (b as { issue: string }).issue === "someone/ideas#9"
+      ? { status: 400, body: { error: "Refused: someone/ideas#9 was opened by stranger, not by you (octo-owner)" } }
+      : { body: { id: "i7", created: true, state: "new" } };
+    await open("#/builds/new");
+    const field = document.querySelector("#issue-ref") as HTMLInputElement;
+    field.value = "someone/ideas#9";
+    field.dispatchEvent(new Event("input"));
+    flushSync();
+    (document.querySelector("#issue-build") as HTMLButtonElement).click();
+    await until(() => !!document.querySelector("#issue-error"));
+    expect(document.querySelector("#issue-error")?.textContent).toContain("was opened by stranger, not by you");
+    expect(posts[0]).toEqual(["api/new", { issue: "someone/ideas#9" }]);
+    field.value = "someone/ideas#7";
+    field.dispatchEvent(new Event("input"));
+    flushSync();
+    (document.querySelector("#issue-build") as HTMLButtonElement).click();
+    await until(() => location.hash === "#/builds/task%3Ai7");
+  });
+
+  it("shows your record on Builds' head, the lean flow apart, and a lean build labelled", async () => {
+    const b = { key: "habits", dir: "/t/habits", status: "held", title: "Habits", desc: "", updated: 9, idea: "i1", repo: null, url: null, flow: "lean",
+      issue: { ref: "someone/ideas#7", url: "https://github.com/someone/ideas/issues/7", author: "octo-owner", why: "you opened it" },
+      lessons: [{ id: "L1", text: "Install the tool before its first use." }],
+      gate: { verdict: "held", reasons: ["tests: 2 fail"], round: 1, checks: {} } };
+    routes["api/state"] = () => ({ body: { builds: [b], ideas: [], record: { builds: 3, published: 1, held: 2, median_s: 3600, median_usd: 10.16, total_usd: 33.46, no_cost: 0,
+      lean: { builds: 1, median_s: 2400, median_usd: 8.5, total_usd: 8.5 } } } });
+    routes["api/build/runs"] = () => ({ body: { key: "habits", runs: [] } });
+    await open("#/builds/habits");
+    await until(() => !!document.querySelector("#record"));
+    expect(document.querySelector("#record")?.textContent).toMatch(/3 builds, 1 published, 2 held; a build took 1 h 0 min and cost \$10\.16 at the median, \$33\.46 in all\./);
+    expect(document.querySelector("#record-lean")?.textContent).toContain("1 by the lean flow (unproven): 40 min and $8.50");
+    expect(document.querySelector("#flow-lean")?.textContent).toBe("lean (unproven)");
+    expect(document.querySelector("#from-issue")?.textContent).toContain("From GitHub issue someone/ideas#7 ↗ (you opened it)");
+    expect(document.querySelector("#carried-lessons")?.textContent).toContain("L1 Install the tool before its first use.");
   });
 });

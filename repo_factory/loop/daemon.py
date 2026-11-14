@@ -125,8 +125,10 @@ class Loop:
         gh=None,
         triage_model=None,
         charter_model=None,
+        lessons_model=None,
     ):
         self.cfg = (cfg or Config()).ensure()
+        self._lessons = lessons_model
         self.ledger = Ledger(self.cfg.db)
         self._model, self._summary, self._honesty = model, summary_model, honesty_model
         self._triage, self._charter = triage_model, charter_model
@@ -199,6 +201,22 @@ class Loop:
         if not text:
             raise ValueError("say what to build")
         return self.ledger.add(text, source)
+
+    def add_issue(self, ref: str) -> tuple[dict, bool]:
+        """A task from a GitHub issue you opened or labelled ``build`` (``from_issue.read``;
+        ``IssueRefused`` otherwise, with its words): a new ledger row whose card keeps the
+        issue, or the row already made from that issue."""
+        from . import from_issue
+
+        issue = from_issue.read(self.gh, ref)
+        return self.ledger.add(
+            from_issue.task_text(issue),
+            from_issue.SOURCE,
+            title=issue["title"] or None,
+            source_ref=issue["source_ref"],
+            card=from_issue.card(issue),
+            fp_text=f"{issue['source_ref']}\n{issue['title']}\n{issue['body']}",
+        )
 
     def pitch(self, ids: list[str] | None = None, limit: int | None = None) -> list[dict]:
         if ids:
@@ -294,7 +312,8 @@ class Loop:
             )
         brief = (p.get("brief") or "").strip() or (idea.get("text") or "").strip()
         p.update(brief=brief, overridden=True, by=self.by())
-        task = pitch_mod.make_task(idea, p, self.cfg.tasks_dir)
+        task = pitch_mod.make_task(idea, p, self.cfg.tasks_dir, self.cfg.home, self.cfg)
+        p.update(lessons=pitch_mod.carried(task))
         return self.ledger.update(
             idea["id"],
             state="queued",
@@ -1242,9 +1261,95 @@ class Loop:
                 idea_id, state="held", build=rec, gate=g, reason="; ".join(g["reasons"]), note=note
             )
         log(f"{idea_id} {idea['title']}: {note}")
+        if g["verdict"] != "ready":
+            self._lesson(out, g)
         if repair and g["verdict"] != "ready":  # the hold is the round's brief
             return self._auto_repair(out, g) or out
         return out
+
+    @property
+    def lessons_model(self):
+        if self._lessons is None:
+            from .models import claude
+
+            self._lessons = claude(
+                (self.cfg.get("lessons") or {}).get("model"), "lessons", timeout_s=300
+            )
+        return self._lessons
+
+    def _lesson(self, idea: dict, g: dict) -> dict | None:
+        """The post-mortem of a round the gate held (``lessons/home.py``): at most one lesson,
+        once per round. Never fails the gate: a problem is logged and kept as the round's
+        post-mortem line."""
+        from ..lessons import home as lessons
+
+        if (self.cfg.get("lessons") or {}).get("enabled") is False:
+            return None
+        rnd = g.get("round") or (idea.get("build") or {}).get("round")
+        product = (idea.get("pitch") or {}).get("product") or idea.get("title")
+        try:
+            data = lessons.load(self.cfg.home)
+            if lessons.looked_at(data, idea["id"], rnd):
+                return None
+            reasons = lessons.learnable(list(g.get("reasons") or []))
+            if not reasons:
+                return lessons.record(
+                    self.cfg.home,
+                    idea=idea["id"],
+                    rnd=rnd,
+                    product=product,
+                    reasons=[],
+                    got=None,
+                    result="no lesson: nothing in the holds the builder could have avoided",
+                )
+            if self.over_cap():
+                return lessons.record(
+                    self.cfg.home,
+                    idea=idea["id"],
+                    rnd=rnd,
+                    product=product,
+                    reasons=reasons,
+                    got=None,
+                    result="no lesson: today's spend cap is reached",
+                )
+            brief = ""
+            try:
+                brief = (Path(idea["task_dir"]) / "spec.md").read_text()
+            except (OSError, KeyError, TypeError):
+                brief = str((idea.get("pitch") or {}).get("brief") or "")
+            got = lessons.postmortem(
+                self.lessons_model, brief=brief, reasons=reasons, product=product, data=data
+            )
+            from .models import spend_kw
+
+            self.ledger.spend("lessons", got["usd"], idea["id"], **spend_kw(got.get("tokens")))
+            new = lessons.record(
+                self.cfg.home,
+                idea=idea["id"],
+                rnd=rnd,
+                product=product,
+                reasons=reasons,
+                got=got,
+            )
+            if new:
+                self.ledger.note(idea["id"], f"lesson {new['id']} kept: {new['text']}")
+            return new
+        except Exception as e:  # noqa: BLE001 - the gate's verdict stands without a lesson
+            msg = f"{type(e).__name__}: {e}"[:300]
+            log(f"{idea['id']}: no lesson: {msg}")
+            try:
+                lessons.record(
+                    self.cfg.home,
+                    idea=idea["id"],
+                    rnd=rnd,
+                    product=product,
+                    reasons=[],
+                    got=None,
+                    result=f"the post-mortem failed: {msg}",
+                )
+            except Exception:  # noqa: BLE001 - the file itself is the problem
+                pass
+            return None
 
     def retry(self, idea_id: str, rebuild: bool = False, note: str | None = None) -> dict:
         """A held idea goes again. Held by the pre-push checks with a ready gate: publish is

@@ -1,6 +1,6 @@
 // The builds as the page shows them: api/state's builds and the tasks not built yet, one row each,
 // with the status in plain words. Pure functions; the components draw what these return.
-import type { ActionOffer, BuildRow, Gate, Run } from "../api/types.gen";
+import type { ActionOffer, BuildRow, Gate, BuildRecord, Run } from "../api/types.gen";
 import { cut } from "./format";
 import { sixName } from "./stages";
 
@@ -46,6 +46,8 @@ export interface State {
   builds: Build[];
   ideas?: TaskRow[];
   harness?: string;
+  /** Builds' head: your own record, from the builds' ledgers */
+  record?: BuildRecord;
 }
 
 export type Tone = "blue" | "amber" | "green" | "red" | "grey";

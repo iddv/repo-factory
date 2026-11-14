@@ -80,6 +80,13 @@ ROLES = [
         "loop",
     ),
     (
+        "lessons",
+        "Lessons",
+        "Reads a held build's holds and writes at most one lesson for the next briefs; no tools.",
+        ("lessons", "model"),
+        "loop",
+    ),
+    (
         "triage",
         "Triage",
         "Labels new issues on the published repos and writes one comment; no tools.",

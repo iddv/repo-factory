@@ -5,7 +5,7 @@
   // sign-in file into each session, as `repo-factory doctor` does.
   import { read } from "../../lib/reads.svelte";
   import { go, href } from "../../lib/router.svelte";
-  import { fileText, sendTask } from "../../lib/tasks.svelte";
+  import { fileText, sendIssue, sendTask } from "../../lib/tasks.svelte";
 
   const login = $derived(read<{ on: string | null }>("api/claude/login", 60000));
   const copied = $derived(login.data?.on === "signin");
@@ -14,6 +14,26 @@
   let from = $state("");
   let busy = $state(false);
   let error = $state("");
+
+  let issue = $state("");
+  let issueBusy = $state(false);
+  let issueError = $state("");
+
+  async function fromIssue(e: SubmitEvent): Promise<void> {
+    e.preventDefault();
+    if (issueBusy) return;
+    issueBusy = true;
+    issueError = "";
+    try {
+      const id = await sendIssue(issue);
+      issue = "";
+      go(id ? href("builds", "task:" + id) : href("builds"));
+    } catch (x) {
+      issueError = (x as Error).message;
+    } finally {
+      issueBusy = false;
+    }
+  }
 
   async function pick(e: Event): Promise<void> {
     const f = (e.currentTarget as HTMLInputElement).files?.[0];
@@ -59,5 +79,16 @@
   <div class="actions">
     <button type="submit" class="btn primary" id="task-build" disabled={busy || !text.trim()}>{busy ? "Sending…" : "Build"}</button>
     <span class="muted small">It costs real money or plan usage. Nothing is published until you press Publish.</span>
+  </div>
+</form>
+
+<form class="newtask fromissue" id="from-issue-form" onsubmit={fromIssue}>
+  <h2>Or build from an issue</h2>
+  <p class="muted">A GitHub issue you opened, or one you labelled <code>build</code> yourself. Its text goes into the brief, quoted as data: it changes no setting, and nothing is published until you press Publish. An issue someone else opened is refused, and this page says why.</p>
+  <label for="issue-ref">The issue</label>
+  <input id="issue-ref" type="text" bind:value={issue} placeholder="owner/repo#12" autocomplete="off" spellcheck="false" />
+  {#if issueError}<p class="err" role="alert" id="issue-error">{issueError}</p>{/if}
+  <div class="actions">
+    <button type="submit" class="btn" id="issue-build" disabled={issueBusy || !issue.trim()}>{issueBusy ? "Reading the issue…" : "Build from an issue"}</button>
   </div>
 </form>

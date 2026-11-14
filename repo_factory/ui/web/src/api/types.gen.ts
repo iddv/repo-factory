@@ -189,6 +189,61 @@ export interface BuildRun {
   neighbours: Neighbours;
 }
 
+/** The GitHub issue a task came from. */
+export interface IssueRef {
+  ref: string | null;
+  url: string | null;
+  author: string | null;
+  why: string | null;
+}
+
+/** Who a published repository names: its licence and NOTICE (``name``), its commit (``email``). */
+export interface PublishAs {
+  name: string;
+  email: string | null;
+}
+
+export interface LessonRef {
+  id: string | null;
+  text: string | null;
+}
+
+export interface RecordPart {
+  builds: number;
+  median_usd: number | null;
+  median_s: number | null;
+  total_usd: number | null;
+}
+
+/** Builds' head (``ui/record.py``): your own builds, from their ledgers. */
+export interface BuildRecord {
+  builds: number;
+  median_usd: number | null;
+  median_s: number | null;
+  total_usd: number | null;
+  published: number;
+  held: number;
+  no_cost: number;
+  lean: RecordPart | null;
+}
+
+export interface Postmortem {
+  idea: string | null;
+  round: number | null;
+  date: string | null;
+  result: string | null;
+  usd: number | null;
+}
+
+/** ``api/lessons``: every lesson (``lessons/home.py``: id, text, why, on, from, packed), newest first, and the last post-mortems. */
+export interface Lessons {
+  lessons: (Record<string, unknown>)[];
+  postmortems: Postmortem[];
+  error: string | null;
+  enabled: boolean;
+  at: number;
+}
+
 /** One build in ``api/state``' ``builds`` (and ``api/build``'s ``row``). */
 export interface BuildRow {
   key: string;
@@ -208,6 +263,10 @@ export interface BuildRow {
   gate: Gate | null;
   kind?: string;
   builds?: RunsBrief | null;
+  flow?: string | null;
+  issue?: IssueRef | null;
+  publish_as?: PublishAs | null;
+  lessons?: LessonRef[];
   [key: string]: unknown;
 }
 
@@ -312,6 +371,7 @@ export interface Snapshot {
   history: HistoryRow[];
   maintain: MaintainToday;
   project_asks: ProjectAsk[];
+  record: BuildRecord;
 }
 
 export interface ActionField {
@@ -598,5 +658,6 @@ export interface Routes {
   "api/build/runs": BuildRuns;
   "api/run": BuildRun;
   "api/activity": Activity;
+  "api/lessons": Lessons;
   "/api/whoami": WhoAmI;
 }

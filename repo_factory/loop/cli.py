@@ -41,7 +41,22 @@ def add_loop_group(sub) -> None:
     a.add_argument("text", nargs="*")
     a.add_argument("--file", default=None, help="read the task from this file ('-' = stdin)")
     a.add_argument("--source", default="cli", help=argparse.SUPPRESS)
+    a.add_argument(
+        "--from-issue",
+        metavar="OWNER/REPO#N",
+        default=None,
+        help="a GitHub issue you opened, or labelled `build` yourself; its text is quoted "
+        "in the brief as data",
+    )
     a.set_defaults(fn=cmd_add)
+
+    les = ls.add_parser(
+        "lessons", help="what held earlier builds, carried into the next briefs (on or off)"
+    )
+    les.add_argument("switch", nargs="?", choices=("on", "off"), default=None)
+    les.add_argument("id", nargs="?", default=None, help="a lesson's id (L1, L2, ...)")
+    les.add_argument("--json", action="store_true")
+    les.set_defaults(fn=cmd_lessons)
 
     p = ls.add_parser("pitch", help="write the brief of new tasks now (one no-tools call each)")
     p.add_argument("ids", nargs="*")
@@ -352,12 +367,21 @@ def line(i: dict) -> str:
 
 
 def cmd_add(args):
+    from .from_issue import IssueRefused
+
     text = " ".join(args.text).strip()
     if args.file:
         text = (sys.stdin.read() if args.file == "-" else Path(args.file).read_text()).strip()
+    if args.from_issue and text:
+        sys.exit("repo-factory loop add: give the task's words or --from-issue, not both")
     lp = _loop(args)
     try:
-        idea, new = lp.add(text, args.source)
+        if args.from_issue:
+            idea, new = lp.add_issue(args.from_issue)
+        else:
+            idea, new = lp.add(text, args.source)
+    except IssueRefused as e:
+        sys.exit(f"repo-factory loop add: refused: {e}")
     except ValueError as e:
         sys.exit(f"repo-factory loop add: {e}")
     print(("Added " if new else "Already in the ledger: ") + line(idea))
@@ -657,3 +681,36 @@ def cmd_release_text(args):
     i = _loop(args).set_release_text(args.id, text, origin=args.origin)
     print(line(i))
     print("Saved; it is used as it is (a published repo gets it in the background).")
+
+
+def cmd_lessons(args):
+    """The lessons from your own builds, or one switched on or off."""
+    from ..lessons import home as lessons
+
+    lp = _loop(args)
+    if args.switch:
+        if not args.id:
+            sys.exit(f"repo-factory loop lessons {args.switch} needs a lesson's id (L1, ...)")
+        try:
+            x = lessons.switch(lp.cfg.home, args.id, args.switch == "on")
+        except KeyError:
+            sys.exit(f"repo-factory loop lessons: no lesson {args.id}")
+        except lessons.LessonsError as e:
+            sys.exit(f"repo-factory loop lessons: {e}")
+        state = "on" if x["on"] else "off"
+        print(f"{x['id']} is {state}: {x['text']}")
+        return
+    got = lessons.summary(lp.cfg.home)
+    if args.json:
+        print(json.dumps(got, indent=1))
+        return
+    if got["error"]:
+        sys.exit(f"repo-factory loop lessons: {got['error']}")
+    if not got["lessons"]:
+        print("No lessons yet: a build the gate holds writes one, when there is one to learn.")
+        return
+    for x in got["lessons"]:
+        frm = x.get("from") or {}
+        state = "on " if x["on"] else "off"
+        where = f"  (from {frm.get('product')}, {frm.get('date')})" if frm.get("product") else ""
+        print(f"{x['id']}  {state}  {x['text']}{where}")

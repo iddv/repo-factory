@@ -31,6 +31,8 @@ def _text(app, r):
 def _new(app, r):
     """A typed task (or a file's contents) into the ledger: ``{id}``; its brief comes next."""
     b = r.data
+    if b.get("issue") is not None:
+        return app.new_from_issue(b.get("issue"))
     return app.new(b.get("text") or b.get("sentence", ""))
 
 
@@ -69,6 +71,8 @@ ROUTES = [
     ),
     ("GET", "/api/text", _text),
     ("POST", "/api/new", ok(_new)),
+    ("GET", "/api/lessons", ok(lambda a, r: a.lessons())),
+    ("POST", "/api/lessons", ok(lambda a, r: a.lesson_switch(r.data))),
 ]
 
 # last of all: any other POST is a build's own write

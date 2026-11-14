@@ -66,6 +66,11 @@ SENT = (
 
 
 def idea_text(idea: dict) -> str:
+    from . import from_issue
+
+    issue = from_issue.of(idea)
+    if issue is not None:  # its text is data, quoted between markers (from_issue.quoted)
+        return from_issue.quoted(issue)
     out = (idea.get("text") or "").strip()
     if idea.get("context"):
         out += "\n\nMore context:\n" + idea["context"].strip()
@@ -431,9 +436,21 @@ def run(
     }
 
 
-def make_task(idea: dict, p: dict, tasks_dir: Path) -> Path:
-    """``repo-factory new`` in the tasks dir: ``<product slug>``, then ``-2``, ``-3`` if taken."""
+def make_task(idea: dict, p: dict, tasks_dir: Path, home: Path | None = None, cfg=None) -> Path:
+    """``repo-factory new`` in the tasks dir: ``<product slug>``, then ``-2``, ``-3`` if taken.
+    ``spec.md`` (the brief) also quotes the issue a task came from, and carries the lessons
+    from earlier builds that are on (``lessons/home.py``; ``home`` given and
+    ``lessons.enabled``)."""
     from ..tasks import new_task, slug
+    from . import from_issue
+
+    extra, carried = "", []
+    issue = from_issue.of(idea)
+    if issue is not None:
+        extra += from_issue.spec_quote(issue)
+    if home is not None:
+        block, carried = lessons_block(home, cfg)
+        extra += block
 
     tasks_dir = Path(tasks_dir).expanduser()
     tasks_dir.mkdir(parents=True, exist_ok=True)
@@ -444,7 +461,7 @@ def make_task(idea: dict, p: dict, tasks_dir: Path) -> Path:
     new_task(
         p["product"],
         dest=dest,  # the task id (and branch) from the name
-        spec_text=spec_text(p),
+        spec_text=spec_text(p) + extra,
     )
     (dest / "loop.json").write_text(
         json.dumps(
@@ -455,11 +472,43 @@ def make_task(idea: dict, p: dict, tasks_dir: Path) -> Path:
                 "title": idea.get("title"),
                 "urls": idea.get("urls") or [],
                 "pitch": p,
+                "lessons": carried,
             },
             indent=1,
         )
     )
     return dest
+
+
+def carried(task: Path) -> list[dict]:
+    """The lessons a task's brief carries (``loop.json``'s ``lessons``; [] for a task made
+    before lessons, or a file that cannot be read)."""
+    try:
+        got = json.loads((Path(task) / "loop.json").read_text()).get("lessons")
+    except (OSError, ValueError, AttributeError):
+        return []
+    return [x for x in got if isinstance(x, dict)] if isinstance(got, list) else []
+
+
+def lessons_block(home: Path, cfg=None) -> tuple[str, list[dict]]:
+    """The lessons block for a new brief and the lessons in it; nothing when lessons are off
+    or the file cannot be read (said in the loop's log, never a failed brief)."""
+    from ..lessons import home as lessons
+
+    sec = (cfg.get("lessons") if cfg is not None else None) or {}
+    if sec.get("enabled") is False:
+        return "", []
+    limit = sec.get("max_in_brief")
+    limit = (
+        limit if isinstance(limit, int) and not isinstance(limit, bool) else lessons.MAX_IN_BRIEF
+    )
+    try:
+        return lessons.pack(Path(home), limit)
+    except Exception as e:  # noqa: BLE001 - a brief is never lost to the lessons file
+        import logging
+
+        logging.getLogger("repo_factory.lessons").warning("lessons not packed: %s", e)
+        return "", []
 
 
 def sent_mark(pitch: dict | None) -> dict:
@@ -521,7 +570,9 @@ def pitch_idea(ledger: Ledger, idea: dict, model, cfg) -> dict:
     elif claims.needs_owner(record):
         # no reading of a claim keeps the task's spirit: it can't be built as
         # stated; held before building, with the proposal for the owner to accept or edit
-        task = make_task(idea, p, cfg.tasks_dir)
+        task = make_task(idea, p, cfg.tasks_dir, cfg.home, cfg)
+        if carried(task):
+            record["lessons"] = carried(task)
         why = claims.hold_words(claims.needs_owner(record))
         out = ledger.update(
             idea["id"],
@@ -534,7 +585,9 @@ def pitch_idea(ledger: Ledger, idea: dict, model, cfg) -> dict:
             note=f"accepted as {p['product']}, held before building: {why}",
         )
     else:
-        task = make_task(idea, p, cfg.tasks_dir)
+        task = make_task(idea, p, cfg.tasks_dir, cfg.home, cfg)
+        if carried(task):
+            record["lessons"] = carried(task)
         n = len(claims.of(record))
         out = ledger.update(
             idea["id"],

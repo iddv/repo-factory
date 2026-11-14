@@ -24,6 +24,7 @@ SNAPSHOT = Path(__file__).parent / "fixtures" / "api_routes.json"
 IDEA = "i0123abcd"
 
 GET = [
+    "/api/lessons",
     "/api/details",
     "/api/details?sel=bnope",
     "/api/github/app",

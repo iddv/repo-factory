@@ -1,4 +1,15 @@
 {
+ "GET /api/lessons": [
+  200,
+  "application/json",
+  [
+   "at",
+   "enabled",
+   "error",
+   "lessons",
+   "postmortems"
+  ]
+ ],
  "GET /api/details": [
   400,
   "application/json",
@@ -129,6 +140,7 @@
    "daily_usd",
    "exam",
    "github",
+   "lessons",
    "maintain",
    "pitch",
    "pitch_per_tick",
@@ -333,6 +345,7 @@
    "maintain",
    "now",
    "project_asks",
+   "record",
    "root",
    "status"
   ]

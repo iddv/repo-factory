@@ -2,10 +2,11 @@
 //   #/builds             the list (also #/ and an empty hash)
 //   #/builds/new         New task
 //   #/builds/<key>       a build beside the list; ?log=<stage> opens that stage's log
+//   #/lessons            what held earlier builds, each on or off
 //   #/settings/<page>    a settings page (#/settings opens the first)
 // Anything else is a page that does not exist, said so in words.
 
-export type Section = "builds" | "settings" | "missing";
+export type Section = "builds" | "lessons" | "settings" | "missing";
 export interface Route {
   section: Section;
   /** builds: a build's key, or "new"; settings: the page */
@@ -29,6 +30,7 @@ export function parse(hash: string): Route {
   if (rest.length) return { section: "missing", id: null, q };
   if (!head || head === "builds") return { section: "builds", id, q };
   if (head === "settings") return { section: "settings", id, q };
+  if (head === "lessons") return id ? { section: "missing", id: null, q } : { section: "lessons", id: null, q };
   return { section: "missing", id: null, q };
 }
 

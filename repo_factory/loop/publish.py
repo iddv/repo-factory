@@ -248,6 +248,14 @@ def license_text(kind: str, holder: str, year: int) -> str | None:
     return MIT.format(year=year, holder=holder)
 
 
+def identity(cfg) -> dict:
+    """Who a published repository names, said before the press: ``{"name", "email"}``. The
+    licence and NOTICE carry ``name`` (``publish.copyright``, else git's ``user.name``); its
+    first commit is made with git's ``user.email`` (None when git has none)."""
+    p = gitcmd.run(["config", "user.email"], capture_output=True, text=True)
+    return {"name": holder_name(cfg), "email": p.stdout.strip() or None}
+
+
 def holder_name(cfg) -> str:
     if cfg["publish"].get("copyright"):
         return cfg["publish"]["copyright"]
