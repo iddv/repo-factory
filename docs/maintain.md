@@ -1,14 +1,87 @@
 # Maintaining published products
 
-repo-factory maintains what it publishes through GitHub: a product's issues are the work queue, their
-labels are the state, a pull request is the proposal, and the owner's merge is the approval.
-repo-factory keeps no maintenance table. This page covers the files every product carries and the
-commands that put them there, then triage, fixes, releases, learning from user-found bugs, the
-drift doctor and the identity repo-factory uses on GitHub.
+**Maintenance is off until you switch it on for a repository** (its page under Projects). This
+page says first what runs, what it writes to GitHub and behind which switch, then the files a
+maintained product carries and the parts of the code underneath.
 
-A repository repo-factory did not build is maintained too, with its policy kept in repo-factory and narrower
-defaults: see [maintain-adopt.md](maintain-adopt.md). `maintain.repos` (the old "More repos to
-maintain" list) is no longer read: each name in it became an unconfirmed watch profile.
+## What runs (`repo_factory/maintain/watch.py`)
+
+Every `maintain.poll_s` (15 minutes), the loop's tick polls each published repository that is
+switched on (`<home>/maintain/repos.json`, `maintain/switch.py`) and not paused
+(`<home>/maintain/paused.json`, and the loop's `PAUSE`). Nothing is read while the loop is
+paused, and a repository that is switched off or paused is not read at all. Per repository:
+
+1. **The policy file** `.github/repo-factory.yml` is read. Fixes start only once it says
+   `status: maintained` (the setup pull request below puts it there). A file that cannot be read
+   is a row on the project's page.
+2. **Your word.** Each open issue labelled `go` has its events read: only a `go` put on by the
+   login maintenance acts for (yours, or your GitHub App's) counts. Everything else (anyone
+   else's issue, a `go` someone else put on, anyone else's pull request, Dependabot's) is a
+   "Waiting for you" row. No model call, no label, no comment.
+3. **Fixes.** When a slot is free (`maintain.concurrency`, shared with builds), nothing of the
+   repository is running, maintenance's money is not spent and the issue does not wait for you,
+   the oldest of your `go` issues without an open fix gets one: `repo-factory maintain revise
+   REPO N`, detached (`revise.Fix`, quiet). It reads the issue's events again before it spends
+   anything, and the switch, the pauses and the monthly limit before every session and before
+   the push. Its sessions run in the build sandbox, with no GitHub credential, and with
+   `maintain.net: allowlist` reach only `maintain.net_hosts`. The issue's text reaches them
+   only between document markers. The result is a pull request on a new `repo-factory/` branch
+   (a later attempt takes the next free name; nothing is force-pushed), labelled
+   `repo-factory` and its kind, with what was reproduced and tested; the scope check refuses
+   any change to `.github/workflows/`, the policy file, LICENSE or NOTICE. Attempts, outcomes
+   and why live in `<home>/maintain/fixes.json`; after `revise.max_attempts` failed attempts
+   the issue waits for your **Retry**.
+4. **Merging** (`watch.merge_step`), only with the repository's merge switch on (off by
+   default): at most one of the pull requests this install's fixes opened, a poll, through
+   `automerge.judge` (kind `bug` or `docs`, not a draft, no `hold`, under `merge.max_lines`,
+   nothing under `.github/`, no licence or lock file, no changes requested, up to date, every
+   check green), only while its head is the commit the fix pushed, and never while a workflow
+   on `main` names a self-hosted runner. Then `release.step` cuts a patch release when the
+   policy's `release.on_merge` allows it.
+5. **The drift doctor** (reads only): AGENTS.md against the tree, and any workflow on a
+   self-hosted runner, shown as a warning.
+6. **This week's proposals** (`maintain/proposals.py`), with `maintain.proposals` on: once a week
+   a detached `repo-factory maintain propose REPO` makes one no-tools call ($0.50 at most) on
+   the README and the open issues' titles. Nothing is built from a proposal until you press
+   **Build this proposal**, which opens an issue labelled `go` by you.
+
+### Everything maintenance writes to GitHub
+
+| What | When | Its switch | Default |
+|---|---|---|---|
+| The setup pull request (`repo-factory/maintenance`) and the repository's labels | You press **Switch maintenance on** | the repository's maintenance switch | off |
+| A fix's branch (`repo-factory/N-…`, never overwritten) and its pull request, with two labels on that pull request | One of your own `go` issues, at a poll | the repository's maintenance switch, and the policy file's `status: maintained` | off |
+| A merge of one of its own fix pull requests | A poll, all the rules above | the repository's merge switch | off |
+| A tag and a GitHub release | Right after such a merge | the merge switch and `release.on_merge` | off |
+| An issue labelled `go` | You press **Build this proposal** | the repository's maintenance switch | off |
+
+Nothing else: no comment and no label on any issue, no push to the default branch, no
+repository setting. The App, when you make one (Settings › GitHub), can write issues, pull
+requests and contents only; never workflows, secrets or administration.
+
+### Money
+
+Fixes (`revise`) and proposals (`evolve`) are spend kinds the daily cap counts, and
+`maintain.monthly_usd` ($20) limits what they spend in a calendar month; `maintain.max_usd`
+($5) caps one fix. Every session of a fix runs under the smaller of what is left of both. At
+the limit nothing new starts and the page says so; a fix already running stops before its next
+session.
+
+### Files
+
+`<home>/maintain/`: `repos.json` (the switches), `paused.json`, `fixes.json`, `proposals.json`,
+`cache.json` (what the last poll saw, for the pages; disposable), `setup/` (the setup's
+clone), `backfill/` (its state and log), `work/` (a fix's clone while it runs).
+
+## The parts underneath, from an earlier version
+
+The modules below were written for an earlier poll that triaged every new issue with a model,
+commented and labelled on issues, merged Dependabot updates and re-did pull requests on a moved
+`main`. **The loop does not run that poll any more** (`poll.maintain_tick` is not called by
+it); its pieces that this version uses are the fix (`revise.py`), the merge judge
+(`automerge.judge`), the release (`release.py`), the doctor and the setup (`backfill.py`).
+What follows describes them as they were written; where it speaks of triage, comments, claims
+or leases, that is the earlier poll, not what runs.
 
 ## What a maintained product carries
 

@@ -135,8 +135,8 @@ def release_edit(argv: list[str]) -> int:
 def issue_read(path: str) -> int:
     """``repos/<owner>/<repo>/issues/<n>`` (and ``.../events``) from
     ``$FAKE_GH_ROOT/issues/<owner>/<repo>/<n>.json``: ``{"issue": {...}, "events": [...]}``.
-    Issues are only read here: nothing is ever written to one."""
-    parts = path.split("/")
+    Issues are only read here: nothing is ever written to one by a read."""
+    parts = path.split("?")[0].split("/")
     owner, repo, n = parts[1], parts[2], parts[4]
     f = ROOT / "issues" / owner / repo / f"{n}.json"
     if not f.is_file():
@@ -147,8 +147,156 @@ def issue_read(path: str) -> int:
     return 0
 
 
+# -- maintenance: issues, pull requests and files, from folders and the local bare repository ----
+def issues_dir(full: str) -> Path:
+    return ROOT / "issues" / full
+
+
+def all_items(full: str) -> list[dict]:
+    d = issues_dir(full)
+    items = []
+    for f in sorted(d.glob("*.json")) if d.is_dir() else []:
+        items.append(json.loads(f.read_text())["issue"])
+    return items
+
+
+def next_number(full: str) -> int:
+    return 1 + max([int(i["number"]) for i in all_items(full)] or [0])
+
+
+def write_item(full: str, item: dict, events: list | None = None) -> None:
+    d = issues_dir(full)
+    d.mkdir(parents=True, exist_ok=True)
+    f = d / f"{item['number']}.json"
+    old = json.loads(f.read_text()) if f.is_file() else {}
+    f.write_text(json.dumps({"issue": item, "events": events if events is not None else old.get("events", [])}, indent=1))
+
+
+def bare(full: str) -> Path:
+    return ROOT / f"{full}.git"
+
+
+def show(full: str, ref: str, path: str) -> str | None:
+    p = subprocess.run(["git", "--git-dir", str(bare(full)), "show", f"{ref}:{path}"],
+                       capture_output=True, text=True)
+    return p.stdout if p.returncode == 0 else None
+
+
+def now_iso() -> str:
+    import time
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+def payload(argv: list[str]) -> dict:
+    f = opt(argv, "--input")
+    return json.loads(Path(f).read_text()) if f else {}
+
+
+def maint_api(argv: list[str], path: str, method: str, full: str, rest: list[str]) -> int | None:
+    """What maintenance asks of a repository; None: not one of these."""
+    q = path.split("?", 1)[1] if "?" in path else ""
+    rest = "/".join(rest).split("?")[0].split("/")
+    raw = "application/vnd.github.raw" in " ".join(argv)
+    if rest == ["issues"] and method == "GET":
+        state = "all" if "state=all" in q else "open"
+        out([i for i in all_items(full) if state == "all" or i.get("state", "open") == "open"])
+        return 0
+    if rest == ["issues"] and method == "POST":
+        b = payload(argv)
+        n = next_number(full)
+        item = {"number": n, "title": b.get("title", ""), "body": b.get("body", ""),
+                "user": {"login": LOGIN}, "author_association": "OWNER", "state": "open",
+                "labels": [{"name": x} for x in b.get("labels") or []], "assignees": [],
+                "comments": 0, "created_at": now_iso(), "updated_at": now_iso(),
+                "html_url": f"https://github.com/{full}/issues/{n}"}
+        events = [{"event": "labeled", "label": {"name": x}, "actor": {"login": LOGIN}}
+                  for x in b.get("labels") or []]
+        write_item(full, item, events)
+        out(item)
+        return 0
+    if rest == ["pulls"] and method == "POST":
+        b = payload(argv)
+        n = next_number(full)
+        sha = subprocess.run(["git", "--git-dir", str(bare(full)), "rev-parse", b["head"]],
+                             capture_output=True, text=True).stdout.strip()
+        item = {"number": n, "title": b.get("title", ""), "body": b.get("body", ""),
+                "user": {"login": LOGIN}, "author_association": "OWNER", "state": "open",
+                "labels": [], "assignees": [], "comments": 0, "draft": bool(b.get("draft")),
+                "created_at": now_iso(), "updated_at": now_iso(), "pull_request": {},
+                "head": {"ref": b["head"], "sha": sha, "repo": {"full_name": full}},
+                "base": {"ref": b.get("base", "main")},
+                "html_url": f"https://github.com/{full}/pull/{n}"}
+        write_item(full, item, [])
+        out(item)
+        return 0
+    if len(rest) == 3 and rest[0] == "issues" and rest[2] == "labels" and method == "POST":
+        f = issues_dir(full) / f"{rest[1]}.json"
+        data = json.loads(f.read_text())
+        have = [x["name"] for x in data["issue"]["labels"]]
+        add = [x for x in payload(argv).get("labels") or [] if x not in have]
+        data["issue"]["labels"] += [{"name": x} for x in add]
+        data["events"] += [{"event": "labeled", "label": {"name": x}, "actor": {"login": LOGIN}}
+                           for x in add]
+        f.write_text(json.dumps(data, indent=1))
+        out(data["issue"]["labels"])
+        return 0
+    if len(rest) == 2 and rest[0] == "pulls" and method == "GET":
+        f = issues_dir(full) / f"{rest[1]}.json"
+        if not f.is_file():
+            print("gh: Not Found (HTTP 404)", file=sys.stderr)
+            return 1
+        out({**json.loads(f.read_text())["issue"], "mergeable": True, "mergeable_state": "clean"})
+        return 0
+    if rest[:1] == ["contents"] and method == "GET":
+        text = show(full, (q.split("ref=")[1].split("&")[0] if "ref=" in q else "main"),
+                    "/".join(rest[1:]))
+        if text is None:
+            print("gh: Not Found (HTTP 404)", file=sys.stderr)
+            return 1
+        print(text, end="")
+        return 0
+    if rest == ["readme"]:
+        for name in ("README.md", "README.rst", "README"):
+            text = show(full, "main", name)
+            if text is not None:
+                print(text, end="")
+                return 0
+        print("gh: Not Found (HTTP 404)", file=sys.stderr)
+        return 1
+    if rest[:2] == ["commits", "main"] and len(rest) == 2:
+        sha = subprocess.run(["git", "--git-dir", str(bare(full)), "rev-parse", "main"],
+                             capture_output=True, text=True).stdout.strip()
+        if "-i" in argv:
+            print(f"HTTP/2.0 200 OK\nEtag: W/\"{sha}\"\n\n{sha}")
+        else:
+            out({"sha": sha})
+        return 0
+    if rest[:2] == ["git", "trees"]:
+        p = subprocess.run(["git", "--git-dir", str(bare(full)), "ls-tree", "-r", "-t", rest[2]],
+                           capture_output=True, text=True)
+        tree = []
+        for ln in p.stdout.splitlines():
+            meta_, name = ln.split("\t", 1)
+            kind = meta_.split()[1]
+            tree.append({"path": name, "type": "tree" if kind == "tree" else "blob"})
+        out({"tree": tree, "truncated": False})
+        return 0
+    if rest[:1] == ["releases"] or rest[:1] == ["tags"]:
+        if rest == ["releases", "latest"]:
+            print("gh: Not Found (HTTP 404)", file=sys.stderr)
+            return 1
+        out([])
+        return 0
+    if method == "GET" and raw:
+        print("gh: Not Found (HTTP 404)", file=sys.stderr)
+        return 1
+    return None
+
+
 def api(argv: list[str]) -> int:
-    path = next((a for a in argv[1:] if not a.startswith("-") and "/" in a or a == "user"), "")
+    takes = {"-H", "-X", "--input", "-q", "--jq", "-F", "-f", "--method", "--header"}
+    words = [a for i, a in enumerate(argv[1:], 1) if argv[i - 1] not in takes]
+    path = next((a for a in words if not a.startswith("-") and "/" in a or a == "user"), "")
     method = opt(argv, "-X", "GET")
     if path == "user":
         q = opt(argv, "-q") or opt(argv, "--jq")
@@ -163,6 +311,9 @@ def api(argv: list[str]) -> int:
             print("HTTP 404: Not Found", file=sys.stderr)
             return 1
         rest = path.split("/")[3:]
+        got = maint_api(argv, path, method, full, rest)
+        if got is not None:
+            return got
         if method == "PATCH" and not rest:
             for a in argv:
                 if a.startswith("visibility="):
@@ -204,12 +355,42 @@ def main() -> int:
     elif head == ["repo", "view"]:
         full = argv[2] if len(argv) > 2 and not argv[2].startswith("-") else ""
         m = meta(full)
-        if m:
+        if m and opt(argv, "-q") == ".isPrivate":
+            out("true" if m["visibility"] == "private" else "false")
+            code = 0
+        elif m:
             out({"nameWithOwner": full, "visibility": m["visibility"].upper(), "url": m["url"]})
             code = 0
         else:
             print("GraphQL: Could not resolve to a Repository", file=sys.stderr)
             code = 1
+    elif head == ["repo", "clone"]:
+        dest = argv[3] if len(argv) > 3 and argv[3] != "--" else Path(argv[2]).name
+        subprocess.run(["git", "clone", "-q", str(bare(argv[2])), dest], check=True,
+                       capture_output=True)
+        code = 0
+    elif head == ["pr", "list"]:
+        full, ref = opt(argv, "--repo"), opt(argv, "--head")
+        out([{"number": i["number"], "url": i["html_url"]} for i in all_items(full)
+             if "pull_request" in i and i.get("state") == "open"
+             and (i.get("head") or {}).get("ref") == ref])
+        code = 0
+    elif head == ["pr", "create"]:
+        full = opt(argv, "--repo")
+        n = next_number(full)
+        ref = opt(argv, "--head")
+        sha = subprocess.run(["git", "--git-dir", str(bare(full)), "rev-parse", ref],
+                             capture_output=True, text=True).stdout.strip()
+        item = {"number": n, "title": opt(argv, "--title") or "",
+                "body": Path(opt(argv, "--body-file")).read_text() if opt(argv, "--body-file") else "",
+                "user": {"login": LOGIN}, "author_association": "OWNER", "state": "open",
+                "labels": [{"name": opt(argv, "--label")}] if opt(argv, "--label") else [],
+                "assignees": [], "comments": 0, "created_at": now_iso(), "updated_at": now_iso(),
+                "pull_request": {}, "head": {"ref": ref, "sha": sha, "repo": {"full_name": full}},
+                "html_url": f"https://github.com/{full}/pull/{n}"}
+        write_item(full, item, [])
+        out(item["html_url"])
+        code = 0
     elif head == ["repo", "edit"]:
         full = argv[2]
         m = meta(full)
@@ -232,7 +413,8 @@ def main() -> int:
     elif head == ["label", "create"]:
         full = opt(argv, "--repo") or opt(argv, "-R")
         m = meta(full)
-        m.setdefault("labels", []).append(argv[2])
+        if argv[2] not in m.setdefault("labels", []):
+            m["labels"].append(argv[2])
         save(full, m)
         code = 0
     elif argv[:1] == ["api"]:

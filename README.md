@@ -127,7 +127,8 @@ Releases page>`, `repo-factory doctor`, `repo-factory ui`. Then read
 | Publish | **Asks first:** a ready build waits at "Ready: publish?" until you press. Publishing starts the product's own CI on your account (one Linux job; a workflow asking for a self-hosted runner, `pull_request_target` or a write token holds the publish) |
 | Visibility | **Private**; only you make a repository public |
 | Spend | **$25 a build, $50 a day**; either can be changed or set to none |
-| Maintenance | **Off** until you switch it on for a repository |
+| Maintenance | **Off** until you switch it on for a repository; then it fixes only issues **you** labelled `go`, each as a pull request, and writes nothing on any issue; **$20 a month** and **$5 a fix** |
+| Merging its own fixes | **Off**; a second switch per repository (bugs and docs, green CI, never a workflow file) |
 | Lessons | **On:** a held build writes at most one lesson (a few cents), carried into later briefs until you switch it off |
 | Issues | Only an issue **you** opened, or labelled `build` yourself, becomes a task; its text is data |
 | The page | Loopback only (127.0.0.1); writes need a sign-in token |

@@ -29,7 +29,6 @@ export type ActionKind =
   | "github_disconnect"
   | "keep"
   | "later"
-  | "maintain_merge_policy"
   | "maintain_recheck"
   | "make_public"
   | "pause_maintenance"
@@ -81,7 +80,6 @@ export interface ActionFields {
   "github_disconnect": Record<string, never>;
   "keep": Record<string, never>;
   "later": { days?: number; };
-  "maintain_merge_policy": { repo: string; on: boolean; kinds?: ("bug" | "docs" | "security" | "dependency")[]; };
   "maintain_recheck": { repo: string; };
   "make_public": Record<string, never>;
   "pause_maintenance": { project: string; state: "paused" | "on"; };
@@ -117,7 +115,6 @@ export const CONFIRM = [
   "github_app_link",
   "github_app_remove",
   "github_disconnect",
-  "maintain_merge_policy",
   "make_public",
   "publish",
   "publish_anyway",
@@ -156,7 +153,6 @@ export const SUBJECTS: Record<ActionKind, readonly string[]> = {
   "github_disconnect": ["loop"],
   "keep": ["idea", "build"],
   "later": ["idea"],
-  "maintain_merge_policy": ["new"],
   "maintain_recheck": ["new"],
   "make_public": ["idea", "build"],
   "pause_maintenance": ["new"],

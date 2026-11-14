@@ -53,7 +53,6 @@ CONFIRM_CLASS = (
     "github_app_link",
     "github_disconnect",
     "claude_login_forget",
-    "maintain_merge_policy",
 )
 UNDOABLE = ("stop_round", "cancel")  # the flash offers Undo
 # repo-factory's own GitHub App: the page and the command line only; never an agent's token
@@ -2375,6 +2374,11 @@ def door_refuses(
         allowed = agent_default_actions() if actions is None else tuple(actions)
         return None if kind in allowed else f"{origin} may not run {kind}"
     return f"{origin} does not run actions over the API"
+
+
+# Retired with the old poll: merging repo-factory's own fixes is a switch in repo-factory now
+# (the repo's merge switch, ``maintain.switch``), not a pull request on the policy file.
+ACTIONS.pop("maintain_merge_policy", None)
 
 
 # -- the functions ---------------------------------------------------------------------------

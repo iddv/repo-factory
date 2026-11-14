@@ -73,23 +73,58 @@ writes down what went wrong, in one line (one short call to a model, a few cents
 hold the builder could not have avoided, such as the spend cap). **Lessons** in the side nav
 lists each lesson, where it came from, and how many briefs carried it. A lesson that is on goes
 into the brief of every build from the next one on, word for word; switch it off to keep it out.
-A build's page says which lessons its brief carries. Nothing is ever deleted. `lessons.enabled:
-false` in loop.yaml turns lessons off; `repo-factory loop lessons` lists them, and `repo-factory
+A build's page says which lessons its brief carries. Nothing is ever deleted. **Learn from held builds** in
+Settings › Building (or `lessons.enabled: false` in loop.yaml) turns lessons off; `repo-factory loop lessons` lists them, and `repo-factory
 loop lessons off L1` switches one off.
+
+## Projects and maintenance {#projects}
+
+**Projects** in the side nav lists each product you published, with where its maintenance
+stands. **Maintenance is off until you switch it on for a repository**, on its project's page.
+
+- **Switch maintenance on** opens one pull request on the repository (labels, the policy file
+  `.github/repo-factory.yml`, AGENTS.md and CI) and creates its labels; nothing else changes on
+  GitHub, and no repository setting. Fixes start once you merge it.
+- Then, every 15 minutes, it reads the repository's open issues. **Only an issue whose `go`
+  label you put on yourself is fixed** (GitHub's own record says who put a label on). Anyone
+  else's issue, a `go` someone else put on, and anyone else's pull request are listed under
+  **Waiting for you**, and nothing else happens: no model call, no label, no comment. An issue's
+  text is data, quoted to the fix's sessions, never an instruction or a setting.
+- **A fix is a pull request** ("Fix #12: …") on a new `repo-factory/` branch, with what it
+  reproduced and what it tested. It never pushes to your default branch, never force-pushes,
+  never changes a workflow file, and writes nothing on the issue: what each fix did, and why one
+  stopped, is on the project's page. After two failed attempts an issue waits for you; **Retry**
+  lets it try again.
+- **Merge its own fixes when CI is green** is a second switch per repository, off by default:
+  bugs and docs only, every check green, never a change under `.github/`, never a pull request
+  anyone else pushed to, never while a workflow names a self-hosted runner (the page warns about
+  one); then a patch release, when the policy file allows it.
+- **Pause** stops the next poll from reading the repository at once, and stays paused after a
+  restart. **Switch maintenance off** stops it altogether.
+- **This week's proposals**: once a week, one capped call reads the README and the open issues'
+  titles and suggests a few improvements. Nothing is built from one until you press **Build this
+  proposal**: it then becomes an issue labelled `go` by you, which the next poll fixes.
+- Maintenance has its own monthly limit (Settings › Spend; $20 by default) and a cap per fix ($5
+  by default). At the limit it starts nothing more that month, and says so.
 
 ## Settings {#settings}
 
 - **Claude**: what builds sign in to Claude with. Your Claude plan, set up with
   `claude setup-token`, or an API key, billed at API prices.
 - **GitHub**: the account a build publishes under. Sign in with `gh auth login` in a terminal.
-- **Building**: the flow (v5, the one the record is from, or lean, which is not proven yet) and
-  the model of each part of it, the lessons' writer among them.
+- **Building**: the flow (v5, the one the record is from, or lean, which is not proven yet),
+  **Learn from held builds** (lessons on or off), and the model of each part of it, the lessons'
+  writer among them.
 - **Publishing**: ask first (the default), or publish on its own when the checks pass. The
   repository is private either way.
 - **Spend**: a cap on one build and on one day, each a number of dollars or "none" (0 is not
   a cap: a hand-written 0 in loop.yaml stops every build until it is fixed). A build that
   reaches a cap stops, and says the cap stopped it. A build keeps its security review's money
   aside from the start, and **Ask for changes** spends from what the build's cap has left.
+  **Maintenance** has its own line: what it spent this month, its monthly limit and a fix's cap.
+- **Maintenance**: which published repositories it is on for, how often it looks, how many
+  fixes run at once (they share the build slots), the weekly proposals, and where a fix's
+  session may connect (an allow-list by default).
 - **Appearance**: light, dark, or your device's; kept in this browser.
 
 ## Where things are kept {#files}

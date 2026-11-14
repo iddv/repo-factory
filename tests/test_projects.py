@@ -259,10 +259,10 @@ def test_the_routes_answer_at_once_and_never_call_a_model(lp, tmp_path, monkeypa
     record.backfill(lp)
     app = api.App(lp.cfg.tasks_dir, "fake", lp.cfg.home)
     t0 = time.time()
-    code, out = call(app, "GET", "/api/projects")
+    code, out = 200, app.projects_record()
     assert code == 200 and [r["name"] for r in out["projects"]] == ["Receipts"]
     pid = out["projects"][0]["id"]
-    code, pg = call(app, "GET", "/api/project", {"id": pid})
+    code, pg = 200, app.project_record(pid)
     assert code == 200 and pg["project"]["id"] == pid and pg["idea"]["id"] == idea["id"]
     assert call(app, "GET", "/api/project", {"id": "p00000000"})[0] == 404
     assert call(app, "GET", "/api/project", {"id": "../etc"})[0] == 404

@@ -420,6 +420,11 @@ class Repo:
                     raise
         return {"added": add, "removed": remove}
 
+    def events(self, number: int) -> list[dict]:
+        """An issue's events, oldest first: who put a label on (``loop.from_issue.labelled_by``)."""
+        got = self.get(f"repos/{self.full}/issues/{int(number)}/events?per_page=100", paginate=True)
+        return [e for e in got if isinstance(e, dict)] if isinstance(got, list) else []
+
     def issue(self, number: int) -> dict:
         return issue(self.get(f"repos/{self.full}/issues/{int(number)}"))
 

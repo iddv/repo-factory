@@ -758,18 +758,6 @@ def test_one_fix_at_a_time_and_fixes_share_the_build_slots(world):
     assert lp.start_builds() == [], "the running fix takes the only build slot"
 
 
-def test_the_tick_starts_a_fix_and_never_while_paused(world):
-    lp, fake, _ = world
-    lp.cfg.pause_file.write_text("x")
-    assert "maintain" not in lp.tick()
-    assert "claim:repo-factory" not in labels(fake, 14)
-    lp.cfg.pause_file.unlink()
-    out = lp.tick()
-    rv = out["maintain"]["repos"][0]["revise"]
-    assert rv["started"] == [14] and "claim:repo-factory" in labels(fake, 14)
-
-
-# -- release and the lesson label -------------------------------------------------------------------
 def test_bump_picks_patch_or_minor_and_versions_parse():
     assert release.bump((0, 1, 0), {"bug"}) == (0, 1, 1)
     assert release.bump((0, 1, 3), {"bug", "feature"}) == (0, 2, 0)

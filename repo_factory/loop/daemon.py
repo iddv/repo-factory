@@ -71,15 +71,15 @@ def anyway_hist(override: dict, outcome: str) -> dict:
 def _maintained(got: dict) -> tuple[str | None, bool]:
     """What a maintenance poll did, in words, and whether it did anything (a run then)."""
     repos = got.get("repos") or []
-    triaged = sum(len(r.get("triaged") or []) for r in repos)
-    fixing = sum(len((r.get("revise") or {}).get("started") or []) for r in repos)
+    fixing = sum(len(r.get("started") or []) for r in repos)
+    ended = sum(len(r.get("ended") or []) for r in repos)
     released = sum(1 for r in repos if (r.get("release") or {}).get("tag"))
     merged = sum(len(r.get("merged") or []) for r in repos)
     parts = [
         f"{n} {w}"
         for n, w in (
-            (triaged, "triaged"),
             (fixing, "fixes started"),
+            (ended, "fixes ended"),
             (merged, "merged"),
             (released, "released"),
         )
@@ -2519,9 +2519,9 @@ class Loop:
 
     # -- maintenance (GitHub is the record; this only polls it) ----------------------------------
     def maintain(self) -> dict:
-        """One poll of the maintained repos (``maintain.poll.maintain_tick``). A failure is
-        logged and kept out of the rest of the tick."""
-        from ..maintain.poll import maintain_tick
+        """One poll of the repos maintenance is switched on for (``maintain.watch.tick``). A
+        failure is logged and kept out of the rest of the tick."""
+        from ..maintain.watch import tick as maintain_tick
 
         try:
             out = maintain_tick(self)
@@ -2529,37 +2529,36 @@ class Loop:
             self.ledger.meta("maintain_last_poll", time.time())
             log(f"maintenance poll failed: {type(e).__name__}: {e}")
             return {"error": f"{type(e).__name__}: {e}"}
-        n = sum(len(r.get("triaged") or []) for r in out.get("repos") or [])
-        if n:
-            log(f"maintenance: triaged {n} issue(s) across {len(out['repos'])} repo(s)")
         for r in out.get("repos") or []:
-            for k in (r.get("revise") or {}).get("started") or []:
+            for k in r.get("started") or []:
                 log(f"maintenance: fixing {r['repo']}#{k}")
-            for e in (r.get("revise") or {}).get("ended") or []:
+            for e in r.get("ended") or []:
                 log(
                     f"maintenance: the fix of {r['repo']}#{e['number']} ended: {e.get('outcome')}"
                     + (f" (PR #{e['pr']})" if e.get("pr") else "")
                 )
+            for k in r.get("merged") or []:
+                log(f"maintenance: merged {r['repo']}#{k}")
             if (r.get("release") or {}).get("tag"):
                 log(f"maintenance: released {r['repo']} {r['release']['tag']}")
-        try:  # projects: charters
-            from ..projects.life import tick as projects_tick
+        if out.get("spend"):
+            log(out["spend"])
+        try:  # projects: this week's proposals of the repos maintenance is on for
+            from ..maintain.proposals import tick as proposals_tick
 
-            out["projects"] = got = projects_tick(self)
-            for pid in got["drafting"]:
-                log(f"projects: drafting the charter of {pid} in the background")
-            for e in got["errors"]:
-                log(f"projects: {e}")
+            out["proposals"] = got = proposals_tick(self)
+            for e in got.get("errors") or []:
+                log(f"proposals: {e}")
         except Exception as e:  # noqa: BLE001 - the tick goes on
-            log(f"projects: {type(e).__name__}: {e}")
+            log(f"proposals: {type(e).__name__}: {e}")
         return out
 
     def maintain_due(self) -> bool:
-        m = self.cfg.get("maintain") or {}
-        if not m.get("enabled", False):
-            return False
-        last = self.ledger.meta("maintain_last_poll") or 0
-        return time.time() - last >= float(m.get("poll_s") or 900)
+        """A poll is due: maintenance is switched on for a published repo that is not paused,
+        and ``maintain.poll_s`` passed since the last one (``maintain.watch.due``)."""
+        from ..maintain.watch import due
+
+        return due(self)
 
     # -- the kill switch -----------------------------------------------------------------------
     def pause(self) -> None:

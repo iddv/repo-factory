@@ -128,7 +128,7 @@ def test_a_second_run_agrees_adds_nothing_and_the_minor_change_asks(world):
     code, snap = call(app, "GET", "/api/state")
     assert [a["id"] for a in snap["project_asks"]] == [asks[0]["id"]]
     assert T.problems(snap, T.Snapshot) == [], "the ask has the shape types.py says"
-    code, lst = call(app, "GET", "/api/projects")
+    code, lst = 200, app.projects_record()
     row = lst["projects"][0]
     assert row["asks"] == 1 and row["health"] == "needs_you"
 
@@ -416,7 +416,7 @@ def test_the_doors_answer_at_once(world):
         },
     )
     assert code == 200 and X.must(lp.ledger, minor["id"])["state"] == "queued"
-    code, pg = call(app, "GET", "/api/project", {"id": p["id"]})
+    code, pg = 200, app.project_record(p["id"])
     assert len(pg["ideas"]) == 7 and pg["evolve"]["proposed"] == 7 and pg["evolve"]["next"]
     assert pg["autonomy"] == {"patch": "auto", "minor": "ask", "scope": "ask"}
 

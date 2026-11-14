@@ -1049,27 +1049,10 @@ def test_the_policy_pr_opens_once_on_factory_branch_and_says_what_never_merges(w
     assert M.run(lp, REPO, True, ["bug"])["changed"] is False
 
 
-def test_the_switch_is_a_confirm_class_owner_action(world):
+def test_the_old_merge_policy_action_is_retired():
     from repo_factory import registry as R
-    from repo_factory.maintain import mergepolicy as M
-    from repo_factory.ui import api
 
-    lp, fake = world
-    a = R.ACTIONS["maintain_merge_policy"]
-    assert a.click == "confirm" and "maintain_merge_policy" in R.OWNER_KINDS
-    assert "Never a feature" in a.says
-    app = api.App(lp.cfg.tasks_dir, "fake", lp.cfg.home)
-    app.loop = lambda: lp
-    with pytest.raises(api.HttpError, match="never merges a feature"):
-        app.maintain_merge_policy(REPO, True, ["feature"])
-    with pytest.raises(api.HttpError, match="not a maintained repository"):
-        app.maintain_merge_policy("o/other", True, ["bug"])
-    lp.cfg.data["maintain"]["policy_command"] = [sys.executable, "-c", "pass"]
-    r = app.maintain_merge_policy(REPO, True, ["bug", "docs"])
-    assert "repo-factory never merges it itself" in r["say"]
-    st = M.read_state(lp.cfg.home, REPO)
-    assert st["state"] == "running" and st["on"] and st["kinds"] == ["bug", "docs"]
-    assert M.command(lp.cfg, REPO, True, ["bug"])[-5:-2] == ["--on", "--kinds", "bug"]
+    assert "maintain_merge_policy" not in R.ACTIONS
 
 
 def test_hands_off_is_gone_and_a_saved_one_reads_as_quiet():

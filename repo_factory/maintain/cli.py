@@ -191,6 +191,24 @@ def add_maintain_group(sub) -> None:
     )
     rv.set_defaults(fn=cmd_revise)
 
+    su = msub.add_parser(
+        "setup",
+        help="the setup pull request of a repo maintenance was switched on for: labels, "
+        "policy, AGENTS.md and CI (the switch starts this, detached)",
+    )
+    su.add_argument("repo", help="owner/name")
+    su.add_argument("--home", default=None)
+    su.set_defaults(fn=cmd_setup)
+
+    pp = msub.add_parser(
+        "propose",
+        help="this week's proposals for a repo maintenance is on for: one capped no-tools call "
+        "(the tick starts this weekly, detached); nothing is built from one without your press",
+    )
+    pp.add_argument("repo", help="owner/name")
+    pp.add_argument("--home", default=None)
+    pp.set_defaults(fn=cmd_propose)
+
     rl = msub.add_parser(
         "release",
         help="tag and release main now if it moved past the newest "
@@ -306,43 +324,30 @@ def _loop(args):
 
 
 def cmd_tick(args) -> None:
-    from .poll import maintain_tick
+    from .watch import tick
 
     lp = _loop(args)
     if lp.cfg.paused():
         sys.exit("repo-factory maintain tick: the loop is paused (PAUSE); resume it first")
-    if lp.over_cap():
-        sys.exit("repo-factory maintain tick: today's spend is over daily_usd")
-    res = maintain_tick(lp)
+    res = tick(lp)
     if args.json:
         print(json.dumps(res, indent=1, default=str))
         return
-    if res.get("disabled"):
-        print("maintenance is off (maintain.enabled: false)")
-    if not res["repos"]:
-        print("no repo to maintain: nothing is published, and maintain.repos is empty")
+    if res.get("off"):
+        print("maintenance is switched on for no published repository (or every one is paused)")
+    if res.get("spend"):
+        print(res["spend"])
     for r in res["repos"]:
-        bits = [f"{len(r.get('triaged') or [])} triaged"]
-        if r.get("merged"):
-            bits.append(f"merged {', '.join(f'#{n}' for n in r['merged'])}")
-        if r.get("archived"):
-            bits.append("archived")
-        if r.get("usd"):
-            bits.append(f"${r['usd']:.3f}")
-        print(f"{r['repo']}: {', '.join(bits)}")
-        for t in r.get("triaged") or []:
-            print(
-                f"  #{t['number']}: {t['kind']} {t['prio']}, +{','.join(t['labels']['added']) or '-'}"
-                f" -{','.join(t['labels']['removed']) or '-'}, comment {t['comment']}"
-            )
-        rv = r.get("revise") or {}
-        for n in rv.get("started") or []:
+        print(f"{r['repo']}: {r.get('waiting', 0)} waiting for you")
+        for n in r.get("started") or []:
             print(f"  fixing #{n} (detached; repo-factory maintain status shows it)")
-        for e in rv.get("ended") or []:
+        for e in r.get("ended") or []:
             print(
                 f"  the fix of #{e['number']} ended: {e.get('outcome')}"
                 + (f", PR #{e['pr']}" if e.get("pr") else f": {e.get('why')}")
             )
+        for n in r.get("merged") or []:
+            print(f"  merged #{n}")
         if (r.get("release") or {}).get("tag"):
             print(f"  released {r['release']['tag']}: {r['release'].get('url')}")
         for e in r.get("errors") or []:
@@ -388,7 +393,9 @@ def cmd_revise(args) -> None:
     lp = _loop(args)
     if not str(args.number).isdigit():
         sys.exit(f"repo-factory maintain revise: {args.number} is not an issue number")
-    res = Fix(lp, args.repo, int(args.number), refresh=args.refresh).run()
+    if args.refresh:
+        sys.exit("repo-factory maintain revise: --refresh is not part of this version")
+    res = Fix(lp, args.repo, int(args.number), quiet=True).run()
     if args.json:
         print(json.dumps(res, indent=1, default=str))
     else:
@@ -403,6 +410,88 @@ def cmd_revise(args) -> None:
         )
     if res["outcome"] not in ("pr", "refreshed", "already"):
         sys.exit(1)
+
+
+def cmd_setup(args) -> None:
+    """The setup pull request (``backfill`` with maintenance's rules): AGENTS.md's check in
+    the sandbox, no repository setting changed, nothing written once maintenance is switched
+    off or paused, and its state in ``backfill.state_path`` for the page."""
+    import time
+
+    from . import backfill, pauses, revise, switch
+
+    lp = _loop(args)
+    repo, home = args.repo, lp.cfg.home
+
+    def still() -> str | None:
+        if not switch.is_on(home, repo):
+            return f"maintenance was switched off for {repo}"
+        if pauses.get(home, repo):
+            return f"maintenance was paused for {repo}"
+        if lp.cfg.paused():
+            return "the loop was paused"
+        return None
+
+    def check(work):
+        return revise.run_agents_check(work, revise.default_venv(work))
+
+    why = still()
+    res: dict = {}
+    if not why:
+        try:
+            res = backfill.backfill(
+                lp.gh,
+                repo,
+                lp.cfg.layout.maintain / "setup" / repo.replace("/", "-"),
+                check=check,
+                still=still,
+                settings=False,
+            )
+        except Exception as e:  # noqa: BLE001 - said on the page
+            why = f"{type(e).__name__}: {e}"
+    if not why and not res.get("ok"):
+        chk = res.get("check") or {}
+        why = res.get("stopped") or (
+            "the check of AGENTS.md failed in the sandbox: " + (chk.get("summary") or "")
+            if chk and not chk.get("ok")
+            else "the drift doctor found: " + "; ".join(res.get("doctor") or [])
+        )
+    pr = res.get("pr") or {}
+    backfill.write_state(
+        home,
+        repo,
+        state="failed" if why else "done",
+        finished=time.time(),
+        why=why,
+        pr=pr.get("number"),
+        url=pr.get("url"),
+        nothing_to_add=bool(res.get("nothing_to_add")),
+    )
+    print(f"{repo}: " + (f"stopped: {why}" if why else (pr.get("url") or "labels applied")))
+    if why:
+        sys.exit(1)
+
+
+def cmd_propose(args) -> None:
+    import time
+
+    from . import proposals
+
+    lp = _loop(args)
+    try:
+        rec = proposals.run(lp, args.repo)
+    except Exception as e:  # noqa: BLE001 - kept for the page
+        proposals._update(
+            lp.cfg.home,
+            args.repo,
+            state="failed",
+            error=f"{type(e).__name__}: {e}"[:300],
+            tried=time.time(),
+        )
+        raise
+    n = len(rec.get("items") or [])
+    tail = f": {rec['error']}" if rec.get("error") else ""
+    print(f"{args.repo}: {rec.get('state')}, {n} proposal(s){tail}")
 
 
 def cmd_release(args) -> None:

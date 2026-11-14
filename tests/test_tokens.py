@@ -15,7 +15,7 @@ import pytest
 from repo_factory.events import EventLog, fold, read_events
 from repo_factory.loop import ledger as loop_ledger
 from repo_factory.loop.models import Costed, split
-from repo_factory.maintain import github, revise, triage
+from repo_factory.maintain import github, poll, revise, triage
 from repo_factory.ui import api, server
 
 from .loop_common import FakeModel, make_loop
@@ -132,7 +132,7 @@ def test_the_poll_records_triage_tokens_in_spend(tmp_path, maintenance_on):
         pitch={"product": "Plotkeeper", "one_liner": "Allotment plots."},
         publish={"repo": "o/plots", "url": "https://github.com/o/plots"},
     )
-    lp.maintain()
+    poll.maintain_tick(lp)
     assert lp.ledger.own_tokens(0, kind="triage") == {"in": 6 * 500, "out": 6 * 50}
     a = api.App(lp.cfg.tasks_dir, "fake", lp.cfg.home)
     a.loop = lambda: lp

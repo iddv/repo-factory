@@ -168,20 +168,22 @@ DEFAULTS: dict = {
         "model": "claude-sonnet-5-5",
         "max_in_brief": 8,
     },
-    # Maintaining the published repos through GitHub (off: not offered yet). The tick polls
-    # each one every poll_s and triages new issues with a no-tools call (at most
-    # triage_max_per_poll a poll); the page's GitHub reads are kept cache_s. repos: more
-    # owner/name repos beyond the loop's published builds. gh_command null: publish's gh.
-    # At most concurrency fixes at once, counted in the build slots; max_usd null: no cap per
-    # fix (the repo's revise.max_usd applies as well; the smaller wins); net allowlist: a fix
-    # session reaches only net_hosts (public: anything public, as builds do); lesson_label: a
-    # merged fix of a user-found bug is labelled lesson. revise_command: tests only (the
-    # detached fix process, as build.command). token_env_file: a 0600 file with GH_TOKEN= (a
-    # fine-grained token) that maintenance's gh uses instead of the login; null: the login.
-    # identity: auto (repo-factory's own GitHub App once it is created and installed, else
-    # the token file, else the login), app, token or login. Publishing always uses the login.
-    # doctor_days: how often each repo's AGENTS.md and workflows are checked for drift and
-    # self-hosted runners; 0: never.
+    # Maintaining the published repos through GitHub. Off until you switch it on for a
+    # repository, on its project's page (``<home>/maintain/repos.json``); ``enabled`` is not
+    # read any more (it switched the old all-repos poll). Every poll_s the tick reads each repo
+    # switched on and not paused: it fixes the open issues whose go label you put on (a pull
+    # request each), lists everything else under "Waiting for you", and writes nothing on any
+    # issue; merging its own fixes is a second switch per repo, off by default. The page's
+    # GitHub reads are kept cache_s. gh_command null: publish's gh. At most concurrency fixes
+    # at once, counted in the build slots. net allowlist: a fix session reaches only net_hosts
+    # (public: anything public, as builds do). revise_command: tests only (the detached fix
+    # process, as build.command). token_env_file: a 0600 file with GH_TOKEN= (a fine-grained
+    # token) that maintenance's gh uses instead of the login; null: the login. identity: auto
+    # (repo-factory's own GitHub App once it is created and installed, else the token file,
+    # else the login), app, token or login. Publishing always uses the login. doctor_days: how
+    # often each repo's AGENTS.md and workflows are checked for drift and self-hosted runners;
+    # 0: never. triage_*, lesson_label, refresh_max and exam belong to the old poll and are
+    # not read by this one (exam aside: a fix still reports the release's checks).
     "maintain": {
         "enabled": False,
         "poll_s": 900,
@@ -193,7 +195,15 @@ DEFAULTS: dict = {
         "token_env_file": None,
         "identity": "auto",
         "concurrency": 1,
-        "max_usd": None,
+        # max_usd: one fix's cap; monthly_usd: everything maintenance spends in a calendar
+        # month (fixes and proposals; Settings › Spend). null: no cap; 0 is a wrong value
+        "max_usd": 5.0,
+        "monthly_usd": 20.0,
+        # proposals: each week, for each repo maintenance is on for, one no-tools call asks
+        # what could be improved; the project's page lists them and nothing is built from
+        # one until you press it
+        "proposals": True,
+        "proposals_model": "claude-sonnet-5-5",
         "net": "allowlist",
         "net_hosts": [
             "api.anthropic.com",

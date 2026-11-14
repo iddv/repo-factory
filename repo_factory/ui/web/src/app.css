@@ -164,3 +164,9 @@ pre.cmd, pre.task-text { font-family: var(--mono); font-size: 12px; background: 
   .models li { grid-template-columns: minmax(0, 1fr); }
   .btn { min-height: 40px; }
 }
+/* Projects and a product's page */
+.projects, .project { max-width: 900px; }
+.projects .lead { max-width: 75ch; margin-bottom: 12px; }
+.project .controls { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 12px; }
+.project .row.wait { display: flex; flex-direction: column; }
+.project .row.wait > .press { padding: 0 8px 8px; }

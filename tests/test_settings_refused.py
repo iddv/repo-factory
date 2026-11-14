@@ -15,7 +15,7 @@ from .loop_common import make_loop
 
 REFUSED = [
     ({"key": "publish.approval", "value": "auto"}, "publishing asks you first"),
-    ({"key": "maintain.enabled", "value": True}, "maintenance is not in this version"),
+    ({"key": "maintain.enabled", "value": True}, "switched on per repository"),
     ({"key": "projects.enabled", "value": True}, "projects are not in this version"),
 ]
 

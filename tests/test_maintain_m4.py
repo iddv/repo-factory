@@ -357,15 +357,15 @@ def world(tmp_path):
 
 def test_the_poll_runs_the_doctor_weekly_and_today_shows_what_is_wrong(world):
     lp, fake, iid = world
-    lp.maintain()
+    poll.maintain_tick(lp)
     rec = github.Cache(lp.cfg.home).repo("o/plots")
     assert rec["doctor"]["problems"] == [] and not [r for r in rec["rows"] if r["kind"] == "drift"]
     n = sum(1 for c in fake.calls if "git/trees" in c[1])
     fake.files["AGENTS.md"] = fake.files["AGENTS.md"].replace("plots/web.py", "plots/old.py")
-    lp.maintain()
+    poll.maintain_tick(lp)
     assert sum(1 for c in fake.calls if "git/trees" in c[1]) == n, "not again within the week"
     lp.cfg.data["maintain"]["doctor_days"] = 0.0000001  # due now
-    lp.maintain()
+    poll.maintain_tick(lp)
     rows = poll.today(lp.cfg.home)["rows"]
     drift = [r for r in rows if r["kind"] == "drift"]
     assert drift and drift[0]["repo"] == "o/plots" and drift[0]["product"] == "Plotkeeper"
@@ -724,4 +724,4 @@ def test_maintenance_uses_the_token_file_for_gh_and_for_a_fix_s_push(tmp_path):
     from repo_factory.maintain import revise
 
     src = Path(revise.__file__).read_text()
-    assert src.count('self.remote("push"') == 4 and 'git("push"' not in src
+    assert src.count('self.remote("push"') == 5 and 'git("push"' not in src

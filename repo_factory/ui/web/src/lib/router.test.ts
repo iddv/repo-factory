@@ -12,10 +12,12 @@ describe("the hash routes", () => {
     expect(parse("#/builds/new").id).toBe("new");
     expect(parse("#/settings/spend")).toEqual({ section: "settings", id: "spend", q: {} });
     expect(parse("#/builds/task%3Aabc").id).toBe("task:abc");
+    expect(parse("#/projects")).toEqual({ section: "projects", id: null, q: {} });
+    expect(parse("#/projects/i1234abcd").id).toBe("i1234abcd");
   });
   it("says what is not a page", () => {
     expect(parse("#/ideas").section).toBe("missing");
-    expect(parse("#/projects").section).toBe("missing");
+    expect(parse("#/projects/a/b").section).toBe("missing");
     expect(parse("#/builds/a/b").section).toBe("missing");
   });
   it("writes the addresses it reads", () => {

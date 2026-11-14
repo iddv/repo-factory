@@ -53,8 +53,6 @@ def test_the_confirm_class_is_exactly_these_kinds():
             "github_disconnect",
             # forgetting the Claude login builds use
             "claude_login_forget",
-            # the merge policy, a pull request on .github/repo-factory.yml
-            "maintain_merge_policy",
         }
     )
     assert R.ACTIONS["resume_build"].click == "click"

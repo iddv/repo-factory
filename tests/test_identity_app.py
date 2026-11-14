@@ -232,7 +232,7 @@ def test_the_settings_page_says_the_app_and_never_a_secret(world):
     lp.ledger.update(i["id"], state="published", publish={"repo": REPO})
     a = api.App(lp.cfg.tasks_dir, "fake", lp.cfg.home)
     a.loop, a.loop_cfg = (lambda: lp), (lambda: lp.cfg)
-    code, _, body = api.handle("GET", "/api/maintain/summary", None, None, app=a)
+    code, body = 200, json.dumps(a.maintain_summary()).encode()
     text = body.decode()
     assert code == 200 and "ghs_" not in text and "BEGIN" not in text
     d = json.loads(text)

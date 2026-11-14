@@ -42,6 +42,7 @@ USD_CAPS = {
     "build.max_usd",
     "revise.max_usd",
     "maintain.max_usd",
+    "maintain.monthly_usd",
     "projects.budget.monthly_usd",
 }
 BUILD_CRITICAL = (
@@ -51,10 +52,17 @@ BUILD_CRITICAL = (
     ("daily_usd",),
     ("revise", "max_usd"),
     ("maintain", "max_usd"),
+    ("maintain", "monthly_usd"),
 )
 # a cap of 0 or less is a wrong value, never "no cap" (null is no cap): someone who writes
 # `daily_usd: 0` to stop spending must not have removed the cap
-POSITIVE_CAPS = {"daily_usd", "build.max_usd", "revise.max_usd", "maintain.max_usd"}
+POSITIVE_CAPS = {
+    "daily_usd",
+    "build.max_usd",
+    "revise.max_usd",
+    "maintain.max_usd",
+    "maintain.monthly_usd",
+}
 NOT_A_CAP = "0 or less is not a cap: write a number of dollars above 0, or null for no cap"
 # keys an older version read and this one retired with what they set: not a typo, so not an
 # unknown key; the file keeps them and nothing reads them

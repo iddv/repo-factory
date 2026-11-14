@@ -639,34 +639,6 @@
    "idea"
   ]
  },
- "maintain_merge_policy": {
-  "calls": [
-   [
-    "app.maintain_merge_policy",
-    [
-     "o/r",
-     true,
-     []
-    ],
-    {
-     "origin": "ui"
-    }
-   ]
-  ],
-  "click": "confirm",
-  "refused_from": [
-   "agent:rc"
-  ],
-  "result_keys": [
-   "result",
-   "say",
-   "what"
-  ],
-  "runs_on": "new",
-  "subjects": [
-   "new"
-  ]
- },
  "maintain_recheck": {
   "calls": [
    [

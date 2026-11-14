@@ -454,8 +454,15 @@ def backfill(
     footer: str = "",
     notes: list[str] | None = None,
     log=print,
+    check=None,
+    still=None,
 ) -> dict:
+    """``check``: the AGENTS.md check, ``work -> {"ok", "summary", "output"}`` (default
+    ``run_check``; maintenance's setup passes one that runs in the sandbox). ``still``: called
+    just before anything is written on GitHub; a reason it returns stops the run there, with
+    nothing written (maintenance switched off or paused meanwhile)."""
     work = Path(work)
+    run = check or (lambda w: run_check(w, python))
     res: dict = {"repo": repo, "work": str(work), "branch": BRANCH, "notes": list(notes or [])}
     log(f"{repo}: checkout {BRANCH}")
     checkout(gh, repo, work)
@@ -478,7 +485,7 @@ def backfill(
     res["doctor"] = agentsmd.check(work)
     if run_suites:
         log(f"{repo}: running check_agents_md.py (both suites)")
-        res["check"] = run_check(work, python)
+        res["check"] = run(work)
         stale = stale_marks(res["check"])
         if stale and not res["doctor"]:
             # an open item that passes now keeps CI red until its mark comes off: the check
@@ -506,7 +513,7 @@ def backfill(
                 "lines are removed: " + ", ".join(f"`{f}`" for f in stale)
             )
             log(f"{repo}: {len(stale)} open item(s) pass now; marks removed, checking again")
-            res["check"] = run_check(work, python)
+            res["check"] = run(work)
     ours = {*FILES, *IF_MISSING, *OLD_CI}
     base = (
         git("symbolic-ref", "--short", "refs/remotes/origin/HEAD", cwd=work, check=False).strip()
@@ -520,6 +527,15 @@ def backfill(
     if not ok:
         log(f"{repo}: checks failed; nothing pushed")
         return res
+    why = still() if still else None
+    if why:
+        res.update(ok=False, stopped=why)
+        log(f"{repo}: {why}; nothing written on GitHub")
+        return res
+    ahead = git("rev-list", "--count", f"{base}..HEAD", cwd=work, check=False).strip()
+    if ahead in ("", "0"):
+        pr = False  # main has every file already: the labels are all that is left
+        res["nothing_to_add"] = True
     if apply_labels:
         res["labels"] = labels.apply(gh, repo)
     if settings:
@@ -575,7 +591,7 @@ def job_state(home, repo: str) -> dict | None:
 
 
 def command(cfg, repo: str) -> list[str]:
-    """``repo-factory maintain backfill REPO``, with the ``gh`` publishing uses (the owner's login, as a
+    """``repo-factory maintain setup REPO``, with the ``gh`` publishing uses (the owner's login, as a
     published repo's own writes)."""
     m = cfg.get("maintain") or {}
     gh = cfg["publish"].get("gh_command")
@@ -587,7 +603,7 @@ def command(cfg, repo: str) -> list[str]:
             "repo_factory.cli",
             "maintain",
             *(["--gh", gh if isinstance(gh, str) else " ".join(gh)] if gh else []),
-            "backfill",
+            "setup",
         ]
     )
     return base + [repo, "--home", str(cfg.home)]

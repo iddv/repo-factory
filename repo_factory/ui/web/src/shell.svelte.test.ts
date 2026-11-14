@@ -61,12 +61,12 @@ afterEach(() => {
 });
 
 describe("the shell", () => {
-  it("has Builds, Lessons and Settings in its nav, and nothing else", async () => {
+  it("has Builds, Projects, Lessons and Settings in its nav, and nothing else", async () => {
     await open("#/builds");
     const items = [...document.querySelectorAll("nav.nav .item")].map((a) => a.textContent);
-    expect(items).toEqual(["Builds", "Lessons", "Settings"]);
+    expect(items).toEqual(["Builds", "Projects", "Lessons", "Settings"]);
     expect(document.querySelector('nav.nav .item[aria-current="page"]')?.textContent).toBe("Builds");
-    expect(text()).not.toMatch(/Projects|Ideas|Today/);
+    expect(text()).not.toMatch(/Ideas|Today/);
   });
 
   it("shows the notice once, until it is dismissed", async () => {
@@ -210,12 +210,14 @@ describe("the shell", () => {
     routes["api/loop/rules"] = () => ({ body: { rules: { "build.flow": { value: "v5", default: "v5" }, "publish.when": { value: null, default: "ask" }, "publish.approval": { value: null, default: "required" } } } });
     routes["api/models"] = () => ({ body: { catalog: [{ id: "m1", name: "Model one" }], roles: [{ role: "build", name: "Build", does: "writes the code", kind: "build", model: null, default: "m1", set: false }] } });
     routes["api/spend/caps"] = () => ({ body: { daily_usd: 50, build_max_usd: 25 } });
+    routes["api/maintenance"] = () => ({ body: { ...MAINT_EMPTY } });
     const want: [string, RegExp][] = [
       ["claude", /Not set.*Builds are held/s],
       ["github", /Signed in.*as someone/s],
       ["building", /lean \(unproven\).*Model one/s],
       ["publishing", /Ask me first.*private repository/s],
-      ["spend", /A build at most/],
+      ["maintenance", /Off until you switch it on.*Nothing published yet/s],
+      ["spend", /A build at most.*Maintenance a month at most/s],
       ["appearance", /Light.*Dark/s],
     ];
     for (const [page, re] of want) {
@@ -309,5 +311,93 @@ describe("the shell", () => {
     expect(document.querySelector("#flow-lean")?.textContent).toBe("lean (unproven)");
     expect(document.querySelector("#from-issue")?.textContent).toContain("From GitHub issue someone/ideas#7 ↗ (you opened it)");
     expect(document.querySelector("#carried-lessons")?.textContent).toContain("L1 Install the tool before its first use.");
+  });
+});
+
+const SPEND = { month: 1.25, today: 0.5, limit: 20, per_fix: 5, paused: null };
+const MAINT_EMPTY = { repos: [], spend: SPEND, paused: false, last_poll: null, settings: { poll_s: 900, concurrency: 1, proposals: true, net: "allowlist" } };
+function repo(over: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    repo: "octo-owner/plots", idea: "i1234abcd", product: "Plots", one_liner: "Allotment plots.",
+    switch: { on: true, merge: false }, paused: null, polled: 1, error: null, counts: { waiting: 2 },
+    rows: [
+      { kind: "waiting", number: 15, title: "Please merge my thing", why: "labelled go by a-stranger, not by you: only your own go starts a fix", url: "https://github.com/octo-owner/plots/issues/15" },
+      { kind: "needs_you", number: 14, title: "A huge id gives a 500", why: "2 attempts failed (the last in the verify stage): press Retry", url: "https://github.com/octo-owner/plots/issues/14" },
+      { kind: "self_hosted", number: null, title: "a workflow on main names a self-hosted runner", why: "ci.yml: repo-factory never merges here", url: null },
+    ],
+    queue: null, release: null, setup: { state: "done", pr: 3, url: "https://github.com/octo-owner/plots/pull/3" },
+    fixes: [{ issue: 12, outcome: "pr", pr: 40, usd: 1.5, at: 1 }],
+    proposals: { at: 1, state: "done", error: null, items: [{ id: "qabc", title: "Document the backup command", why: "The README skips it.", kind: "docs", state: "proposed" }] },
+    ...over,
+  };
+}
+
+describe("Projects and maintenance", () => {
+  it("lists each published product with maintenance off until switched on", async () => {
+    routes["api/maintenance"] = () => ({ body: { ...MAINT_EMPTY, repos: [repo({ switch: { on: false, merge: false }, counts: {} })] } });
+    await open("#/projects");
+    await until(() => !!document.querySelector("#projects"));
+    expect(document.querySelector("#projects")?.textContent).toContain("Plots");
+    expect(document.querySelector("#projects")?.textContent).toContain("Maintenance off");
+    expect(document.querySelector("#maint-month")?.textContent).toContain("$1.25 of $20.00");
+    expect(document.title).toContain("Projects");
+  });
+
+  it("says when nothing is published", async () => {
+    routes["api/maintenance"] = () => ({ body: { ...MAINT_EMPTY } });
+    await open("#/projects");
+    await until(() => !!document.querySelector("#projects-empty"));
+  });
+
+  it("switches maintenance on only after the confirm, and shows what waits for you", async () => {
+    let on = false;
+    const page = (): Record<string, unknown> => ({ ...repo({ switch: { on, merge: false } }), brief: { one_liner: "Allotment plots.", who: "allotment holders", brief: "Keeps plots." }, build: "plots", published: null, state: "published", month_usd: 1.5 });
+    routes["api/project"] = () => ({ body: page() });
+    routes["POST api/maintenance/switch"] = (b) => {
+      on = (b as { on: boolean }).on;
+      return { body: { ...MAINT_EMPTY, repos: [repo({ switch: { on, merge: false } })] } };
+    };
+    await open("#/projects/i1234abcd");
+    await until(() => !!document.querySelector("#maint-on"));
+    expect(document.querySelector("#project-brief")?.textContent).toBe("Keeps plots.");
+    (document.querySelector("#maint-on") as HTMLButtonElement).click();
+    await settle();
+    expect(posts).toEqual([]); // the first press only asks
+    expect(text()).toContain("It writes nothing on any issue.");
+    const yes = [...document.querySelectorAll(".ask button")].find((b) => b.textContent === "Switch on") as HTMLButtonElement;
+    yes.click();
+    await until(() => posts.length === 1);
+    expect(posts[0]).toEqual(["api/maintenance/switch", { repo: "octo-owner/plots", on: true }]);
+    await until(() => !!document.querySelector("#waiting"));
+    expect(document.querySelector("#waiting")?.textContent).toContain("not by you");
+    expect(document.querySelector("#maint-self-hosted")?.textContent).toContain("self-hosted runner");
+    expect((document.querySelector("#maint-merge input") as HTMLInputElement).disabled).toBe(true);
+    expect(document.querySelector("#fixes")?.textContent).toContain("#12: opened a pull request");
+  });
+
+  it("builds a proposal only on the press, and retries a fix that waits for you", async () => {
+    routes["api/project"] = () => ({ body: { ...repo(), brief: { one_liner: "", who: "", brief: "" }, build: null, published: null, state: "published", month_usd: 0 } });
+    routes["POST api/maintenance/proposal"] = () => ({ body: { ...MAINT_EMPTY, repos: [repo()] } });
+    routes["POST api/maintenance/retry"] = () => ({ body: { ...MAINT_EMPTY, repos: [repo()] } });
+    await open("#/projects/i1234abcd");
+    await until(() => !!document.querySelector("#proposals"));
+    const build = [...document.querySelectorAll("#proposals button")].find((b) => b.textContent === "Build this proposal") as HTMLButtonElement;
+    build.click();
+    await settle();
+    expect(posts).toEqual([]);
+    ([...document.querySelectorAll(".ask button")].find((b) => b.textContent === "Open the issue") as HTMLButtonElement).click();
+    await until(() => posts.length === 1);
+    expect(posts[0]).toEqual(["api/maintenance/proposal", { repo: "octo-owner/plots", id: "qabc" }]);
+    ([...document.querySelectorAll("#waiting button")].find((b) => b.textContent === "Retry") as HTMLButtonElement).click();
+    await until(() => posts.length === 2);
+    expect(posts[1]).toEqual(["api/maintenance/retry", { repo: "octo-owner/plots", number: 14 }]);
+  });
+
+  it("says on Spend when maintenance reached its limit", async () => {
+    routes["api/spend/caps"] = () => ({ body: { daily_usd: 50, build_max_usd: 25 } });
+    routes["api/maintenance"] = () => ({ body: { ...MAINT_EMPTY, spend: { ...SPEND, month: 20, paused: "maintenance paused: this month's maintenance spend $20.00 reached its limit $20.00" } } });
+    await open("#/settings/spend");
+    await until(() => !!document.querySelector("#spend-maint-paused"));
+    expect(document.querySelector("#spend-maint-month")?.textContent).toContain("$20.00 of $20.00");
   });
 });

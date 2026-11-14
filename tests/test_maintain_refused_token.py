@@ -132,7 +132,7 @@ def test_the_page_offers_remove_this_token_setting_through_the_one_writer(world)
     identity.note_refused(lp.cfg.home, f)
     a = api.App(lp.cfg.tasks_dir, "fake", lp.cfg.home)
     a.loop, a.loop_cfg = (lambda: lp), (lambda: lp.cfg)
-    code, _, body = api.handle("GET", "/api/maintain/summary", None, None, app=a)
+    code, body = 200, json.dumps(a.maintain_summary()).encode()
     i = json.loads(body)["identity"]
     assert code == 200 and i["refused_token"] == str(f) and i["token_skipped"]
     assert i["kind"] == "connection" and i["login"] == "ann"

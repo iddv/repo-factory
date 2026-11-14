@@ -6,6 +6,20 @@ All notable changes to this project are written here. Versions follow
 ## Unreleased
 
 ### Added
+- **Maintenance, per repository, off until you switch it on** (a project's page). Switching it
+  on opens one pull request with the labels, the policy file, AGENTS.md and CI. Every poll then
+  fixes the open issues whose `go` label you put on yourself (read from the issue's events),
+  each as a pull request on a new `repo-factory/` branch, and lists everything else under
+  "Waiting for you". It writes nothing on any issue, never force-pushes and never changes a
+  workflow file. **Pause** takes effect at the next poll and survives a restart.
+- **Merging its own fixes**: a second switch per repository, off by default: bugs and docs only,
+  green CI, nothing under `.github/`, only a pull request it opened and nobody pushed to, never
+  while a workflow names a self-hosted runner; then a patch release when the policy allows.
+- **Projects**: each published product with its brief, its maintenance, what waits for you, what
+  its fixes did, and this week's proposals, of which nothing is built until you press one.
+- Maintenance's own line on Settings › Spend: this month's spend, a monthly limit
+  (`maintain.monthly_usd`, $20) and a cap per fix (`maintain.max_usd`, $5).
+- Settings › Maintenance; **Learn from held builds** (lessons on or off) on Settings › Building.
 - **Lessons from your own builds:** a build the checks hold writes at most one lesson (one
   no-tools call on its holds; none for a hold the builder could not have avoided), and the next
   briefs carry the lessons that are on. A new **Lessons** page lists each, where it came from,

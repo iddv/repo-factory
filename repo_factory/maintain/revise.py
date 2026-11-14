@@ -463,9 +463,16 @@ class Fix:
     refresh: int | None = None                       # set for a refresh (current.py) only
 
     def __init__(self, loop, full: str, number: int, *, harness=None, tests=None, check=None,
-                 venv=None, now=None, exam=None, refresh: int | None = None):
+                 venv=None, now=None, exam=None, refresh: int | None = None, quiet: bool = False):
         from ..maintain import policy as P
         from .poll import gh_for, settings, targets
+        # quiet (the maintenance poll's fixes, ``watch.py``): nothing is written on the issue,
+        # the attempts live in ``fixes.json``, the owner's ``go`` is read again from the
+        # issue's events, and the switch, the pauses and the monthly limit are read again
+        # before every session and before the push; never a force-push, never a refresh
+        self.quiet = bool(quiet)
+        if self.quiet and refresh:
+            raise ReviseError("a refresh is not part of quiet maintenance")
         self.loop, self.full, self.number = loop, full, int(number)
         self.gh = gh_for(loop)
         self.r = Repo(self.gh, full)
@@ -593,9 +600,38 @@ class Fix:
                   wall_s=round(time.time() - t0, 1),
                   **({"why": out} if isinstance(out, str) else {}),
                   **({"prompts": used} if used else {}))
-        if not self.refresh:                       # a refresh holds no lease: the PR is the lock
+        if not self.refresh and not self.quiet:    # a refresh holds no lease: the PR is the lock
             self.renew()
         return out
+
+    # -- quiet maintenance: what is read again before anything is spent or pushed -------------
+    def still_wanted(self) -> str | None:
+        """Why this fix must not go on now (quiet only), or None: maintenance switched off for
+        the repo, the repo or the loop paused, or maintenance's money spent."""
+        from . import pauses, spend, switch
+        home = self.loop.cfg.home
+        if not switch.is_on(home, self.full):
+            return f"maintenance was switched off for {self.full}"
+        if pauses.get(home, self.full):
+            return f"maintenance was paused for {self.full}"
+        if self.loop.cfg.paused():
+            return "the loop was paused"
+        return spend.reached(self.loop)
+
+    def owners_go(self) -> str | None:
+        """Why the issue is not the signed-in person's word (quiet only), or None: it must be
+        open and its ``go`` must have been put on by the login maintenance acts for (the
+        issue's events), never by anyone else."""
+        from ..loop.from_issue import labelled_by
+        from .identity import login_of
+        if self.item["state"] != "open" or "go" not in self.item["labels"]:
+            return "the issue is no longer open and labelled go"
+        me = {x for x in (login_of(self.loop.gh), getattr(self.gh, "login_name", None)) if x}
+        who = labelled_by(self.r.events(self.number), "go")
+        if not who or who not in me:
+            return (f"its go label was put on by {who or 'nobody now'}, not by you; "
+                    "only your own go starts a fix")
+        return None
 
     def skip(self, name: str, why: str) -> None:
         self.emit("v5_stage", stage=name, status="skipped", usd=0.0, wall_s=0.0, why=why)
@@ -619,6 +655,14 @@ class Fix:
                 raise Stop(stage, f"the fix's cap ${self.cap:.2f} is reached "
                                   f"(spent ${self.usd:.2f})", partial=stage != "reproduce")
             want = left if want is None else min(want, left)
+        if self.quiet:
+            from . import spend
+            why = self.still_wanted()
+            if why:
+                raise Stop(stage, why, outcome="skipped")
+            month = spend.left(self.loop)          # this month's (and today's) money left
+            if month is not None:
+                want = month if want is None else min(want, month)
         sess = {"id": str(uuid.uuid4())}             # the CLI takes only a UUID
         if resume and resume.get("id"):
             sess.update(resume=resume["id"], base_cost_usd=resume.get("cost") or 0)
@@ -894,6 +938,8 @@ class Fix:
                f"Fixes #{self.number}\n", author=self.author())
         if self.refresh:
             return self.deliver_refresh(changed)
+        if self.quiet:
+            return self.deliver_quiet(changed)
         self.remote("push", "-q", "-f", "-u", "origin", self.branch)
         for old in self.remote("ls-remote", "--heads", "origin", f"{self.branch}-attempt*",
                                check=False).split():
@@ -906,6 +952,42 @@ class Fix:
         self.emit("delivered", node=self.sessions, branch=self.branch, out=str(self.repo),
                   report=pr.get("url"), changed=True)
         return pr
+
+    def deliver_quiet(self, changed: list[str]) -> dict:
+        """Quiet maintenance's push: only while the fix is still wanted and the issue still
+        carries your ``go`` (both read again now), onto a ``repo-factory/`` branch that does not
+        exist yet (a later attempt takes the next free name: nothing is ever force-pushed or
+        overwritten), then the pull request. Nothing is written on the issue."""
+        why = self.still_wanted()
+        if not why:
+            try:
+                self.item = self.r.issue(self.number)
+                why = self.owners_go()
+            except GitHubError as e:
+                why = f"the issue could not be read again: {e}"
+        if why:
+            raise Stop("deliver", why, outcome="skipped")
+        taken = set()
+        for ln in self.remote("ls-remote", "--heads", "origin", f"{self.branch}*",
+                              check=False).splitlines():
+            ref = ln.split()[-1] if ln.split() else ""
+            if ref.startswith("refs/heads/"):
+                taken.add(ref[len("refs/heads/"):])
+        branch, k = self.branch, 1
+        while branch in taken:
+            k += 1
+            branch = f"{self.branch}-{k}"
+        if not branch.startswith("repo-factory/"):
+            raise Stop("deliver", f"refusing to push to {branch}: not a repo-factory/ branch")
+        self.remote("push", "-q", "origin", f"HEAD:refs/heads/{branch}")
+        self.branch = branch
+        head = git("rev-parse", "HEAD", cwd=self.repo).strip()
+        pr = self.r.create_pr(f"Fix #{self.number}: {self.item['title']}", branch,
+                              self.pr_body(changed))
+        self.r.set_labels(pr["number"], ["repo-factory", self.kind], have=[])
+        self.emit("delivered", node=self.sessions, branch=branch, out=str(self.repo),
+                  report=pr.get("url"), changed=True)
+        return {**pr, "head": head, "branch": branch}
 
     def charter_problems(self, changed: list[str], base: str = "origin/main") -> list[str]:
         """The project's charter on this diff: a promise's sentence gone
@@ -948,8 +1030,11 @@ class Fix:
             f"**Documents:** AGENTS.md {agents}" + "".join(f" · {d}" for d in docs),
             f"**Cost:** ${self.usd:.2f}, {mins} min, {self.sessions} model sessions", "",
             f"Fixes #{self.number}", "",
-            "Opened by repo-factory (automated). The owner reviews and merges; nothing merges itself "
-            "unless `.github/repo-factory.yml` says so.", "", meta, ""])
+            ("Opened by repo-factory (automated). The owner reviews and merges; nothing merges "
+             "itself unless the owner switched on merging repo-factory's own bug and docs fixes "
+             "for this repository." if self.quiet else
+             "Opened by repo-factory (automated). The owner reviews and merges; nothing merges "
+             "itself unless `.github/repo-factory.yml` says so."), "", meta, ""])
 
     # -- the run ----------------------------------------------------------------------------
     def run(self) -> dict:
@@ -958,10 +1043,19 @@ class Fix:
         self.den = self.task / ".den"
         if not (self.task / "loop.json").is_file():          # run by hand, not by the tick
             write_task(self.loop.cfg, self.full, self.item, self.t["product"], self.branch)
-        comments = self.r.comments(self.number)
-        k = attempts(comments) + 1
-        self.attempt, self.n = k, seq(comments)
-        self.previous = previous_failure(comments) if not self.refresh else None
+        if self.quiet:                    # repo-factory's own record, never the issue's comments
+            from . import fixes
+            mine = fixes.get(self.loop.cfg.home, self.full, self.number)
+            k, self.n = fixes.attempts(mine) + 1, 0
+            self.attempt = k
+            self.previous = ({"stage": str(mine.get("stage") or "?"),
+                              "why": str(mine.get("why"))[:1500]}
+                             if mine.get("outcome") == "failed" and mine.get("why") else None)
+        else:
+            comments = self.r.comments(self.number)
+            k = attempts(comments) + 1
+            self.attempt, self.n = k, seq(comments)
+            self.previous = previous_failure(comments) if not self.refresh else None
         (self.den / RESULT).unlink(missing_ok=True)          # the last run's outcome
         from ..events import START_TYPES, read_events
         rid = 1 + sum(1 for e in read_events(log_path(self.den)) if e["type"] in START_TYPES)
@@ -985,6 +1079,10 @@ class Fix:
                     if self.item["state"] != "open":
                         raise Stop("start", f"issue #{self.number} is closed",
                                    outcome="already")
+                elif self.quiet:
+                    why = self.still_wanted() or self.owners_go()
+                    if why:
+                        raise Stop("start", why, outcome="skipped")
                 elif self.item["state"] != "open" or "go" not in self.item["labels"]:
                     raise Stop("start", "the issue is no longer open and labelled go",
                                outcome="skipped")
@@ -1015,15 +1113,19 @@ class Fix:
                 pr = self.stage("deliver", self.do_deliver)
                 out.update(outcome="refreshed" if self.refresh else "pr", pr=pr["number"],
                            url=pr["url"], test=self.test, why=why,
-                           **({"head": pr["head"]} if self.refresh else {}))
-                (self.done_refresh if self.refresh else self.done_pr)(pr)
+                           **({"head": pr["head"]} if self.refresh or self.quiet else {}),
+                           **({"branch": pr["branch"]} if self.quiet else {}))
+                if not self.quiet:
+                    (self.done_refresh if self.refresh else self.done_pr)(pr)
             except Stop as e:
                 out.update(outcome=e.outcome, stage=e.stage, why=e.why)
-                (self.refresh_stop if self.refresh else self.done_stop)(e)
+                if not self.quiet:
+                    (self.refresh_stop if self.refresh else self.done_stop)(e)
             except Exception as e:                     # noqa: BLE001 - said on the issue
                 why = f"{type(e).__name__}: {e}"
                 out.update(outcome="failed", stage="error", why=why)
-                (self.refresh_stop if self.refresh else self.done_stop)(Stop("error", why))
+                if not self.quiet:
+                    (self.refresh_stop if self.refresh else self.done_stop)(Stop("error", why))
         if self.refresh:
             out["refresh"] = self.refresh
         out.update(usd=self.usd, tokens={"in": self.tok_in, "out": self.tok_out},
@@ -1032,6 +1134,13 @@ class Fix:
             out["agents_main"] = self.agents_main
         # the result first: a page that reads the finished log finds it
         (self.den / RESULT).write_text(json.dumps({**out, "finished": time.time()}, indent=1))
+        if self.quiet:                    # the project's page reads it; the issue hears nothing
+            from ..loop.secrets import scrub
+            from . import fixes
+            w = (str(out.get("why") or "").replace(str(self.work), ".")
+                 .replace(str(Path.home()), "~"))
+            fixes.ended(self.loop.cfg.home, self.full, self.number,
+                        {**out, "why": scrub(w) if w else None})
         good = out["outcome"] in ("pr", "refreshed", "already")
         self.emit("build_finished", status="ok" if good else "error",
                   cost_usd=round(self.usd, 4), wall_s=out["wall_s"],

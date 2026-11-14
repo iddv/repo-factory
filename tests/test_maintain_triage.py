@@ -445,7 +445,7 @@ def test_a_duplicate_is_closed_only_when_the_policy_says_so():
 # -- the poll ----------------------------------------------------------------------------------
 def test_one_tick_triages_every_new_issue_and_never_adds_go(world):
     lp, fake, iid = world
-    out = lp.maintain()
+    out = poll.maintain_tick(lp)
     rep = out["repos"][0]
     assert sorted(t["number"] for t in rep["triaged"]) == [1, 2, 3, 4, 5, 6]
     for n in range(1, 7):
@@ -460,7 +460,7 @@ def test_one_tick_triages_every_new_issue_and_never_adds_go(world):
     assert spend_summary(lp.ledger)["today"]["maintain"] == pytest.approx(6 * 0.02)
     # a second tick: nothing left to triage, nothing posted again
     n = len(fake.writes())
-    assert lp.maintain()["repos"][0]["triaged"] == []
+    assert poll.maintain_tick(lp)["repos"][0]["triaged"] == []
     assert len(fake.writes()) == n
     st = poll.Cache(lp.cfg.home).repo(REPO)
     assert st["policy"]["status"] == "maintained" and st["counts"]["issues"] == 6
@@ -468,10 +468,10 @@ def test_one_tick_triages_every_new_issue_and_never_adds_go(world):
 
 def test_a_needs_info_answer_is_triaged_again(world):
     lp, fake, _ = world
-    lp.maintain()
+    poll.maintain_tick(lp)
     assert "needs-info" in fake.labels_of(5)
     n = len(lp._triage.prompts)
-    lp.maintain()
+    poll.maintain_tick(lp)
     assert len(lp._triage.prompts) == n, "no answer yet: nothing is asked again"
     fake.comments[5].append(
         {
@@ -485,7 +485,7 @@ def test_a_needs_info_answer_is_triaged_again(world):
     lp._triage = scripted(
         {**READINGS, 5: {"kind": "bug", "prio": "p2", "summary": "Save gives a 500."}}
     )
-    rep = lp.maintain()["repos"][0]
+    rep = poll.maintain_tick(lp)["repos"][0]
     assert [t["number"] for t in rep["triaged"]] == [5]
     assert "needs-info" not in fake.labels_of(5) and "p2" in fake.labels_of(5)
     assert len(fake.comments[5]) == 2 and "Save gives a 500" in fake.comments[5][0]["body"]
@@ -497,7 +497,7 @@ def test_a_strangers_pr_is_triaged_on_its_text_and_its_code_never_read(world):
     fake.add_pr(20, "Fix the export", "stranger")
     fake.add_pr(21, "My own change", "o", association="OWNER")
     lp._triage = scripted({**READINGS, 20: {"kind": "feature", "prio": "p3", "summary": "Export."}})
-    lp.maintain()
+    poll.maintain_tick(lp)
     assert "feature" in fake.labels_of(20) and len(fake.comments[20]) == 1
     assert fake.labels_of(21) == [] and 21 not in fake.comments
     assert not any("/files" in c[1] or "/pulls/20" in c[1] or ".diff" in c[1] for c in fake.calls)
@@ -515,7 +515,7 @@ def test_dependabot_is_merged_only_with_policy_and_green_ci(tmp_path):
         # a product (maintain.repos names are watch profiles since MX: never labelled)
         i, _ = lp.ledger.add("plots", "typed", title="Plotkeeper")
         lp.ledger.update(i["id"], state="published", publish={"repo": REPO})
-        lp.maintain()
+        poll.maintain_tick(lp)
         return fake, poll.Cache(lp.cfg.home).repo(REPO)
 
     fake, rec = run("never", "success")
@@ -541,23 +541,23 @@ def test_dependabot_is_merged_only_with_policy_and_green_ci(tmp_path):
 def test_an_archived_repo_gets_one_comment_then_is_left_alone(world):
     lp, fake, _ = world
     fake.policy_text = maintained(status="archived")
-    lp.maintain()
+    poll.maintain_tick(lp)
     assert [c["body"].splitlines()[0] for c in fake.comments[6]] == [poll.ARCHIVED]
     assert all(n not in fake.comments for n in range(1, 6)) and not lp._triage.prompts
     n = len(fake.writes())
-    lp.maintain()
+    poll.maintain_tick(lp)
     poll.Cache(lp.cfg.home).path.unlink()  # even with the cache gone: no second one
-    lp.maintain()
+    poll.maintain_tick(lp)
     assert len(fake.writes()) == n and len(fake.comments[6]) == 1
 
 
 def test_a_broken_policy_is_said_once_and_nothing_is_triaged(world):
     lp, fake, _ = world
     fake.policy_text = "repo-factory: 1\nmerge: {factory_patch: always}\nsurprise: true\n"
-    rep = lp.maintain()["repos"][0]
+    rep = poll.maintain_tick(lp)["repos"][0]
     assert rep["triaged"] == [] and "unknown key surprise" in rep["errors"][0]
     assert [c["body"].splitlines()[0] for c in fake.comments[6]] == [poll.POLICY_ERROR]
-    lp.maintain()
+    poll.maintain_tick(lp)
     assert len(fake.comments[6]) == 1
     assert "unknown key surprise" in poll.Cache(lp.cfg.home).repo(REPO)["error"]
 
@@ -565,22 +565,22 @@ def test_a_broken_policy_is_said_once_and_nothing_is_triaged(world):
 def test_a_missing_policy_is_as_is_and_still_triaged(world):
     lp, fake, _ = world
     fake.policy_text = None
-    rep = lp.maintain()["repos"][0]
+    rep = poll.maintain_tick(lp)["repos"][0]
     assert len(rep["triaged"]) == 6
     assert poll.Cache(lp.cfg.home).repo(REPO)["policy"]["status"] == "as-is"
 
 
 def test_the_cache_is_rebuilt_from_scratch_when_deleted(world):
     lp, fake, _ = world
-    lp.maintain()
+    poll.maintain_tick(lp)
     fake.issues[1]["labels"].append({"name": "needs-you"})
-    lp.maintain()
+    poll.maintain_tick(lp)
     cache = poll.Cache(lp.cfg.home)
     before = cache.repo(REPO)
     n = len(fake.writes())
     cache.path.unlink()
     assert cache.read() == {"repos": {}}
-    lp.maintain()
+    poll.maintain_tick(lp)
     after = cache.repo(REPO)
     assert len(fake.writes()) == n, "GitHub already holds every label and comment"
     for k in ("counts", "rows", "policy"):
@@ -590,11 +590,11 @@ def test_the_cache_is_rebuilt_from_scratch_when_deleted(world):
 def test_triage_stops_at_the_cap_and_today_says_so(world):
     lp, fake, _ = world
     lp.cfg.data["maintain"]["triage_max_per_poll"] = 4
-    rep = lp.maintain()["repos"][0]
+    rep = poll.maintain_tick(lp)["repos"][0]
     assert len(rep["triaged"]) == 4
     rows = poll.today(lp.cfg.home)["rows"]
     assert [r for r in rows if r["kind"] == "capped"][0]["title"].startswith("2 issue")
-    assert len(lp.maintain()["repos"][0]["triaged"]) == 2
+    assert len(poll.maintain_tick(lp)["repos"][0]["triaged"]) == 2
 
 
 def test_a_failed_reply_leaves_the_issue_in_triage_and_today_shows_it_after_a_day(world):
@@ -602,7 +602,7 @@ def test_a_failed_reply_leaves_the_issue_in_triage_and_today_shows_it_after_a_da
     for i in fake.issues.values():
         i["created_at"] = stamp(NOW - 2 * 86400)
     lp._triage = FakeModel("no json here")
-    rep = lp.maintain()["repos"][0]
+    rep = poll.maintain_tick(lp)["repos"][0]
     assert rep["triaged"] == [] and all("triage" in fake.labels_of(n) for n in range(3, 7))
     assert not fake.comments
     kinds = {r["kind"] for r in poll.today(lp.cfg.home)["rows"]}
@@ -610,27 +610,11 @@ def test_a_failed_reply_leaves_the_issue_in_triage_and_today_shows_it_after_a_da
 
 
 # -- the loop's tick ---------------------------------------------------------------------------
-def test_the_tick_polls_every_poll_s_and_never_while_paused(world):
-    lp, fake, _ = world
-    lp.cfg.data["maintain"]["poll_s"] = 3600
-    out = lp.tick()
-    assert len(out["maintain"]["repos"][0]["triaged"]) == 6
-    assert "maintain" not in lp.tick(), "not again before poll_s"
-    lp.ledger.meta("maintain_last_poll", time.time() - 7200)
-    lp.pause()
-    assert "maintain" not in lp.tick()
-    lp.resume()
-    lp.cfg.data["daily_usd"] = 0.01  # today's triage spend is over it
-    assert "maintain" not in lp.tick()
-    lp.cfg.data["daily_usd"] = None
-    lp.cfg.data["maintain"]["enabled"] = False
-    assert "maintain" not in lp.tick()
-    lp.cfg.data["maintain"]["enabled"] = True
-    assert "maintain" in lp.tick()
-
-
 def test_a_github_failure_never_breaks_the_tick(world):
+    from repo_factory.maintain import switch
+
     lp, fake, _ = world
+    switch.set_on(lp.cfg.home, REPO, True)
     lp._gh = Gh(run=lambda a, cwd=None: (1, "", "HTTP 502: Bad Gateway"))
     out = lp.tick()
     assert "502" in out["maintain"]["repos"][0]["errors"][0]
@@ -645,13 +629,17 @@ def test_nothing_published_means_no_github_call(tmp_path):
 
 
 def test_cli_tick_and_status(world, capsys, monkeypatch):
-    from repo_factory.maintain import cli
+    from repo_factory.maintain import cli, switch
 
     lp, fake, _ = world
     monkeypatch.setattr(cli, "_loop", lambda args: lp)
     cli.cmd_tick(type("A", (), {"json": False})())
-    out = capsys.readouterr().out
-    assert f"{REPO}: 6 triaged" in out and "#6: bug p1" in out
+    assert "switched on for no published repository" in capsys.readouterr().out
+    switch.set_on(lp.cfg.home, REPO, True)
+    cli.cmd_tick(type("A", (), {"json": False})())
+    assert f"{REPO}: 6 waiting for you" in capsys.readouterr().out
+    assert [c for c in fake.calls if c[0] != "GET"] == [], "the loop's poll writes nothing"
+    poll.maintain_tick(lp)
     cli.cmd_status(type("A", (), {"json": False, "home": str(lp.cfg.home)})())
     assert "maintained, polled 0 min ago; 6 open issues" in capsys.readouterr().out
 
@@ -678,7 +666,7 @@ def test_snapshot_carries_todays_rows_from_the_poll(app):
     n = len(fake.calls)
     snap = a.snapshot()
     assert snap["maintain"]["rows"] == [] and len(fake.calls) == n, "no poll yet, no call"
-    lp.maintain()
+    poll.maintain_tick(lp)
     n = len(fake.calls)
     rows = a.snapshot()["maintain"]["rows"]
     assert len(fake.calls) == n, "Today reads the poll's cache, never GitHub"
@@ -688,35 +676,15 @@ def test_snapshot_carries_todays_rows_from_the_poll(app):
     assert all(r["product"] == "Plotkeeper" and r["repo"] == REPO for r in rows)
     # repo-factory's own pull request (#40) is listed but is not a Needs you row
     assert a.header()["needs_you"] == 2
-    # Try again removes needs-you on GitHub, and the row leaves Today at once
-    code, _, body = api.handle(
+    # api/maintain/act (Try again, Close: writes on an issue) is not a route any more
+    code, _, _ = api.handle(
         "POST",
         "/api/maintain/act",
         None,
         json.dumps({"repo": REPO, "number": 1, "what": "retry"}).encode(),
         app=a,
     )
-    assert code == 200, body
-    assert "needs-you" not in fake.labels_of(1)
-    assert ("needs_you", 1) not in {
-        (r["kind"], r["number"]) for r in a.snapshot()["maintain"]["rows"]
-    }
-    code, _, _ = api.handle(
-        "POST",
-        "/api/maintain/act",
-        None,
-        json.dumps({"repo": "x/elsewhere", "number": 1, "what": "close"}).encode(),
-        app=a,
-    )
-    assert code == 404, "only a maintained repo"
-    code, _, _ = api.handle(
-        "POST",
-        "/api/maintain/act",
-        None,
-        json.dumps({"repo": REPO, "number": 1, "what": "merge"}).encode(),
-        app=a,
-    )
-    assert code == 400
+    assert code == 404 and "needs-you" in fake.labels_of(1)
 
 
 def test_the_maintenance_box_reads_github_and_keeps_it(app):
@@ -730,27 +698,23 @@ def test_the_maintenance_box_reads_github_and_keeps_it(app):
         "published_at": stamp(NOW),
     }
     lp.ledger.spend("triage", 0.03, iid)
-    code, _, body = api.handle("GET", f"/api/maintain/{iid}", None, None, app=a)
-    d = json.loads(body)
-    assert code == 200, d
+    d = a.maintain_box(iid)
     assert d["policy"]["status"] == "maintained" and d["policy"]["trigger"] == "go"
     assert d["release"]["tag"] == "v0.1.1" and d["ci"]["state"] == "success"
     assert d["counts"]["go"] == 1 and d["counts"]["triage"] == 6 and d["counts"]["factory_prs"] == 1
     assert d["claimed"][0]["by"] == "repo-factory" and d["factory_prs"][0]["number"] == 40
     assert d["spend"]["usd"] == 0.03 and d["spend"]["by_kind"]["triage"]["calls"] == 1
     n = len(fake.calls)
-    api.handle("GET", f"/api/maintain/{iid}", None, None, app=a)
+    a.maintain_box(iid)
     assert len(fake.calls) == n, "kept maintain.cache_s"
-    assert api.handle("GET", "/api/maintain/i00000000", None, None, app=a)[0] == 404
-    assert api.handle("GET", "/api/maintain/..%2fetc", None, None, app=a)[0] == 404
+    assert api.handle("GET", f"/api/maintain/{iid}", None, None, app=a)[0] == 404, "no route"
 
 
 def test_settings_maintenance_reads_and_writes_its_keys(app):
     a, lp, fake, iid = app
-    lp.maintain()
-    code, _, body = api.handle("GET", "/api/maintain/summary", None, None, app=a)
-    d = json.loads(body)
-    assert code == 200 and d["identity"]["kind"] == "owner" and d["identity"]["command"] == "gh"
+    poll.maintain_tick(lp)
+    d = a.maintain_summary()
+    assert d["identity"]["kind"] == "owner" and d["identity"]["command"] == "gh"
     assert d["repos"][0]["repo"] == REPO and d["repos"][0]["policy"]["status"] == "maintained"
     assert d["repos"][0]["counts"]["issues"] == 6 and d["spend"]["usd"] == pytest.approx(0.12)
     assert d["settings"]["poll_s"] == 900 and d["settings"]["triage_model"] == "claude-haiku-5-5"
@@ -759,7 +723,7 @@ def test_settings_maintenance_reads_and_writes_its_keys(app):
         "POST",
         "/api/maintain/settings",
         None,
-        json.dumps({"enabled": False, "poll_s": 1800, "repos": ["o/other", "o/other"]}).encode(),
+        json.dumps({"poll_s": 1800, "monthly_usd": 12}).encode(),
         app=a,
     )
     assert code == 200, body
@@ -767,14 +731,11 @@ def test_settings_maintenance_reads_and_writes_its_keys(app):
     assert text.startswith("# my notes") and "poll_s: 1800" in text
     import yaml
 
-    # a name typed there is kept once (no repo of someone else's is adopted)
-    assert yaml.safe_load(text)["maintain"] == {
-        "enabled": False,
-        "poll_s": 1800,
-        "repos": ["o/other"],
-    }
+    assert yaml.safe_load(text)["maintain"] == {"poll_s": 1800, "monthly_usd": 12}
     for bad in (
         {"poll_s": 5},
+        {"monthly_usd": 0},
+        {"enabled": False},  # switched per repository now, not here
         {"enabled": "yes"},
         {"repos": ["no slash"]},
         {"gh_command": "sh -c x"},

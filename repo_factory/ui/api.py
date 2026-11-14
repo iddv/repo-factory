@@ -1675,7 +1675,168 @@ class App:
         for k, v in values.items():
             settings.write(paths.Layout(home).settings, ("maintain", k), v)
         self._maint = None
-        return self.maintain_summary()
+        return self.maintenance()
+
+    # ---- maintenance per repository, and Projects (maintain/watch.py): never a GitHub call ----
+    def maintenance(self) -> dict:
+        """Settings › Maintenance and the Projects list: every published repository with its
+        switches, pause, what waits for you, its fixes and its proposals, from the poll's
+        cache and the local files (never a GitHub call), and maintenance's spend."""
+        from ..maintain import spend
+        from ..maintain.poll import targets
+        from ..settings import write as settings
+
+        lp = self.loop()
+        m = lp.cfg.get("maintain") or {}
+        return {
+            "repos": [self.maintenance_repo(t) for t in targets(lp)],
+            "spend": spend.summary(lp),
+            "paused": bool(lp.cfg.paused()),
+            "last_poll": lp.ledger.meta("maintain_last_poll"),
+            "settings": {k: m.get(k) for k in settings.MAINTAIN},
+            "rules": {
+                k: settings.rule_view(settings.RULES[f"maintain.{k}"]) for k in settings.MAINTAIN
+            },
+        }
+
+    def maintenance_repo(self, t: dict) -> dict:
+        from ..maintain import backfill, proposals, watch
+
+        home = self.loop().cfg.home
+        st = backfill.job_state(home, t["repo"]) or None
+        return {
+            **watch.rows_of(home, t["repo"]),
+            "idea": t["idea"],
+            "product": t["product"],
+            "one_liner": t.get("one_liner") or "",
+            "setup": {k: v for k, v in st.items() if k not in ("pid", "start", "log")}
+            if st
+            else None,
+            "proposals": proposals.of(home, t["repo"]),
+        }
+
+    def projects(self) -> dict:
+        """Projects: one row a published product (its repository, maintenance on or off,
+        what waits for you), from ``maintenance``."""
+        out = self.maintenance()
+        return {"projects": out["repos"], "spend": out["spend"], "paused": out["paused"]}
+
+    def project(self, iid: str) -> dict:
+        """A product's page: what its brief promised, its build, and its maintenance."""
+        from ..maintain.poll import targets
+        from ..maintain.spend import month_start
+
+        if not IDEA_ID.fullmatch(iid or ""):
+            raise HttpError(404, "no such project")
+        lp = self.loop()
+        t = next((x for x in targets(lp) if x["idea"] == iid), None)
+        if t is None:
+            raise HttpError(404, "no such project: only a published build is a project")
+        idea = lp.ledger.get(iid) or {}
+        p = idea.get("pitch") or {}
+        with lp.ledger.db() as c:
+            month = float(
+                c.execute(
+                    "SELECT COALESCE(SUM(usd), 0) FROM spend WHERE idea = ? AND ts >= ?",
+                    (iid, month_start()),
+                ).fetchone()[0]
+            )
+        return {
+            **self.maintenance_repo(t),
+            "brief": {
+                "one_liner": p.get("one_liner") or "",
+                "who": p.get("who") or "",
+                "brief": p.get("brief") or "",
+            },
+            "build": self.key(Path(idea["task_dir"])) if idea.get("task_dir") else None,
+            "published": (idea.get("publish") or {}).get("url"),
+            "state": idea.get("state"),
+            "month_usd": round(month, 4),
+        }
+
+    def _published(self, body: dict) -> str:
+        repo = str(body.get("repo") or "")
+        return self.maint_target(repo=repo)["repo"]
+
+    def maintenance_switch(self, body: dict) -> dict:
+        """Maintenance on or off for one published repository (your press). On starts the
+        setup pull request in the background (labels, the policy file, AGENTS.md and CI);
+        off stops the next poll from reading it at all."""
+        from ..maintain import backfill, switch
+
+        repo, on = self._published(body), body.get("on")
+        if not isinstance(on, bool):
+            raise HttpError(400, "on must be true or false")
+        lp = self.loop()
+        switch.set_on(lp.cfg.home, repo, on, by="ui")
+        if on:
+            st = backfill.job_state(lp.cfg.home, repo) or {}
+            if st.get("state") != "running":
+                try:
+                    backfill.start(lp.cfg, repo, by="ui")
+                except backfill.BackfillError as e:
+                    raise HttpError(409, str(e))
+        return self.maintenance()
+
+    def maintenance_merge(self, body: dict) -> dict:
+        """Merging repo-factory's own bug and docs fixes when CI is green, for one repository
+        (your press; off by default; only while maintenance is on for it)."""
+        from ..maintain import switch
+
+        repo, on = self._published(body), body.get("on")
+        if not isinstance(on, bool):
+            raise HttpError(400, "on must be true or false")
+        try:
+            switch.set_merge(self.loop().cfg.home, repo, on, by="ui")
+        except ValueError as e:
+            raise HttpError(409, str(e))
+        return self.maintenance()
+
+    def maintenance_pause(self, body: dict) -> dict:
+        """Pause or resume maintenance on one repository: the next poll skips it at once,
+        and the pause is a file, so it survives a restart."""
+        from ..maintain import pauses
+
+        repo, paused = self._published(body), body.get("paused")
+        if not isinstance(paused, bool):
+            raise HttpError(400, "paused must be true or false")
+        home = self.loop().cfg.home
+        if paused:
+            pauses.pause(home, repo, by="ui")
+        else:
+            pauses.resume(home, repo)
+        return self.maintenance()
+
+    def maintenance_retry(self, body: dict) -> dict:
+        """Retry: the failed attempts on one of your go issues are forgotten, so the next poll
+        may try again (nothing is written on GitHub)."""
+        from ..maintain import fixes
+
+        repo = self._published(body)
+        n = body.get("number")
+        if not isinstance(n, int) or isinstance(n, bool) or n < 1:
+            raise HttpError(400, "number must be an issue number")
+        fixes.retry(self.loop().cfg.home, repo, n, by="ui")
+        return self.maintenance()
+
+    def maintenance_build_proposal(self, body: dict) -> dict:
+        """Build this proposal (your press): it becomes an issue on the repository with the
+        go label, put on by you, so the next poll fixes it as a pull request. Nothing is built
+        from a proposal without this press."""
+        from ..maintain import proposals, switch
+        from ..maintain.github import GitHubError
+
+        repo = self._published(body)
+        lp = self.loop()
+        if not switch.is_on(lp.cfg.home, repo):
+            raise HttpError(409, f"maintenance is off for {repo}: switch it on first")
+        try:
+            got = proposals.build(lp, repo, str(body.get("id") or ""))
+        except LookupError as e:
+            raise HttpError(404, str(e))
+        except (GitHubError, ValueError) as e:
+            raise HttpError(502, str(e))
+        return {**self.maintenance(), "issue": got}
 
     def maintain_act(self, body: dict) -> dict:
         """Today's buttons on a maintenance row: ``retry`` removes ``needs-you`` (repo-factory may try
@@ -2910,13 +3071,13 @@ class App:
         }
 
     # ---- projects (repo_factory/projects/; off and unlisted): the ledger and the poll's cache --
-    def projects(self) -> dict:
+    def projects_record(self) -> dict:
         """Desk › Projects: one row per project, by health (``record.listing``)."""
         from ..projects import record
 
         return record.listing(self.loop())
 
-    def project(self, pid: str) -> dict:
+    def project_record(self, pid: str) -> dict:
         """A project's page (``record.page``), with its build's key for the link."""
         from ..projects import record
 
@@ -3301,7 +3462,7 @@ class App:
             else:
                 over[key] = value
             Projects(self.loop().ledger).update(p["id"], settings=over)
-            return self.project(p["id"])
+            return self.project_record(p["id"])
         path = ("projects", *key.split("."))
         settings.write(
             self.loop_cfg().layout.settings,

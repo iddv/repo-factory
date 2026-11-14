@@ -153,11 +153,11 @@ def test_pause_resume_and_archive_a_project(tmp_path):
     q = Projects(lp.ledger).must(p["id"])
     assert q["state"] == "paused" and evolve.due(lp, q, time.time() + 30 * 86400) is None
     assert call(app, "POST", "/api/act", None, body)[0] == 409  # already paused
-    code, lst = call(app, "GET", "/api/projects")
+    code, lst = 200, app.projects_record()
     assert lst["projects"][0]["health"] == "paused"
     body["fields"]["state"] = "archived"
     assert call(app, "POST", "/api/act", None, body)[0] == 200
-    code, lst = call(app, "GET", "/api/projects")
+    code, lst = 200, app.projects_record()
     assert lst["projects"] == [] and lst["archived"] == 1
     notes = [e["note"] for e in Projects(lp.ledger).events(p["id"], limit=2)]
     assert notes == ["archived (ui)", "paused (ui)"]

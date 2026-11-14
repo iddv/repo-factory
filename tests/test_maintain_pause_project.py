@@ -38,7 +38,7 @@ def test_a_paused_products_poll_does_nothing_and_resume_restores_it(app):  # noq
     # the poll: nothing on the paused repo; no write and no model call anywhere. (The
     # project's own stats, a clone and its star count, still read: that is the project's life,
     # which Pause project governs, not maintenance.)
-    got = lp.maintain()
+    got = poll.maintain_tick(lp)
     assert got["repos"] == []
     assert fake.writes() == [] and lp._triage.prompts == []
     assert not [c for c in fake.calls if REPO in str(c[1]) and "issues" in str(c[1])]
@@ -59,7 +59,7 @@ def test_a_paused_products_poll_does_nothing_and_resume_restores_it(app):  # noq
     out = _act(a, "pause_maintenance", {"project": pid, "state": "on"})
     assert out["say"] == "Maintenance resumed on Plotkeeper: it picks up from the next poll."
     assert pauses.get(lp.cfg.home, REPO) is None
-    got = lp.maintain()
+    got = poll.maintain_tick(lp)
     assert sorted(t["number"] for t in got["repos"][0]["triaged"]) == [1, 2, 3, 4, 5, 6]
     assert record.listing(lp)["projects"][0]["health"] != "maintenance_paused"
     ev = [e["note"] for e in Projects(lp.ledger).events(pid)]

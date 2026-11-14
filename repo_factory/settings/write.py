@@ -260,6 +260,9 @@ RULES: dict[str, tuple] = {
     "maintain.repos": ("repos",),
     "maintain.concurrency": ("int", 0, 8),
     "maintain.max_usd": ("usd",),
+    "maintain.monthly_usd": ("usd",),
+    "maintain.proposals": ("bool",),
+    "maintain.proposals_model": ("model",),
     "maintain.net": ("enum", ("allowlist", "public")),
     "maintain.lesson_label": ("bool",),
     "maintain.doctor_days": ("int", 0, 90),
@@ -298,18 +301,15 @@ SENSITIVE = {
 HOST = re.compile(r"(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}")
 # Settings › Publishing › Maintenance's keys (under ``maintain``), in the order the page sends them
 MAINTAIN = (
-    "enabled",
     "poll_s",
-    "cache_s",
-    "triage_max_per_poll",
-    "repos",
     "concurrency",
     "max_usd",
+    "monthly_usd",
+    "proposals",
+    "proposals_model",
     "net",
-    "lesson_label",
     "doctor_days",
     "identity",
-    "refresh_max",
 )
 _WORDS = {True: "true", False: "false", None: "empty"}
 
@@ -351,7 +351,8 @@ def rule_view(rule: tuple) -> dict:
 REFUSED = {
     ("publish.approval", "auto"): "publish.approval: auto (making a repository public without "
     "your press) is not something the page sets; publishing asks you first",
-    ("maintain.enabled", True): "maintain.enabled: maintenance is not in this version",
+    ("maintain.enabled", True): "maintain.enabled: maintenance is switched on per repository, "
+    "on its project's page, not for all of them at once",
     ("projects.enabled", True): "projects.enabled: projects are not in this version",
 }
 
