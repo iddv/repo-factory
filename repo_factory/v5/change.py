@@ -1,4 +1,4 @@
-"""A revise round: the owner's change request on a held or ready v5 build (AR-PLAN.md §2).
+"""A revise round: the owner's change request on a held or ready v5 build.
 
 Its own round ``r<N+1>`` of kind ``revise``, so the gate, the loop's ``builds.outcome``, the
 build page and the pipeline ledger, which all read the latest round, work unchanged, and the
@@ -10,12 +10,12 @@ Steps (``STAGES``, v5's names, so the ledger's cells are the same), the state sa
 each (``--resume`` continues at the step after the last one done; a session that already ran
 is never paid twice):
 
-1. **build**: ``ws`` is a clone of ``out`` at ``repo-factory/<id>`` (what an earlier version of
-   repo-factory wrote into it leaves in a commit of its own, EX-PLAN §8.1); in code mode the *baseline* runs
-   the product's own tests there (``exam.run``, sandboxed, network off; no model). One session gets the owner's instructions
-   (a document), the hold reasons and, in code mode, the own tests failing at baseline. It
-   writes ``.repo-factory/change.json``. Code mode with a tests hold and nothing failing now skips
-   the session: deliver measures again.
+1. **build**: ``ws`` is a clone of ``out`` at ``repo-factory/<id>`` (what an earlier version
+   of repo-factory wrote into it leaves in a commit of its own); in code mode the *baseline*
+   runs the product's own tests there (``exam.run``, sandboxed, network off; no model). One
+   session gets the owner's instructions (a document), the hold reasons and, in code mode,
+   the own tests failing at baseline. It writes ``.repo-factory/change.json``. Code mode with
+   a tests hold and nothing failing now skips the session: deliver measures again.
 2. **verify** (no model): the scope (nothing under ``.github/``, ``LICENSE``, ``NOTICE``;
    docs mode changes Markdown only), then code mode runs the suite again (nothing that passed
    may fail; a tests hold needs the own suite green) and docs mode scans the changed Markdown
@@ -207,8 +207,8 @@ def add_commit(cfg, art: Path, out: Path, message: str) -> str:
 
 def violations(changed: list[str], mode: str) -> list[str]:
     """What a revise may never change: ``.github/``, ``LICENSE``, ``NOTICE``, a file outside
-    the tree, a secret-shaped file; in docs mode, anything but Markdown. (repo-factory's exam is not
-    in the tree, EX-PLAN §3.4: nothing there to protect.)"""
+    the tree, a secret-shaped file; in docs mode, anything but Markdown. (repo-factory's exam
+    is not in the tree: nothing there to protect.)"""
     from ..maintain.revise import scope_violations
 
     bad = list(scope_violations(changed))
@@ -361,7 +361,7 @@ class ChangeRun(Run):
         excl.parent.mkdir(parents=True, exist_ok=True)
         with open(excl, "a") as f:
             f.write("\n.repo-factory/\ntranscript.jsonl\nstderr.txt\n.venv/\n")
-        # EX-PLAN §8.1: what an earlier version of repo-factory wrote into the delivered tree (its
+        # What an earlier version of repo-factory wrote into the delivered tree (its
         # acceptance suite, READINESS.md, ASSUMPTIONS.md, the review SECURITY.md) leaves it in
         # a commit of its own, before the baseline: the round delivers a clean tree
         from . import exam

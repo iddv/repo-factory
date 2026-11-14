@@ -1,4 +1,4 @@
-"""The identity seam with repo-factory's own GitHub App (GA-PLAN.md §2.6–2.8): ``maintain.identity``
+"""The identity seam with repo-factory's own GitHub App: ``maintain.identity``
 auto, the app's ``Gh`` narrowed to one repository per call, the poll acting as the bot, an
 issue the bot filed counted as repo-factory's own, commits authored as the bot, a fix's push with
 the push scope, ``whoami``'s line and ``repo-factory doctor``'s, and no behaviour change without an

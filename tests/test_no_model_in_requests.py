@@ -290,7 +290,7 @@ def test_a_press_over_a_stale_tree_waits_and_one_that_holds_again_says_so(world)
 
 
 def test_the_claims_presses_never_wait_on_a_model(world, monkeypatch):
-    """NG-PLAN §7: Save release text answers at once from every door and needs no model (the
+    """Save release text answers at once from every door and needs no model (the
     owner's text is used as it is). Accept and Edit interpretation belong to build start: on a
     built build they are refused at once. Check the wording again is gone (2026-10-16)."""
     from repo_factory.loop import precheck

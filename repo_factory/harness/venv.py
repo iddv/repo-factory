@@ -399,8 +399,8 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def default_network() -> bool:
-    """Factory test runs get network unless ``$REPO_FACTORY_TEST_NETWORK=0`` (owner's call,
-    2026-10-03): the filesystem isolation is what protects the judge and the owner's secrets;
+    """Factory test runs get network unless ``$REPO_FACTORY_TEST_NETWORK=0`` (a deliberate
+    choice): the filesystem isolation is what protects the judge and the owner's secrets;
     network-off only bought determinism, which the bench keeps by passing network=False."""
     return os.environ.get("REPO_FACTORY_TEST_NETWORK", "1") != "0"
 
@@ -441,7 +441,7 @@ def run_pytest(
                 if Path(source).is_dir()
                 else links.copy_file(source, dest)
             )
-        junit = work / ".brb-junit.xml"
+        junit = work / ".repo-factory-junit.xml"
         py = str(venv / "bin" / "python")
         # HOME: a real user's shell has one; a product that resolves it (Node's os.homedir(),
         # Path.home()) must not fail here only because the sandbox cleared it. /tmp is the

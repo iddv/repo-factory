@@ -51,7 +51,7 @@ class Remote:
     def __init__(self, tmp: Path, fixture: Path, tags=TAGS):
         self.work, self.bare = tmp / "work", tmp / "remote.git"
         shutil.copytree(fixture, self.work)
-        # releases cut by hand, so the version in the files is the product's to keep (AU3-2)
+        # releases cut by hand, so the version in the files is the product's to keep
         pol = self.work / ".github" / "repo-factory.yml"
         if pol.is_file():
             pol.write_text(pol.read_text().replace("on_merge: patch", "on_merge: off"))

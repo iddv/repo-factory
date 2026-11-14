@@ -1,9 +1,9 @@
 """Stages 3-4: the fresh verifier (docs/design/build-v5.md §3.4).
 
 A new full-tools session works on a read-write copy of the built repo (at /work/product)
-with the spec, the merged claims and the lessons, and writes its exam outside it (EX-PLAN
-§3.1, at /work/exam): ``_verify/driver.py``, one scenario per claim under
-``_verify/scenarios/`` and ``_verify/findings.json``. The harness then loads the scenarios
+with the spec, the merged claims and the lessons, and writes its exam outside it (at
+/work/exam): ``_verify/driver.py``, one scenario per claim under ``_verify/scenarios/`` and
+``_verify/findings.json``. The harness then loads the scenarios
 into the ``RuleStore`` and runs them itself (``exam.run``), on a pristine copy of the build,
 twice in opposite orders (``validate.validate_runs``): flaky or broken scenarios are retired,
 and the harness's run, not the verifier's word, is the record of pass and fail.
@@ -59,7 +59,7 @@ def copy_repo(src: Path, dest: Path) -> Path:
 
 def prepare(built: Path, dest: Path, spec: str, claims: dict, exam_ws: Path | None = None) -> Path:
     """The verifier's workspace: a copy of the build (bound at /work/product), and its exam
-    workspace ``exam_ws`` (bound at /work/exam, EX-PLAN §3.1) with ``_verify/`` holding the
+    workspace ``exam_ws`` (bound at /work/exam) with ``_verify/`` holding the
     spec and the claims. Without ``exam_ws`` (a round of the old layout) ``_verify/`` goes
     inside the copy. Returns the exam workspace."""
     ws = copy_repo(built, dest)

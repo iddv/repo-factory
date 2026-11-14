@@ -14,7 +14,7 @@ MODES = ("requirements", "interactions", "edges")
 # Lower-case prefixes so rule ids never look like checklist ids (R1, R2, ...).
 PREFIX = {"requirement": "q", "interaction": "x", "edge": "e", "regression": "g"}
 VERDICTS = ("code_wrong", "rule_wrong", "ambiguous")
-# Build v3 §4 (the controller): the arbiter's fourth verdict, offered only with it on.
+# Build v3 (the controller): the arbiter's fourth verdict, offered only with it on.
 DESIGN_FLAW = "design_flaw"
 
 

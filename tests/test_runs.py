@@ -1,4 +1,4 @@
-"""A product's Builds (UXD-DESIGN §2, UXI-1; ``repo_factory/ui/runs.py``). Build N is round N of the
+"""A product's Builds (``repo_factory/ui/runs.py``). Build N is round N of the
 event log: a fresh build, a retry and a revision are each a Build; repair rounds inside one are
 part of it; a stopped Build that is resumed stays one. The log here has Sidedoor's shape on
 15 Oct: two fresh builds, a retry that continues Build 1, a fresh one, six revisions (code,
@@ -262,7 +262,7 @@ def test_sidedoor_has_ten_builds_with_their_kinds_and_outcomes(sidedoor):
     # a reader can say which Build passed the checks (6, 7, 8) without the word "round"
     assert [r["n"] for r in rs if (r["gate"] or {}).get("verdict") == "ready"] == [6, 7, 8]
     assert rs[2]["gate"]["reasons"] == ["tests: 44 of 70 of the product's own tests fail"]
-    # from the history note (no checks kept): six checks since p_hidden went (AU1 #5)
+    # from the history note (no checks kept): six checks since p_hidden went
     assert (rs[2]["gate"]["passed"], rs[2]["gate"]["total"]) == (5, 6)
     assert rs[7]["gate"]["passed"] == 6 and rs[4]["gate"]["passed"] == 5
     assert rs[7]["gate"]["source"] == "idea" and rs[5]["gate"]["source"] in ("changes", "history")

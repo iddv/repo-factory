@@ -19,7 +19,7 @@ builds" (§5.1). Counters decide retirement and ordering, never promotion:
   ``false_alarms > caught``.
 
 A scenario's lessons are its own ``lessons`` field, else its claim's. The panel's class is the
-scenario's ``class`` (Track D writes ``defect | retired | interpretation`` into
+scenario's ``class`` (the v5 pipeline writes ``defect | retired | interpretation`` into
 ``findings.json``), else ``oracle.json`` ``{scenario id: class}`` beside it."""
 
 from __future__ import annotations

@@ -1,4 +1,4 @@
-"""A drift finding follows main, not the calendar (track AM2, after Beliefline, 2026-10-13: its
+"""A drift finding follows main, not the calendar (after Beliefline: its
 AGENTS.md was merged at 20:10, and Today still said "AGENTS.md is missing" from a check two
 days old, because the doctor ran every ``maintain.doctor_days``).
 

@@ -252,7 +252,7 @@ def parse(text: str) -> dict:
     return out
 
 
-# -- the word budget (PE2 §6.4), enforced in code ------------------------------------------------
+# -- the word budget, enforced in code ------------------------------------------------------------
 # rules.yaml ``scope_size``: the limit for a single-user tool or a library, and for a team or a
 # business; trim_max_usd: what the one shortening pass may cost (estimated before it starts from
 # the first call's cost: its input is the first reply, so it costs no more than that call);
@@ -481,7 +481,7 @@ def build_prompt(
         return spec + "\n\n" + suffix + "\n"
     text = custom_text("build").replace("<<spec>>", spec)
     if md and product_rules and policy_entry(policy, "product") is not None:
-        # EX-PLAN §4: a scoped build's product ships as the builder leaves it, so it is told
+        # A scoped build's product ships as the builder leaves it, so it is told
         # what a product carries (its own tests, AGENTS.md, SECURITY.md, CI ...)
         rules = custom_text("product").strip()
         at = text.rfind(suffix)
@@ -489,8 +489,8 @@ def build_prompt(
     return text
 
 
-# -- a spec's own definition of done (EV7): a spec that passes through gets flows too -----------
-# Without one, completeness could not be scored and every precise spec was held for it (EVI).
+# -- a spec's own definition of done: a spec that passes through gets flows too -----------------
+# Without one, completeness could not be scored and every precise spec was held for it.
 # Drawn from the spec's text, no model: its acceptance lines, else its numbered or bulleted
 # requirements, else its sentences that state a behaviour (split at "; " when the parts name
 # their own commands or endpoints), in the spec's order.

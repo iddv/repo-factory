@@ -1,7 +1,7 @@
-"""A build is judged by the repo-factory version that built it (EX-PLAN §7, PR 5): the gate records
-it; "Re-check with current repo-factory" runs the installed version's checks on the same delivered
-tree and says where they differ (one that only turns holds into passes is the verdict, AU1
-#3: ``test_recheck_clears``); at publish the press runs every scan again with the installed
+"""A build is judged by the repo-factory version that built it: the gate records it;
+"Re-check with current repo-factory" runs the installed version's checks on the same delivered
+tree and says where they differ (one that only turns holds into passes is the verdict:
+``test_recheck_clears``); at publish the press runs every scan again with the installed
 version; a "Suspect this check" files a factory issue labelled check, never go."""
 
 import json
@@ -61,7 +61,7 @@ def test_a_recheck_says_what_differs_and_one_that_only_passes_is_the_verdict(tmp
     assert rc["state"] == "done" and rc["version"] == recheck.installed()
     assert [(d["check"], d["was"], d["now"]) for d in rc["differs"]] == [("tests", False, True)]
     assert recheck.words(rc) == f"re-checked with {rc['version']}: tests passes now"
-    # AU1 #3: it only turned the tests hold into a pass: that is the verdict now
+    # it only turned the tests hold into a pass: that is the verdict now
     after = lp.ledger.must(iid)
     assert after["state"] == "ready" and after["reason"] is None
     assert after["gate"]["judged_by"] == rc["version"]
@@ -126,7 +126,7 @@ def test_recheck_is_a_click_never_automatic_and_offered_on_held_and_ready():
 
 
 def test_the_press_runs_every_scan_again_whatever_the_record_kept(tmp_path):
-    # AU2 #7: no "pinned" scans: a record from the builder's version is never reused
+    # no "pinned" scans: a record from the builder's version is never reused
     stage = tmp_path / "p"
     stage.mkdir()
     (stage / "README.md").write_text("# P\n\nRun it with brb.\n")

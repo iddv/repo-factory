@@ -1,4 +1,4 @@
-"""Track E (build v5 §5, §6.1): the lessons file, lint, injection, post-mortem, credit,
+"""Lessons (build v5 §5, §6.1): the lessons file, lint, injection, post-mortem, credit,
 promotion and history. Offline: every model call and v5 run is a fake."""
 
 import json

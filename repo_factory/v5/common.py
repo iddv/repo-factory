@@ -23,11 +23,11 @@ STAGES = (
     "readiness",
     "deliver",
 )
-# The simple flow's stage library (BF-DESIGN §4: Brief → Plan → Build → Check ⇄ Fix →
-# Publish), a policy with ``flow: simple`` (``policies/simple``). Chosen per build
-# (``build.flow``), beside today's: the records and events keep their names (D10).
+# The simple flow's stage library (Brief → Plan → Build → Check ⇄ Fix → Publish), a policy
+# with ``flow: simple`` (``policies/simple``). Chosen per build (``build.flow``), beside
+# today's: the records and events keep their names (D10).
 SIMPLE_STAGES = ("plan", "build", "check", "fix", "deliver")
-# The lean flow's (track LEAN: Brief → Build → Harden → Check → Fix once → Publish), a policy
+# The lean flow's (Brief → Build → Harden → Check → Fix once → Publish), a policy
 # with ``flow: lean`` (``policies/lean``); its stage list is ``stages.LEAN``.
 LEAN_STAGES = ("scope", "build", "harden", "check", "fix", "deliver")
 # Today's role and stage names onto the lean flow's (a loop.yaml's build.models and
@@ -42,7 +42,7 @@ LEAN_MAP = {
     "readiness": "check",
 }
 # Today's stage names onto the simple flow's (a loop.yaml's build.models and build.stage_caps
-# written for today's flow; BF-DESIGN §7.3): a name mapped to None does nothing there.
+# written for today's flow): a name mapped to None does nothing there.
 SIMPLE_MAP = {
     "scope": "plan",
     "claims": None,
@@ -65,9 +65,9 @@ SIMPLE_LEDGER = {
 }
 # Stages repo-factory no longer has. An older rules.yaml, or a loop.yaml's build.models or
 # build.stage_caps, may still name one: it is dropped as if it were not there. mutants: its
-# score decided nothing (AU1 #4).
+# score decided nothing.
 RETIRED_STAGES = ("mutants",)
-# Stages only a maintenance fix runs (MAINTAIN.md §5.2, ``maintain/revise.py``): reproduce
+# Stages only a maintenance fix runs (``maintain/revise.py``): reproduce
 # writes the failing test first. Kept out of STAGES so a build's stage list, report and costs
 # stay as they were.
 REVISE_STAGES = ("reproduce",)

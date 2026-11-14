@@ -1908,7 +1908,7 @@ _add(
     )
 )
 PROJECT_KINDS.append("pause_project")
-# the owner, 2026-10-29: pause maintenance on one project, in repo-factory, at once (maintain/pauses.py)
+# pause maintenance on one project, in repo-factory, at once (maintain/pauses.py)
 _add(
     Action(
         "pause_maintenance",
@@ -2204,7 +2204,7 @@ def _loop_cfg(ctx):
 
 
 def r_github_connect(ctx, f, s):
-    """Start GitHub's device flow (WZ-DESIGN §3.6): the code and the page come back; the
+    """Start GitHub's device flow: the code and the page come back; the
     page then polls ``api/github/user/poll``. Nothing is written on GitHub."""
     from . import github_user as U
     from .github_app import AppError

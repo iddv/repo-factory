@@ -1,4 +1,4 @@
-"""repo-factory's exam, outside the product (EX-PLAN §3).
+"""repo-factory's exam, outside the product.
 
 A round's **exam** is its rule store materialised as files in the den, with the verifier's
 driver: ``<round>/exam/_verify/`` (every active scenario, held ones too) and
@@ -14,7 +14,7 @@ sandbox invocation (``examrunner.py`` inside bwrap), cached by **tree hash** in
 ``<round>/exam/results/<key>.json``. Every consumer reads that record: validate, measure,
 re-verify, readiness, delivery, the gate, a revise round's baseline.
 
-The flake protocol (§3.3): with ``flake=True`` a failing scenario (or own test command) is run
+The flake protocol: with ``flake=True`` a failing scenario (or own test command) is run
 again alone, ``exam.reruns`` more times (5 runs in all), stopping once the verdict is
 decided. One failure in five: **flaky**, repo-factory's own problem: the scenario is retired and
 listed (``flaky.jsonl``), never a finding. At least ``exam.intermittent_hold_min`` (3)
@@ -425,7 +425,7 @@ def _save(run, rec: dict) -> None:
 
 
 def reuse(r, art: Path, parent: tuple[int, dict]) -> dict | None:
-    """A docs round's delivered tree (AU1 #8): when its non-documentation files are those of
+    """A docs round's delivered tree: when its non-documentation files are those of
     the round it revises (``code_key``) and the exam and its settings are the same, that
     round's record (``parent``: its number and record) stands for this tree. If the README's
     test commands changed, only they run again. The record says so (``reused``). None: the
@@ -665,8 +665,8 @@ NPM_DEFAULT_TEST = "no test specified"
 
 def node_suite(tree: Path) -> bool:
     """The tree has its own Node test script (``package.json`` ``scripts.test``, not npm's
-    placeholder): the own-suite run runs it beside pytest (track LEAN2: a Node product's
-    flows were "unchecked" because the run was pytest only)."""
+    placeholder): the own-suite run runs it beside pytest (a Node product's flows were
+    "unchecked" when the run was pytest only)."""
     try:
         d = json.loads((Path(tree) / "package.json").read_text())
     except (OSError, ValueError):
@@ -874,7 +874,7 @@ def flaky_rows(run) -> list[dict]:
     return rows
 
 
-# -- delivery (§4) ----------------------------------------------------------------------------------
+# -- delivery ----------------------------------------------------------------------------------------
 def final(r, art: Path, parent: tuple[int, dict] | None = None) -> dict:
     """The delivered tree's record: the product's own tests (per test, and the README's test
     commands as written) and every active scenario, the flake protocol on; flaky scenarios
@@ -902,7 +902,7 @@ def is_test_path(path: str) -> bool:
 
 
 def adoption(r, ws: Path | None = None) -> dict:
-    """``exam.adopt: fixes`` (§4.3): every finding a ``fix(<id>)`` commit names comes with a
+    """``exam.adopt: fixes``: every finding a ``fix(<id>)`` commit names comes with a
     test of the product's own, in some commit naming it. Checked from git, no model:
     ``{"mode", "fixed": [ids], "missing": [ids], "with": [ids]}``."""
     from . import repair
@@ -969,7 +969,7 @@ expects the checkout there (a symbolic link is enough).
 
 
 def evidence(r, rec: dict, docs: dict[str, str], product: str) -> Path:
-    """``<round>/exam/evidence/``: what the release asset holds (§4.4). ``docs``:
+    """``<round>/exam/evidence/``: what the release asset holds. ``docs``:
     ``readiness.md``, ``security.md``, ``assumptions.md`` by name."""
     r = _unwrap(r)
     root = r.root / DIR
@@ -1060,7 +1060,7 @@ run `python -m pytest tests/acceptance` from its root.
 
 
 def legacy_evidence(round_dir: Path, product: str) -> Path | None:
-    """The checks asset of a round: its evidence when it has one (EX-PLAN §4.4); for a round
+    """The checks asset of a round: its evidence when it has one; for a round
     from before the exam moved out, one made from what it delivered into the tree
     (``<round>/exam/evidence-legacy/``: the acceptance suite, the three reports, the build's
     record). None when the round delivered nothing."""
@@ -1119,7 +1119,7 @@ def legacy_evidence(round_dir: Path, product: str) -> Path | None:
     return out
 
 
-# -- what earlier versions wrote into a tree (§8.1) ------------------------------------------------
+# -- what earlier versions wrote into a tree -------------------------------------------------------
 ACC_SECTION = re.compile(
     r"\n*## Acceptance tests\n\nEnd-to-end checks of the product's behaviour "
     r"are in `tests/acceptance/`.*?(?=\n## |\Z)",
@@ -1207,7 +1207,7 @@ def strip_legacy(root: Path) -> list[str]:
     return gone
 
 
-# -- dependencies (the install phase, §5.1) ------------------------------------------------------
+# -- dependencies (the install phase) ------------------------------------------------------------
 def install_deps(run, tree: Path) -> dict:
     """What the product needs installed beyond its Python venv: Node packages through the
     index proxy (``nodeinstall.install``), cached per lockfile, and the wheels a user's

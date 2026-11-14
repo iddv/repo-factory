@@ -389,7 +389,7 @@ def _run_owned(cmd, cwd, prompt, out, timeout_s, on_start, extra) -> tuple[int, 
     return p.returncode, err or ""
 
 
-# -- resuming a session from another directory (build v3 §3) -------------------------------
+# -- resuming a session from another directory (build v3) ----------------------------------
 # Claude Code keeps each session as ``<config>/projects/<project key>/<session id>.jsonl``,
 # where the project key is the working directory with every character other than
 # [A-Za-z0-9] replaced by "-", and ``--resume <id>`` looks in the current directory's

@@ -1,4 +1,4 @@
-"""Typed contracts for stored JSON (RCA 2026-10-23, A1; repo-factory-notes plans/CTR-DESIGN.md §2).
+"""Typed contracts for stored JSON.
 
 **A stored shape is declared once, in code, and crossed only through its type.** Every JSON
 column, every ``settings`` key that holds an object and every file repo-factory reads back has one
@@ -564,7 +564,7 @@ class Stored:
     # -- odd values --
     @classmethod
     def named_odd(cls) -> list[Self]:
-        """The odd cases a contract names by hand (the RCA's row, a pack's record): what a real
+        """The odd cases a contract names by hand (a row seen in real data, a pack's record): what a real
         writer stores that the derived set (:meth:`odd`) would not make on its own."""
         return []
 

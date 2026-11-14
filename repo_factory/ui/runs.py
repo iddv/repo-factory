@@ -1,4 +1,4 @@
-"""A product's Builds (UXD-DESIGN §2, UXI-1): one record per attempt, derived from what exists.
+"""A product's Builds: one record per attempt, derived from what exists.
 
 Every attempt to make a product is a numbered round in the task's event log (``build: N``,
 folders ``.den/v5/r<N>/``); the page calls round N **Build N**. A fresh build, a retry and a
@@ -26,8 +26,8 @@ from pathlib import Path
 from ..events import START_TYPES, alive, fold, log_path, read_events
 from ..loop.gate import GATE_FILE
 
-# mutants: retired (AU1 #4); only an old round that ran it lists it, in the place it ran
-# The simple flow's steps (BF-DESIGN: plan, check, fix) take their places among today's; a round
+# mutants: retired; only an old round that ran it lists it, in the place it ran
+# The simple flow's steps (plan, check, fix) take their places among today's; a round
 # lists only its own flow's
 STAGE_ORDER = (
     "reproduce",
@@ -85,7 +85,7 @@ def who(origin: str | None, note: str = "") -> dict:
         return {"by": "chat", "door": "chat", "name": None}
     if o.startswith("agent:"):
         return {"by": "agent", "door": "mcp", "name": o[len("agent:") :]}
-    if o in ("honesty", "auto"):  # the wording check's, a hold's repair (AU1 #2)
+    if o in ("honesty", "auto"):  # the wording check's, a hold's repair
         return {"by": "repo-factory", "door": o, "name": None}
     if not o and re.search(r"by the owner|^retry", note or ""):
         return {"by": "you", "door": None, "name": None}
@@ -173,7 +173,7 @@ GATE_NOTE = re.compile(
 
 CHECKS = ("delivered", "documents", "security", "tests", "safe_defaults", "completeness")
 """The release checks (loop/gate.py), six: what "5 of 6 passed" counts. A round judged before
-the ``p_hidden`` check went (AU1 #5) kept its checks, seven, in its ``gate.json``."""
+the ``p_hidden`` check went kept its checks, seven, in its ``gate.json``."""
 REASON_START = re.compile(r"(?:^|; )(?=(?:" + "|".join(CHECKS) + r"): )")
 
 

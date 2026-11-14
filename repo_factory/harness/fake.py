@@ -41,7 +41,7 @@ class FakeHarness:
         root = self.solution.parent / "_fake_milestones" if self.solution else None
         if not mid or root is None or not root.is_dir():
             return None
-        # Build v3 §3 task runs: ``<task>.h<hint>/`` (a design task's fork), then
+        # Build v3 task runs: ``<task>.h<hint>/`` (a design task's fork), then
         # ``<task>/`` (e.g. ``m2.t1/``), then the milestone's, each ``.broken`` first.
         names = [mid]
         if meta.get("task"):
@@ -49,7 +49,7 @@ class FakeHarness:
                 [f"{meta['task']}.h{meta['hint']}"] if meta.get("hint") is not None else []
             ) + [meta["task"], mid]
         if meta.get("epoch"):
-            # Build v3 §4: after backtrack k, ``<name>.bt<k>/`` first (the rebuilt code).
+            # Build v3: after backtrack k, ``<name>.bt<k>/`` first (the rebuilt code).
             names = [f"{n}.bt{meta['epoch']}" for n in names] + names
         for name in names:
             broken = root / f"{name}.broken"

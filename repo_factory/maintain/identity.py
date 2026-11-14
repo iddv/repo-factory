@@ -1,8 +1,8 @@
-"""Who repo-factory is on GitHub when it maintains (MAINTAIN.md §6.3, decision D1; GA-PLAN.md).
+"""Who repo-factory is on GitHub when it maintains (decision D1 in docs/maintain.md).
 
 Four identities, one seam (``resolve``), chosen by ``maintain.identity``:
 
-- **repo-factory's own GitHub App** (``app``; GA-PLAN): an app named ``repo-factory-<login>`` the owner
+- **repo-factory's own GitHub App** (``app``): an app named ``repo-factory-<login>`` the owner
   creates from Settings › Publishing › GitHub, installed on the repositories repo-factory maintains. Each call
   gets a one-hour installation token narrowed to the fewest permissions and the one
   repository it acts on (``github_app.SCOPES``); comments, labels and pull requests carry the
@@ -552,7 +552,7 @@ def doctor(home: str | Path | None = None) -> tuple[str, str]:
 
 def held_lines(home) -> list[dict]:
     """The products whose AGENTS.md is missing or does not run (the last poll's cache; no
-    GitHub call), each with the one thing that fixes it. Their fixes go on (AU3 finding 4)."""
+    GitHub call), each with the one thing that fixes it. Their fixes go on."""
     from .github import Cache
 
     out = []

@@ -1,4 +1,4 @@
-"""The live feed (FE-PLAN §4.2, FE-3): ``/api/stream`` says what changed, never the data. One
+"""The live feed: ``/api/stream`` says what changed, never the data. One
 watcher per process stats the state files (the ledger, each build's events,
 the job records) and never reads the network or a model; a stdlib client reads the host
 event and a change; a ninth stream is refused and the page polls; a place is given back when

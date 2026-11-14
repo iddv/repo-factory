@@ -1,4 +1,4 @@
-"""AU1 #2: a build the gate holds gets one automatic code revise round (origin ``auto``) with
+"""A build the gate holds gets one automatic code revise round (origin ``auto``) with
 the hold as its brief (``build.auto_repair``, default 1; 0: off), instead of waiting for the
 owner to type the gate's reasons back. A round that leaves the hold exactly as it found it
 stops them with one line. The builds are the fake ``repo-factory build``/``repo-factory revise``."""

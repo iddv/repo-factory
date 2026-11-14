@@ -23,10 +23,10 @@ def test_rules_yaml_is_the_design_and_its_stage_list_is_checked(tmp_path):
     r = pipeline.load_rules(POLICY)
     # no global cap by default (the owner's standing rule); the cost trims of V5-POLISH
     assert r["pipeline"] == "v5" and r["max_usd"] is None
-    # one claim sample: the second fed only p_hidden's capture-recapture term (AU1 #5)
+    # one claim sample: the second fed only p_hidden's capture-recapture term
     assert r["claims"]["samples"] == 1 and "samples_scoped" not in r["claims"]
     assert r["repair"]["resume"] == "auto" and r["repair"]["warm_minutes"] == 30
-    # keys nothing read (AU1 #5)
+    # keys nothing read
     assert not {"regenerate", "stop"} & set(r) and "rounds" not in r["repair"]
     assert r["stages"] == [
         "scope",
@@ -39,7 +39,7 @@ def test_rules_yaml_is_the_design_and_its_stage_list_is_checked(tmp_path):
         "readiness",
         "deliver",
     ]
-    assert "mutants" not in r  # the stage is gone (AU1 #4)
+    assert "mutants" not in r  # the stage is gone
     # spend is uncapped by default: no stage cap and no session max_usd (every one optional)
     assert r["build"]["stage_caps"] == {} and r["build"]["max_usd"] is None
     assert (
@@ -522,7 +522,7 @@ def test_report_puts_what_was_checked_first_and_lists_cost_by_stage():
         < r.index("## Cost by stage")
         and "Fork" not in r
     )
-    # the facts, not a prediction (AU1 #5)
+    # the facts, not a prediction
     assert (
         "10 claims from the spec: 2 defects confirmed, 1 fixed, 1 open; 0 claim(s) "
         "could not be checked."

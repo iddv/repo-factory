@@ -1,8 +1,8 @@
-"""Maintenance, track M4 (MAINTAIN.md §11): publishing puts the maintenance files and the
-label scheme on a new build from its first commit; the post-mortem of user-found bugs
-(``repo-factory lessons postmortem --issues``); the drift doctor on GitHub and its Today rows; the token
-path (decision D1) and the identity line ``repo-factory doctor`` prints. A fake ``gh``, a fake GitHub
-and a scripted model: no model, no network."""
+"""Maintenance: publishing puts the maintenance files and the label scheme on a new build from
+its first commit; the post-mortem of user-found bugs (``repo-factory lessons postmortem
+--issues``); the drift doctor on GitHub and its Today rows; the token path and the identity
+line ``repo-factory doctor`` prints. A fake ``gh``, a fake GitHub and a scripted model: no
+model, no network."""
 
 import json
 import os
@@ -74,8 +74,8 @@ def show(bare, path, ref="main"):
 
 # -- publish: the maintenance files in the first commit, labels and settings after create --------
 def test_publish_carries_only_the_machine_read_policy_by_default(tmp_path, fake_gh):
-    """EX-PLAN Q5: ``publish.maintenance_files: policy``: .github/repo-factory.yml and labels.yml in
-    the first commit, the labels after create; AGENTS.md, CI and the rest are the product's."""
+    """``publish.maintenance_files: policy``: .github/repo-factory.yml and labels.yml in the
+    first commit, the labels after create; AGENTS.md, CI and the rest are the product's."""
     lp, iid, _ = built(tmp_path, {"files": FILES}, publish={"enabled": True})
     assert lp.gate(iid)["state"] == "ready"
     out = lp.publish(iid)

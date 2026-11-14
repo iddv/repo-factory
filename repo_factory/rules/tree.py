@@ -1,6 +1,6 @@
 """Reading a candidate's tree: its files as prompt text (``artifact_text``,
 ``source_text``), and whose fault a failing test is (``broken_reason``,
-``missing_dependency``). Moved from ``problems/repo/checklist.py`` (S-5b): the rule
+``missing_dependency``). Moved from ``problems/repo/checklist.py``: the rule
 set and v5 use them, the research checklist too."""
 
 from __future__ import annotations
@@ -143,7 +143,7 @@ def is_source(rel: Path) -> bool:
 
 
 def source_text(root: Path, first=(), limit: int = 60_000) -> str:
-    """The candidate's source files as prompt text for the miner (build v3 §7c,
+    """The candidate's source files as prompt text for the miner (build v3,
     ``mining.lean_prompt``): ``artifact_text`` without tests and docs, the files in
     ``first`` (the milestones the pass is about) ahead of the rest, so a truncation never
     cuts them; the others still appear by name."""

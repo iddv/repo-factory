@@ -1,8 +1,8 @@
-"""Where an accepted change is, in what is true now (UXD-DESIGN §2, the stepper; UXI).
+"""Where an accepted change is, in what is true now (the page's stepper).
 
 A change's own state (``changes.state``) says what repo-factory decided: ``queued`` when it was
 accepted, ``closed`` once its issue is closed (``building`` and ``held`` are older rows' copies
-of GitHub, read as ``queued``: AU3 finding 6). On its own it would not know that its pull
+of GitHub, read as ``queued``). On its own it would not know that its pull
 request waits for you, or that its fix gave up ("cannot reproduce"). ``step`` reads the rest: the issue it was filed
 as, the fix's run in its task folder (``fix-<owner>-<repo>-<issue>``: running, a PR opened,
 could not fix) and the last poll (is that PR still open), and says where the change is, as the

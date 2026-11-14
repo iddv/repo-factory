@@ -1,13 +1,13 @@
-"""What a claim means: repo-factory reads it at build start (NG-PLAN.md).
+"""What a claim means: repo-factory reads it at build start.
 
-An idea's literal claims are a starting point, not a contract (the owner, 2026-10-11). When a
-claim can't be honoured or verified as written ("permanently", "every", "exactly", "never
-fails"), the pitch records an **interpretation** that keeps the idea's core value, and the
-build uses it: the spec (``spec_section``), so the scope, the README and the hidden suite
-read it, and where the reading turns on a number or a yes/no, an operator setting with a
-default. This is the only place claims are negotiated: at build start, against the spec,
-where it shapes what gets built (the owner, 2026-10-16). Publishing never negotiates: the
-public text is written from the product (``describe.py``) and wording is never a hold.
+An idea's literal claims are a starting point, not a contract. When a claim can't be honoured
+or verified as written ("permanently", "every", "exactly", "never fails"), the pitch records
+an **interpretation** that keeps the idea's core value, and the build uses it: the spec
+(``spec_section``), so the scope, the README and the hidden suite read it, and where the
+reading turns on a number or a yes/no, an operator setting with a default. This is the only
+place claims are negotiated: at build start, against the spec, where it shapes what gets
+built. Publishing never negotiates: the public text is written from the product
+(``describe.py``) and wording is never a hold.
 
 The record is ``ideas.pitch.claims``, one dict per claim::
 
@@ -166,9 +166,8 @@ def merge(old: list[dict], new: list[dict]) -> list[dict]:
 def open_for(idea: dict) -> bool:
     """Whether the owner may accept or edit a reading now: before the build starts (queued and
     never run, or held before building because no reading kept the idea's spirit), or once it
-    is published, where a reading is its project's charter promise (PJ-PLAN.md §5.5). Never
-    between a build and its publish: publishing never negotiates claims (the owner,
-    2026-10-16)."""
+    is published, where a reading is its project's charter promise. Never
+    between a build and its publish: publishing never negotiates claims."""
     st, g, b = idea.get("state"), idea.get("gate"), idea.get("build")
     if st == "held":
         return isinstance(g, dict) and bool(g.get("before_build"))

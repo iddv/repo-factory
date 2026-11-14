@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS plans(
 CREATE INDEX IF NOT EXISTS nodes_task ON nodes(task_id, round_id, seq);
 """
 
-# Numbered from here on (CR-PLAN S-7; ``repo_factory/migrate.py``): 1 is the schema above with the
+# Numbered from here on (``repo_factory/migrate.py``): 1 is the schema above with the
 # columns added after it first shipped; a den made before numbering began is that baseline.
 MIGRATIONS = [
     (

@@ -1,4 +1,4 @@
-"""A project's charter (PJ-PLAN.md §3): one page in plain words saying what the project is, for
+"""A project's charter: one page in plain words saying what the project is, for
 whom, what it promises, what it will not do, which ways it may grow, and the tests a reviewer
 asks of any change. Everything else about a project reads or writes this page.
 

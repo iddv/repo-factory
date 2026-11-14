@@ -4,13 +4,13 @@ README says to start it again, not a second server; a step offered with "or" run
 the one before it didn't work; and an example that takes a data file of the user's own is not
 a failure of the README. Every flow's gate reads these.
 
-The real cases (track LEAN2):
-- **Plotkeeper (LEAN's lean run):** "Stop Plotkeeper with Ctrl+C. Start it again later with:
+The real cases:
+- **Plotkeeper (a lean-flow build):** "Stop Plotkeeper with Ctrl+C. Start it again later with:
   ``npm start``" ran while ``sh install.sh`` still served, hit the product's own "already
   running" guard, and held the build (a false hold: the tester got 11/11 from the same
   README).
-- **Nextread r1 (EV8):** ``nextread import tabs.txt  # bulk capture: one title or URL per
-  line`` failed with "cannot read tabs.txt", a reading list the user brings; EV8's quick-start
+- **Nextread r1:** ``nextread import tabs.txt  # bulk capture: one title or URL per
+  line`` failed with "cannot read tabs.txt", a reading list the user brings; the quick-start
   check counted it red."""
 
 from pathlib import Path
@@ -195,7 +195,7 @@ def test_an_alternative_runs_only_when_the_step_before_it_failed(tmp_path):
     assert commands.items(res, tests=False, restart=False)["commands"]["status"] == "red"
 
 
-# LEAN3's FrontDesk: "To try it with made-up data instead, start it with ``--demo``". No start
+# FrontDesk's README: "To try it with made-up data instead, start it with ``--demo``". No start
 # verb, so it ran while ``python3 frontdesk.py`` still served, and failed on its own "Port 8765
 # is already in use" (a false hold: the tester got 13/13 from the same README)
 FD = r"""import http.server, sys
@@ -284,7 +284,7 @@ def test_a_file_an_earlier_step_wrote_and_other_failures_stay_red(tmp_path):
 
 
 def test_driftwatch_s_sample_output_is_read_not_run(tmp_path):
-    # LEAN2's Driftwatch: "It prints something like:" then an untagged block of output; the
+    # Driftwatch's README: "It prints something like:" then an untagged block of output; the
     # check ran "Driftwatch is running at ..." as a command (exit 127) and held for it
     (tmp_path / "README.md").write_text((FIX / "driftwatch-lean2-README.md").read_text())
     quick = [e["cmd"] for e in commands.extract(tmp_path)["quick"]]

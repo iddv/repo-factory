@@ -1,6 +1,5 @@
 """Background jobs: start a process that outlives the request (or the loop's tick) that asked
-for it, tell whether it still runs, stop it, and remember it across a restart (CR-PLAN S-9;
-review A-6). Moved from ``loop/builds.py``, whose careful helpers every other spawner now
+for it, tell whether it still runs, stop it, and remember it across a restart. Moved from ``loop/builds.py``, whose careful helpers every other spawner now
 shares:
 
 - ``spawn_detached``: its own session (so its process group is its own), stdin closed, output

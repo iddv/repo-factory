@@ -1,4 +1,4 @@
-"""Drift checks: facts about a project's repo that code can establish for free (PJ-PLAN §4.2).
+"""Drift checks: facts about a project's repo that code can establish for free.
 
 The experiment showed a model run missing drift a plain comparison finds every time (Receipts'
 pyproject said 1.0.0 while the tags stopped at v0.1.3 and the CHANGELOG at 0.1.0). So these
@@ -190,7 +190,7 @@ def releases_by_factory(root: Path) -> bool:
     """``.github/repo-factory.yml`` › ``release.on_merge`` is on: repo-factory's release step cuts this repo's
     releases, and it writes the tag and nothing else (``maintain/release.py``). The tag is the
     version then, and a number stated in a file falling behind it is repo-factory's own doing, not
-    drift (AU3 finding 2: 7 of 8 projects were flagged for it)."""
+    drift (an audit once found 7 of 8 projects flagged for it)."""
     try:
         doc = yaml.safe_load(_read(root, ".github/repo-factory.yml"))
     except yaml.YAMLError:
@@ -525,7 +525,7 @@ def _floor_eol(floor, floors, tested, table, today) -> list[dict]:
 
 PIN = re.compile(r"(?<![\w.-])([A-Za-z][\w.-]*)==(\d+(?:\.\d+)*)\b")
 # the acceptance suite's install line that repo-factory's own templates wrote until 2026-10-16
-# (AGENTS.md and ci.yml): repo-factory's pin, not the product's (AU3 finding 2: 11 findings)
+# (AGENTS.md and ci.yml): repo-factory's pin, not the product's
 TEMPLATE_PIN = re.compile(
     r"python -m pip install pytest==[\d.]+(?:\s*&&\s*python -m pytest "
     r"tests/acceptance\b|\s*$)"

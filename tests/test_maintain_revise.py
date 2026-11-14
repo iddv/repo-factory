@@ -1,4 +1,4 @@
-"""Maintenance's fixing half (MAINTAIN.md §11, M3): the queue, claim and lease, the reproduce
+"""Maintenance's fixing half: the queue, claim and lease, the reproduce
 stage, the fix on a fixture product, the scope check, the pull request, failures and
 ``needs-you``, the release on merge with its lesson label, Cut a ticket, the network
 allowlist, and the fix rows in the UI. A fake GitHub behind a fake ``gh`` (a local bare repo
@@ -858,7 +858,7 @@ def test_cut_ticket_validates_checks_and_runs_through_the_fake_gh(world):
     ):
         with pytest.raises(R.ActionError):
             R.validate("cut_ticket", {"issue": "x", "text": "y", "labels": ["bug"], **bad})
-    # Ask for changes (AR-PLAN.md §2.5) needs the instructions, and on a published build its
+    # Ask for changes needs the instructions, and on a published build its
     # check sends the owner to an issue
     with pytest.raises(R.ActionError, match="needs instructions"):
         R.validate("revise", {})
@@ -983,7 +983,7 @@ def test_no_attribution_in_what_factory_posts():
 
 
 def test_a_feature_or_task_is_specified_not_reproduced(world):
-    """AU3 findings 5 and 7: an accepted feature (Beliefline #8) or a maintenance task
+    """An accepted feature (Beliefline #8) or a maintenance task
     (Beliefline #6) names no failing behaviour; its test specifies what it asks for, and must
     still fail on main for the stated reason."""
     lp, fake, _ = world

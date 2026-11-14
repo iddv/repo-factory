@@ -1,7 +1,7 @@
 """The readiness stage (docs/design/build-v5.md, Addendum C), offline: the security review
 and the operational checks through a scripted harness, findings flowing to the readiness
 repair by severity and budget, the scorecard, the security and readiness reports in the
-round's evidence (EX-PLAN §4.4: never in the delivered tree), no build-process words in the
+round's evidence (never in the delivered tree), no build-process words in the
 product's prose, the scope prompt's breadth and safe defaults, the cap and the UI."""
 
 import json
@@ -441,7 +441,7 @@ def test_the_scorecard_and_the_deliverables(built):
 
 
 def test_the_tree_is_the_products_and_the_checks_are_in_the_evidence(built):
-    """EX-PLAN §4: the delivered tree holds what the build agent wrote; repo-factory's scenarios,
+    """The delivered tree holds what the build agent wrote; repo-factory's scenarios,
     the reviewers' probes and helpers, the results and the reports are the evidence."""
     t, h, out = built
     o = Path(out["out"])

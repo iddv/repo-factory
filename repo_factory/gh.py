@@ -49,7 +49,7 @@ def token_env(path: str | Path) -> dict[str, str]:
 class Gh:
     """The ``gh`` CLI (logged in as the owner). ``run(args, cwd) -> (code, out, err)`` is
     replaceable for tests. ``env_file``: a token env file (``token_env``) whose ``GH_TOKEN``
-    the ``gh`` subprocess gets instead of the login (MAINTAIN.md §6.3, decision D1).
+    the ``gh`` subprocess gets instead of the login (decision D1 in docs/maintain.md).
     ``token``: a callable that returns a token for each subprocess instead (repo-factory's own
     GitHub App, ``github_app.GitHubApp.gh``; it raises ``TokenError`` when it cannot), with
     ``login`` the name that identity has without a call (the bot's)."""

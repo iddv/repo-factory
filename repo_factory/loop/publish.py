@@ -391,7 +391,7 @@ MAINTENANCE_FILES = ("policy", "all", "none")
 
 
 def maintenance_which(cfg) -> str:
-    """``publish.maintenance_files`` (EX-PLAN Q5): ``policy`` (default), ``all`` or ``none``."""
+    """``publish.maintenance_files``: ``policy`` (default), ``all`` or ``none``."""
     v = str(cfg["publish"].get("maintenance_files") or "policy")
     return v if v in MAINTENANCE_FILES else "policy"
 
@@ -551,7 +551,7 @@ def push(prep: dict, idea: dict, gh: Gh) -> dict:
 def update_release_text(
     gh: Gh, full: str, product: str, text: str, tag: str = f"v{VERSION}"
 ) -> dict:
-    """repo-factory's own text on a published repo, reworded (NG-PLAN §5): the description, and the
+    """repo-factory's own text on a published repo, reworded: the description, and the
     first paragraph of the release notes (the checks asset's sentence and any override
     disclosure after it stay as they were). Code, files and visibility are never touched."""
     from . import claims as cl

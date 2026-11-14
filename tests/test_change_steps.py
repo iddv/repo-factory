@@ -1,4 +1,4 @@
-"""A change's state says what is true (UXI; ``repo_factory/projects/steps.py``). The owner saw
+"""A change's state says what is true (``repo_factory/projects/steps.py``). The owner saw
 Projects call changes "building" while their pull request waited, after their fix said it could
 not reproduce, and after the PR merged, with nothing running. The step reads the issue, the
 fix's run and the poll, so each of those reads as what it is."""

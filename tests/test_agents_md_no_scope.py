@@ -1,4 +1,4 @@
-"""The AGENTS.md repo-factory renders carries no sentence of SCOPE.md's (AU2 #1).
+"""The AGENTS.md repo-factory renders carries no sentence of SCOPE.md's.
 
 SCOPE.md is the scope stage's spec, written from the pitch before the build. Sidedoor's
 rendered AGENTS.md took its "Does:" line from it ("…and records every credential that

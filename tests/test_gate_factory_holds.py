@@ -1,4 +1,4 @@
-"""AU1 #1: the gate holds only on the product. What repo-factory itself could not measure (a flow
+"""The gate holds only on the product. What repo-factory itself could not measure (a flow
 the harness's sandbox fails on both copies, a flow no scenario checked) is a gap, stated, never
 a hold. The one exception: a security review that did not run holds the build, and Publish
 anyway never overrides it. The cases are real rounds' records, trimmed

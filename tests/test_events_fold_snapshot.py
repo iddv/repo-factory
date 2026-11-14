@@ -1,4 +1,4 @@
-"""Characterisation of events.fold (CR-PLAN S-14, before it becomes a dispatch table): the
+"""Characterisation of events.fold (before it becomes a dispatch table): the
 state of every build in two logs, pinned whole.
 
 - ``fixtures/events/every_kind.jsonl``: every event type fold reads, each with the fields it
@@ -62,7 +62,7 @@ def test_the_synthetic_log_carries_every_type_fold_reads():
                     if isinstance(x, ast.Constant) and isinstance(x.value, str):
                         read.add(x.value)
     read |= set(events.START_TYPES) | set(events.V4_TYPES) | set(events.V5_TYPES)
-    read |= set(getattr(events, "FOLD", {}))  # the dispatch table (S-14)
+    read |= set(getattr(events, "FOLD", {}))  # the dispatch table
     read.discard("v5_plan")  # fold's own: build_started's stage plan
     have = {e["type"] for e in events.read_events(LOGS["every_kind"])}
     assert read - have == set()

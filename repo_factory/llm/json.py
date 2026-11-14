@@ -1,5 +1,5 @@
 """The JSON object in a model's answer: a fenced block (nested braces kept), else the outermost
-braces. Moved from ``scoring/builder.py`` (S-5a): the rule set and v5 read answers with it."""
+braces. Moved from ``scoring/builder.py``: the rule set and v5 read answers with it."""
 
 from __future__ import annotations
 

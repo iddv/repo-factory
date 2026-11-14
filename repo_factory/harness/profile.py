@@ -223,7 +223,7 @@ class Mirror:
                 pass
 
     def start(self) -> Mirror:
-        self._thread = threading.Thread(target=self._loop, name="brb-cred-mirror", daemon=True)
+        self._thread = threading.Thread(target=self._loop, name="repo-factory-cred-mirror", daemon=True)
         self._thread.start()
         return self
 
@@ -255,7 +255,7 @@ def is_clean(dir: Path) -> list[str]:
 
 def _sync_credentials(cfg: Path, source: Path, copied: bytes | None) -> None:
     """After a run: remove the session's copy of the credentials from ``cfg``. Nothing of it
-    is written back to the owner's dir (decision O-3)."""
+    is written back to the owner's dir."""
     f = cfg / CREDENTIALS
     if f.exists() and source.resolve() != cfg.resolve():
         f.unlink()

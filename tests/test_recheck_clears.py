@@ -1,4 +1,4 @@
-"""AU1 #3: a Re-check that only turns holds into passes is the build's verdict. Nextread r1 was
+"""A Re-check that only turns holds into passes is the build's verdict. Nextread r1 was
 held on completeness (F1 broken under 0.3.8); "Re-check with current repo-factory" with 0.3.9 passed
 every flow, and then a full rebuild ($7.28) was needed just to get that verdict on the record.
 Replayed from trimmed copies of its round records and of the re-check's exam record; the exam

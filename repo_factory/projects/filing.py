@@ -1,10 +1,10 @@
 """An accepted change idea becomes a change to the existing repo through the machinery that
-exists (PJ-PLAN.md §4.7): no new pipeline, and the merge stays the owner's.
+exists: no new pipeline, and the merge stays the owner's.
 
 - **A product** (repo-factory published it; its policy is ``.github/repo-factory.yml``) and **an adopted repo
   the owner owns with repo-factory's labels**: an issue on the repo, with the kind label, a priority,
-  and ``go``. The owner's own Accept or Build it is the go, whatever the kind (AU3 finding 5: an
-  accepted feature used to sit there with no way to be built); an idea repo-factory accepted by itself
+  and ``go``. The owner's own Accept or Build it is the go, whatever the kind (an accepted
+  feature used to sit there with no way to be built); an idea repo-factory accepted by itself
   gets ``go`` only when the repo's policy lets repo-factory fix that kind (``revise.kinds``). A
   decision ("Decide …") is a ``question`` and never gets ``go``: it is the owner's to answer.
   The maintenance poll's fix (``Fix``, ``RepoFix``) then writes the test (a failing one that
@@ -18,7 +18,7 @@ The idea keeps only what repo-factory decided (``queued`` once accepted) and ``c
 is closed (``follow``). Where it is in between (a fix running, a pull request waiting, a fix that
 gave up) is read from the facts when the page asks (``steps.step``: the fix's task folder and
 the last poll), never copied here: a copy that only some events moved said "repo-factory is fixing
-#3" three days after repo-factory gave up on it (AU3 finding 6).
+#3" three days after repo-factory gave up on it.
 Build it can be undone for ``build.undo_s`` seconds: the issue is closed again, unworked."""
 
 from __future__ import annotations
@@ -37,10 +37,10 @@ BROKEN = ("renamed", "broken", "integration", "silently")  # a maintenance item 
 
 
 def kind_label(ch: dict) -> str:
-    """The issue's kind label (MAINTAIN.md's scheme) for a change idea. ``bug`` only for what
-    someone reported or what is broken now; any other maintenance item names no failing
-    behaviour, and the fixer would find none to reproduce (Beliefline #3 and #6, AU3 finding
-    7): it is a ``task``, whose test specifies what it asks for."""
+    """The issue's kind label (the scheme in docs/maintain.md) for a change idea. ``bug`` only
+    for what someone reported or what is broken now; any other maintenance item names no
+    failing behaviour, and the fixer would find none to reproduce: it is a ``task``, whose test
+    specifies what it asks for."""
     c, title = ch["card"], ch["title"].lower()
     blob = " ".join([title, c.get("what") or "", " ".join(c.get("evidence") or [])]).lower()
     if title.startswith(DECIDE):

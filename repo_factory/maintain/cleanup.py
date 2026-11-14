@@ -1,4 +1,4 @@
-"""The cleanup pull request for a product published before repo-factory's exam moved out (EX-PLAN §8.1).
+"""The cleanup pull request for a product published before repo-factory's exam moved out.
 
 ``cleanup(gh, repo, work)`` clones ``main`` into ``work`` on the branch ``repo-factory/ex-cleanup``
 and, in one commit:
@@ -124,7 +124,7 @@ def open_findings(text: str, drop_suite: bool = False) -> list[str]:
 
 def security_policy(text: str, drop_suite: bool = False) -> str:
     """repo-factory's review ``SECURITY.md`` reduced to the product's reporting policy and its known
-    issues (EX-PLAN Q6: "how to report, known limits"): the findings still open stay."""
+    issues ("how to report, known limits"): the findings still open stay."""
     m = re.search(r"^## Reporting a security issue\s*$(.*?)(?=^## |\Z)", text, re.M | re.S)
     body = (
         m.group(1).strip()

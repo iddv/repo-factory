@@ -1,5 +1,5 @@
-"""Maintenance paused on a repository, in repo-factory, at once (the owner, 2026-10-29: "a simple way
-to pause maintenance on a project").
+"""Maintenance paused on a repository, in repo-factory, at once: a simple way to pause
+maintenance on a project.
 
 A product repo-factory built keeps its policy in its own ``.github/repo-factory.yml``, and until now the only
 switch there was ``status:`` (a pull request the owner merges). An adopted repo has its

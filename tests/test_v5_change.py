@@ -1,4 +1,4 @@
-"""A revise round of a delivered v5 build (AR-PLAN.md §2), offline: the round it revises is a
+"""A revise round of a delivered v5 build, offline: the round it revises is a
 whole v5 build through the scripted harness (``test_v5_pipeline``), built once for the module
 and restored before each test; the change and repair sessions are scripted here. The suite
 runs for real (sandboxed, network off)."""
@@ -206,7 +206,7 @@ def test_b_driftwatch_shaped_docs_mode_changes_markdown_only(world):
     ]
     prompt = h.runs[0][1]
     assert h.runs[0][0] == "change" and prompt["max_turns"] == 30  # the docs caps
-    # AU1 #8: no baseline, and the delivered tree is not measured again (only Markdown changed)
+    # no baseline, and the delivered tree is not measured again (only Markdown changed)
     evs = round_events(res, 2)
     assert not [e for e in evs if e["type"] == "exam_run"]
     deliver = next(
@@ -272,7 +272,7 @@ def test_e_what_a_revise_may_never_change():
     )
     for f in ("LICENSE", "NOTICE", ".github/workflows/ci.yml", ".github/repo-factory.yml"):
         assert any(b.startswith(f + ":") for b in bad), f
-    # repo-factory's exam is not in the tree (EX-PLAN §3.4): a test there is the product's own
+    # repo-factory's exam is not in the tree: a test there is the product's own
     assert not any(b.startswith(("README.md", "app.py", "tests/acceptance")) for b in bad)
     assert any(b.startswith("app.py:") for b in change.violations(["app.py"], "docs"))
     assert not change.violations(["README.md", "docs/guide.md"], "docs")

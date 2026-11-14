@@ -1,5 +1,5 @@
 """The cost ledger: every ``claude -p`` call a build makes, one JSON line each, in
-``<den>/ledger.jsonl`` (docs/design/build-v3.md §6).
+``<den>/ledger.jsonl``.
 
 Two ways in, both through ``Ledger.append``:
 

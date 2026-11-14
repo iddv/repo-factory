@@ -2,8 +2,7 @@
 
 In a checkout they are the repo's ``policies/``. An installed wheel (``uv tool install repo-factory``)
 has no repo, so the build copies them into the package as ``repo_factory/_data/`` (``pyproject.toml``,
-``force-include``); this module finds whichever exists, the checkout first. (The research's v3
-prompt pack is the lab's own: ``repo_factory/lab/prompts/``.)
+``force-include``); this module finds whichever exists, the checkout first.
 """
 
 from __future__ import annotations
