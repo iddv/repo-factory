@@ -159,6 +159,15 @@ def _inline_tests(readme: str, start: str | None) -> list[str]:
     return out
 
 
+INSTALLS = re.compile(r"^(?:python3? -m )?(?:uv )?(?:pip3?|npm|pnpm|yarn) (?:install|ci|add)\b")
+
+
+def _unquote(s: str) -> str:
+    """A YAML value wrapped whole in one pair of quotes, without them; anything else as it is
+    (`pip install ".[test]"` keeps its closing quote)."""
+    return s[1:-1] if len(s) > 1 and s[0] == s[-1] and s[0] in "'\"" else s
+
+
 def ci_test_command(root: Path | None) -> str | None:
     """The unit-test line of the repository's own CI (``run:`` in ``.github/workflows/``),
     when the README names none."""
@@ -168,10 +177,11 @@ def ci_test_command(root: Path | None) -> str | None:
             lines = [m.group(1)] if m.group(1).strip() not in ("|", ">", "") else []
             lines += [x.strip() for x in m.group(2).splitlines() if x.strip()]
             for ln in lines:
-                cmd = _strip_comment(ln.strip().strip("'\""))
+                cmd = _strip_comment(_unquote(ln.strip()))
                 if (
                     re.search(r"\bunittest\b|\btest\b", cmd)
                     and not NOT_UNIT.search(cmd)
+                    and not INSTALLS.match(cmd)  # `pip install ".[test]"` installs, tests nothing
                     and "check_agents_md" not in cmd
                     and not cmd.startswith(("#", "echo "))
                 ):

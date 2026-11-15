@@ -38,3 +38,21 @@ def test_a_server_keeps_its_wording(tmp_path):
     )
     assert "the Settings page, the README table" in text
     assert "start the service, sign in, submit forms" in text
+
+
+def test_an_install_line_in_ci_is_not_the_test_command_and_keeps_its_quotes(tmp_path):
+    """A product's CI that installs its test extra (`pip install ".[test]"`) and then runs
+    pytest: the install is no unit-test command, and no line loses its closing quote."""
+    wf = tmp_path / ".github" / "workflows"
+    wf.mkdir(parents=True)
+    (wf / "test.yml").write_text(
+        "jobs:\n  t:\n    steps:\n"
+        '      - run: pip install ".[test]"\n'
+        "      - run: python -m pytest\n"
+    )
+    assert agentsmd.ci_test_command(tmp_path) is None
+    (wf / "test.yml").write_text(
+        'jobs:\n  t:\n    steps:\n      - run: "python -m unittest discover -s tests"\n'
+    )
+    assert agentsmd.ci_test_command(tmp_path) == "python -m unittest discover -s tests"
+    assert agentsmd._unquote('pip install ".[test]"') == 'pip install ".[test]"'

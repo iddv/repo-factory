@@ -4,7 +4,7 @@
   // Each is a registry action (api/act) on the build, offered by the server (b.actions); a
   // press that changes something on GitHub, or ends a build, asks first.
   import { act, post } from "../../api/client";
-  import { offer, published, type Build } from "../../lib/builds";
+  import { checkWord, offer, published, type Build } from "../../lib/builds";
   import { stale } from "../../lib/reads.svelte";
   import Press from "../../ui/Press.svelte";
 
@@ -87,7 +87,7 @@
     <Press id="publish" label="Publish" primary run={publish} confirm={"Create a private repository under your GitHub account and push this build to it? Its own CI then runs there, on your account's GitHub Actions minutes." + (b.publish_as ? ` Its licence and NOTICE name ${b.publish_as.name}${b.publish_as.email ? `, and its commit is made as ${b.publish_as.email}` : ""}.` : "")} />
   {/if}
   {#if canAnyway}
-    <Press id="publish-anyway" label="Publish anyway" run={publishAnyway} confirm={`Publish it to a private repository under your GitHub account although these checks held it: ${anywayHolds.map((h) => h.label).join("; ")}? Its NOTICE and release notes say which checks did not pass, and its own CI then runs on your account's GitHub Actions minutes.`} yes="Publish anyway" />
+    <Press id="publish-anyway" label="Publish anyway" run={publishAnyway} confirm={`Publish it to a private repository under your GitHub account although these checks did not pass: ${anywayHolds.map((h) => checkWord(h.check).toLowerCase()).join("; ")}? Its NOTICE and release notes say which checks did not pass, and its own CI then runs on your account's GitHub Actions minutes.`} yes="Publish anyway" />
   {/if}
   {#if canPublic}
     <Press id="make-public" label="Make public" run={makePublic} confirm="Make the repository public? Anyone can then read it." yes="Make public" />
