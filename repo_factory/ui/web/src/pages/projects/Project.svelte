@@ -1,7 +1,7 @@
 <script lang="ts">
   // A product's page: what its brief promised, its maintenance (the switch, Pause, merging its own
   // fixes), what waits for you, what its fixes did, and this week's proposals. Nothing on this page
-  // reads GitHub; the poll does, every 15 minutes, and the page shows what it saw.
+  // reads GitHub; the poll does (every maintain.poll_s, 15 minutes by default), and the page shows what it saw.
   import { q } from "../../api/client";
   import { ago } from "../../lib/format";
   import { read } from "../../lib/reads.svelte";
@@ -23,7 +23,7 @@
   const fixing = $derived((p?.rows || []).filter((x) => x.kind === "fixing"));
   const warnings = $derived((p?.rows || []).filter((x) => x.kind === "self_hosted"));
   const SWITCH_ON = (repo: string, signin: string | null | undefined): string =>
-    `This opens one pull request on ${repo} (labels, the policy file, AGENTS.md and CI) and creates its labels. From the next poll, every 15 minutes, it fixes only issues you labelled go yourself, each as a pull request, under your monthly limit. It writes nothing on any issue. The CI it adds runs on your account's GitHub Actions minutes: four Linux jobs (the tests on two Pythons, the AGENTS.md check, a secret scan) on every pull request and push to main, and once a week.` +
+    `This opens one pull request on ${repo} (labels, the policy file, AGENTS.md and CI) and creates its labels. From the next poll (every 15 minutes unless you changed it in Settings › Maintenance), it fixes only issues you labelled go yourself, each as a pull request, under your monthly limit. It writes nothing on any issue. The CI it adds runs on your account's GitHub Actions minutes: four Linux jobs (the tests on two Pythons, the AGENTS.md check, a secret scan) on every pull request and push to main, and once a week.` +
     (signin ? ` But no fix starts yet: run \`claude setup-token\` first and keep the token in Settings › Claude (Claude Code's own sign-in file would be copied into each fix session).` : "");
   const OUTCOME: Record<string, string> = {
     pr: "opened a pull request",
@@ -113,7 +113,7 @@
       <section class="sec" aria-labelledby="waiting-h">
         <h2 id="waiting-h">Waiting for you</h2>
         {#if !waiting.length}
-          <p class="muted" id="waiting-empty">Nothing waits for you{p.polled ? "" : " (it has not looked yet: the first poll comes within 15 minutes)"}.</p>
+          <p class="muted" id="waiting-empty">Nothing waits for you{p.polled ? "" : " (it has not looked yet: the first poll comes within one poll's interval, 15 minutes by default)"}.</p>
         {:else}
           <ul class="rows" id="waiting">
             {#each waiting as x, i (i)}
@@ -136,7 +136,7 @@
       <section class="sec" aria-labelledby="fixes-h">
         <h2 id="fixes-h">What its fixes did</h2>
         {#if !p.fixes.length}
-          <p class="muted" id="fixes-empty">No fix yet. Label one of your issues <code>go</code> on GitHub and it is picked up within 15 minutes.</p>
+          <p class="muted" id="fixes-empty">No fix yet. Label one of your issues <code>go</code> on GitHub and the next poll picks it up (every 15 minutes by default; Settings › Maintenance).</p>
         {:else}
           <ul class="pms small" id="fixes">
             {#each p.fixes as f (f.issue)}

@@ -41,6 +41,11 @@ in. A build costs real money or plan usage: about $10 and an hour on our record.
   one machine: a few fixes of issues in local test repositories, never on a real repository's
   issues. **Merging its own fixes** and **releasing after a merge** have never run on a real
   repository.
+- **Maintenance's setup pull request** checks AGENTS.md's commands with the network off, so for
+  a product whose install needs the package index (most with dependencies) the setup stops,
+  nothing pushed, and the project's page says which command failed. Fixes still run: a product
+  repo-factory published carries its policy file from the start. Its AGENTS.md template also
+  assumes a product with no dependencies.
 - The **lean** flow (Settings › Building) is labelled "unproven": a handful of builds.
 - Other languages than Python (Node above all) are less tested, and their checks measure less.
 - The code for a GitHub App of its own is in the tree but not offered on the page.
@@ -106,6 +111,18 @@ in. A build costs real money or plan usage: about $10 and an hour on our record.
 - The policy file a maintained product carries says what each of its keys does in this version
   (several were only read by an earlier poll that is gone).
 - The release workflow checks the wheel against `SHA256SUMS` before it creates the release.
+- **Lessons are written with the default settings:** the post-mortem looked at the build's state
+  in the same moment its automatic repair round started, and kept nothing. A build the spend
+  cap stopped before its code was written gets no lesson.
+- **Builds' head counts every round of a build** (the first build, the automatic repair, each
+  Ask for changes), not only the last.
+- A held build whose repair round failed says "Held by the checks", and why, in plain words.
+- **Publish anyway** is on the build's page for a held build, over the holds it may override.
+- Reasons name the button a person presses (Build again).
+- Settings › Building lists the models that run (the weekly proposals' among them).
+- A maintenance fix no longer stops at its own check when the session left a virtual
+  environment in the workspace; the setup says which of AGENTS.md's commands failed; a
+  product's install line is no longer taken for its test command.
 
 ### This repository
 
