@@ -76,6 +76,13 @@ export function buildSaid(b: Build): Said {
   const r = latest(b);
   if (b.question) return { word: "Asks you", tone: "amber" };
   if (b.control?.what) return { word: "Stopping", tone: "grey" };
+  // a maintenance fix: its pull request on GitHub, never "published" (its address is the issue)
+  if (b.kind === "fix") {
+    if (b.status === "running") return { word: "Fixing", tone: "blue" };
+    if (b.status === "fixed") return { word: "Waits for your review", tone: "amber" };
+    if (b.status === "closed") return { word: "Closed", tone: "grey" };
+    return { word: "Tried", tone: "red" };
+  }
   switch (b.status) {
     case "running":
       return { word: sixName(r?.stage || (b.pipeline as { stage: string; status: string }[] | undefined)?.find((s) => s.status === "running")?.stage) || "Building", tone: "blue" };

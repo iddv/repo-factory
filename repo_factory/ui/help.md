@@ -49,6 +49,9 @@ Each stage shows its time, its cost and **Open the log**.
 - **Ask for changes** sends what should change; a new round of the build makes the change.
 - **Publish**: a build that passed its checks waits at "Ready: publish?". Nothing is on GitHub
   until you press Publish, which creates a **private** repository under your account.
+- **Publish anyway**, on a held build: publishes it privately over the holds that may be
+  overridden, which its confirm names; its NOTICE and release notes say which checks did not
+  pass.
 - **Make public** makes a published repository public. It is a separate press, on each build.
 
 Publish's confirm says whose name the repository's licence and NOTICE will carry, and the

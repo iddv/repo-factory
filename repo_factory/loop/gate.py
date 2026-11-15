@@ -257,7 +257,7 @@ CANT_REVISE = {"environment": "fails in the sandbox", "unchecked": "was not chec
 
 
 def cant_revise(g: dict | None, task, now: dict | None = None) -> str | None:
-    """ "revise can't fix this: F5 Detect drift fails in the sandbox …" when **every** failing
+    """ "a repair round can't fix this: F5 Detect drift fails in the sandbox …" when **every** failing
     check of the verdict ``g`` is a flow repo-factory itself could not measure (``environment``,
     ``unchecked`` in the round's ``findings.json``) and the gate as the installed repo-factory judges
     the round (``now``, ``judged``) holds on nothing a revise could change: no round of the
@@ -269,7 +269,7 @@ def cant_revise(g: dict | None, task, now: dict | None = None) -> str | None:
     sec = ((g or {}).get("checks") or {}).get("security")
     if is_unreviewed(sec):
         # a revise round carries the review from the round it revises: it never runs it
-        return f"revise can't fix this: {(sec or {}).get('detail')}"
+        return f"a repair round can't fix this: {(sec or {}).get('detail')}"
     bad, rnd = failing(g), (g or {}).get("round")
     if bad != ["completeness"] or not task or not rnd:
         return None
@@ -291,7 +291,7 @@ def cant_revise(g: dict | None, task, now: dict | None = None) -> str | None:
         if not today
         else "Publish anyway, or Close"
     )
-    return f"revise can't fix this: {said} (repo-factory's own sandbox, not the product); {then}"
+    return f"a repair round can't fix this: {said} (repo-factory's own sandbox, not the product); {then}"
 
 
 def with_item(rd: Path, files: set, item: dict, at: Path) -> dict:

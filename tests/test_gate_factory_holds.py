@@ -87,7 +87,7 @@ def test_a_security_review_that_did_not_run_holds_whatever_may_override_says():
         assert plan["refused"] == [("security", gate.NEVER_UNREVIEWED)]
     # a revise round carries the review it revises: no automatic round, and it says why
     v2["round"] = 2
-    assert gate.cant_revise(v2, "/no/task") == "revise can't fix this: " + said[10:]
+    assert gate.cant_revise(v2, "/no/task") == "a repair round can't fix this: " + said[10:]
 
 
 def test_the_hold_says_why_the_review_did_not_run_and_what_to_press():

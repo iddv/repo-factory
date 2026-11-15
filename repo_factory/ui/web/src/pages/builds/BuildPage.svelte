@@ -4,7 +4,7 @@
   // held, in plain words. A task whose brief is being written has only its first stage.
   import type { BuildRun, BuildRuns, Run } from "../../api/types.gen";
   import { q } from "../../api/client";
-  import { published, type Build, type Item } from "../../lib/builds";
+  import { offer, published, type Build, type Item } from "../../lib/builds";
   import { cut } from "../../lib/format";
   import { read } from "../../lib/reads.svelte";
   import { href } from "../../lib/router.svelte";
@@ -49,8 +49,11 @@
         return "Stopped. Its workers were killed; nothing else changed.";
       case "Waiting for a slot":
         return "Waiting for a build slot: it starts when one is free.";
-      case "Held by the checks":
-        return "The checks held it. Ask for changes, or read what held it below.";
+      case "Held by the checks": {
+        // only the presses this build offers now
+        const can = [offer(b, "revise") && "Ask for changes", offer(b, "publish_anyway") && "Publish anyway", offer(b, "retry") && "Build again"].filter(Boolean);
+        return "The checks held it: read what held it below." + (can.length ? ` Then: ${can.join(", or ")}.` : "");
+      }
     }
     if (b.status === "running") return `${item.word}: running now. Stop ends it; nothing else changes.`;
     return b.reason ? cut(b.reason, 200) : item.word;

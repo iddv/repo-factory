@@ -39,6 +39,12 @@ describe("a build's status in words", () => {
     expect(buildSaid(build({ status: "held", gate: { verdict: "held", reasons: [], round: 1 } })).word).toBe("Held by the checks");
     expect(buildSaid(build({ question: { id: "q1", text: "Which port?" } })).word).toBe("Asks you");
   });
+  it("says what a maintenance fix's pull request waits for, never that it was published", () => {
+    const fix: Partial<Build> = { kind: "fix", url: "https://github.com/someone/notes/issues/1", idea: null };
+    expect(buildSaid(build({ ...fix, status: "fixed" })).word).toBe("Waits for your review");
+    expect(buildSaid(build({ ...fix, status: "closed" })).word).toBe("Closed");
+    expect(buildSaid(build({ ...fix, status: "tried" })).word).toBe("Tried");
+  });
   it("keeps a held build held when its repair round failed, and a failed first build failed", () => {
     const repair = { n: 2, kind: "revision", outcome: "failed" };
     expect(buildSaid(build({ status: "held", idea_state: "held", builds: { n: 2, latest: repair } as never })).word).toBe("Held by the checks");
