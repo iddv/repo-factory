@@ -91,7 +91,8 @@ stands. **Maintenance is off until you switch it on for a repository**, on its p
   `.github/repo-factory.yml`, AGENTS.md and CI) and creates its labels; nothing else changes on
   GitHub, and no repository setting. A product repo-factory published already carries the
   policy file, so the next poll may fix an issue you labelled `go` before you merge it; any other
-  repository waits for that merge.
+  repository waits for that merge. The CI it adds runs on your account's GitHub Actions
+  minutes: four Linux jobs on every pull request and push to the default branch, and once a week.
 - Then, every 15 minutes, it reads the repository's open issues. **Only an issue whose `go`
   label you put on yourself is fixed** (GitHub's own record says who put a label on). Anyone
   else's issue, a `go` someone else put on, and anyone else's pull request are listed under

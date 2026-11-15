@@ -2,10 +2,9 @@
 
 ## Reporting a problem
 
-Please report security problems **privately**. This repository's **Security › Report a
-vulnerability** form is not switched on yet; until it is, open an issue that says only that you
-have a security report and how to reach you (no details), and a maintainer will ask for them in
-private. Do not put the problem itself in a public issue. A maintainer answers in person,
+Please report security problems **privately**, through this repository's **Security › Report
+a vulnerability** form (GitHub's private vulnerability reporting). Do not put the problem in a
+public issue. A maintainer answers in person,
 usually within a week. A fix's public text says what it fixes, not how to exploit it.
 
 ## What runs where
@@ -47,6 +46,7 @@ GitHub account. It is an experiment: read what it builds before you trust it.
 ## This repository's own CI
 
 Pull requests run on GitHub's hosted runners only, with a read-only token and no secrets. No
-job calls a model. A pull request from a first-time contributor from outside needs a
-maintainer's approval before its workflow runs (GitHub's "first-time contributors" setting;
-approval for every outside pull request is not switched on yet).
+job calls a model. Every pull request from outside the repository needs a maintainer's approval
+before its workflow runs. `main` takes changes only through pull requests whose required checks
+pass. A release is built from a version tag on `main` by its own workflow; the job that creates
+the GitHub release runs in a protected environment and waits for a maintainer's approval.

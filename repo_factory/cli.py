@@ -333,7 +333,8 @@ def main(argv=None):
     sub = p.add_subparsers(dest="cmd", required=True)
 
     dr = sub.add_parser(
-        "doctor", help="check what repo-factory needs: Claude Code signed in, bubblewrap, git, gh"
+        "doctor",
+        help="check what repo-factory needs: Claude Code signed in, bubblewrap, git, gh, memory",
     )
     dr.set_defaults(fn=cmd_doctor)
 

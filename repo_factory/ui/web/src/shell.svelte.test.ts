@@ -396,6 +396,7 @@ describe("Projects and maintenance", () => {
     await settle();
     expect(posts).toEqual([]); // the first press only asks
     expect(text()).toContain("It writes nothing on any issue.");
+    expect(text()).toContain("runs on your account's GitHub Actions minutes");
     const yes = [...document.querySelectorAll(".ask button")].find((b) => b.textContent === "Switch on") as HTMLButtonElement;
     yes.click();
     await until(() => posts.length === 1);

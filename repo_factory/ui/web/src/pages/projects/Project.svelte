@@ -23,7 +23,7 @@
   const fixing = $derived((p?.rows || []).filter((x) => x.kind === "fixing"));
   const warnings = $derived((p?.rows || []).filter((x) => x.kind === "self_hosted"));
   const SWITCH_ON = (repo: string, signin: string | null | undefined): string =>
-    `This opens one pull request on ${repo} (labels, the policy file, AGENTS.md and CI) and creates its labels. From the next poll, every 15 minutes, it fixes only issues you labelled go yourself, each as a pull request, under your monthly limit. It writes nothing on any issue.` +
+    `This opens one pull request on ${repo} (labels, the policy file, AGENTS.md and CI) and creates its labels. From the next poll, every 15 minutes, it fixes only issues you labelled go yourself, each as a pull request, under your monthly limit. It writes nothing on any issue. The CI it adds runs on your account's GitHub Actions minutes: four Linux jobs (the tests on two Pythons, the AGENTS.md check, a secret scan) on every pull request and push to main, and once a week.` +
     (signin ? ` But no fix starts yet: run \`claude setup-token\` first and keep the token in Settings › Claude (Claude Code's own sign-in file would be copied into each fix session).` : "");
   const OUTCOME: Record<string, string> = {
     pr: "opened a pull request",

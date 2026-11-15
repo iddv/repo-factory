@@ -133,6 +133,9 @@ class Loop:
         self._charter = charter_model
         self._gh = gh
         self._stop_flag = False
+        # the models made here from Settings (never those handed in): forgotten when the
+        # settings are re-read, so a model changed on Settings is used from its next call on
+        self._made: set[str] = set()
         self._spawned: dict[str, int] = {}  # pre-push checks this loop started: idea -> pid
 
     # -- collaborators (real ones made on first use) -------------------------------------------
@@ -142,6 +145,7 @@ class Loop:
             from .models import claude
 
             self._model = claude(self.cfg["pitch"].get("model"), "pitch", timeout_s=900)
+            self._made.add("_model")
         return self._model
 
     @property
@@ -150,6 +154,7 @@ class Loop:
             from .models import claude
 
             self._summary = claude(self.cfg["pitch"].get("summary_model"), "summary")
+            self._made.add("_summary")
         return self._summary
 
     @property
@@ -158,6 +163,7 @@ class Loop:
             from .models import claude
 
             self._honesty = claude(self.cfg["publish"].get("honesty_model"), "honesty")
+            self._made.add("_honesty")
         return self._honesty
 
     @property
@@ -173,6 +179,7 @@ class Loop:
             from ..projects.charter import model_for
 
             self._charter = model_for(self.cfg)
+            self._made.add("_charter")
         return self._charter
 
     @property
@@ -1266,6 +1273,7 @@ class Loop:
             self._lessons = claude(
                 les.get("model"), "lessons", timeout_s=300, max_usd=cap_of(les.get("max_usd"))
             )
+            self._made.add("_lessons")
         return self._lessons
 
     def _lesson(self, idea: dict, g: dict) -> dict | None:
@@ -2644,10 +2652,19 @@ class Loop:
             ],
         }
 
+    def forget_models(self) -> None:
+        """Drop the models made from the settings (the pitch's, the summary's, the honesty
+        check's, the charter's, the lessons'): each is made again from the settings as they are
+        now at its next use. A model handed in (the tests' fakes) is kept."""
+        for name in self._made:
+            setattr(self, name, None)
+        self._made.clear()
+
     def tick(self, only: list[str] | None = None) -> dict:
         """One pass of the loop."""
         if self.cfg.changed():  # Settings or a hand edit: from the next brief or build on
             self.cfg = self.cfg.reread().ensure()
+            self.forget_models()
         out: dict = {"watched": [i["id"] for i in self.watch()]}
         if time.time() - float(self.ledger.meta("activity_pruned") or 0) > 86400:
             try:  # the loop's marks past their keep, daily

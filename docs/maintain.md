@@ -162,7 +162,7 @@ carries the policy file and the label file from its first commit.
 | `CLAUDE.md` | `@AGENTS.md`, so Claude Code reads the same file. |
 | `.github/repo-factory.yml` | The policy: `maintained`, `as-is` or `archived`; what triggers a fix (`go`); how releases bump. A repo without the file is `as-is`: no fix starts there. |
 | `.github/labels.yml` | The 20 labels, one JSON object per line. |
-| `.github/workflows/ci.yml` | The unit suite on the oldest supported Python and 3.12, the acceptance suite, `check_agents_md.py`, and gitleaks over the history. GitHub-hosted runners only, `permissions: contents: read`, every action pinned to a commit. |
+| `.github/workflows/ci.yml` | The unit suite on the oldest supported Python and 3.12, the acceptance suite, `check_agents_md.py`, and gitleaks over the history. GitHub-hosted runners only, `permissions: contents: read`, every action pinned to a commit. It runs on your account's Actions minutes: four jobs on every pull request and push to `main`, and weekly (the switch's confirm says so). |
 | `.github/workflows/labels.yml` | Syncs the labels from `labels.yml` when it changes (creates or updates; never deletes). |
 | `.github/scripts/check_agents_md.py` | Runs the shell fences (`sh`, `bash`, `shell`, `console` or none) under the setup heading (*Setup, run, test*, *Set up, run, test*, *Setup*, *Development*, *Running tests*…, any case) line by line (a `# serve` line is started on a free port, waited for on 127.0.0.1, and stopped; a server without that mark, a line with a placeholder such as `<file>` and an install onto the machine are examples, not steps: not run, and named in its summary), checks the architecture paths exist, and fails when a known open item passes but still carries its xfail mark. Standard library only. The drift doctor reads AGENTS.md with the same readers. |
 | `.github/scripts/sync_labels.py` | The label sync, standard library plus `gh`. |
@@ -233,52 +233,20 @@ is a read, so it asks for no confirm, and nothing is written to GitHub.
 ## Identity on GitHub
 
 By default maintenance acts as the owner's `gh` login, which reaches every repository the
-login can, workflow files included. The narrower way, in about a minute, is **repo-factory's own
-GitHub App**: Settings › Publishing › GitHub › *Create repo-factory's GitHub App* posts GitHub's app manifest for an
-app named `repo-factory-<your login>` (issues, pull requests and contents write; metadata, checks and
-actions read; no webhook), GitHub sends the browser back to repo-factory on 127.0.0.1 with a one-hour
-code, and repo-factory exchanges it in the background for the app's id and private key. Then *Choose
-repositories* installs the app on the repositories repo-factory maintains (and repo-factory's own, for its
-factory issues). From then on maintenance and your factory issues act as
-`repo-factory-<you>[bot]`: each call gets a one-hour installation token minted from a signed JWT,
-narrowed to the fewest permissions and the one repository it acts on (a factory issue: issues
-write on that repo; a fix's push: contents write on that repo), kept in memory and minted again
-under five minutes; commits a fix pushes are authored as the bot, so its pull requests carry the
-badge. What the app can never get, fixed in repo-factory's code and pinned by a test: administration,
-workflows, secrets, actions write, or any organisation permission. So it cannot make a
-repository public, change a workflow file (GitHub refuses the push), read a secret or create a
-repository: publishing keeps the `gh` login, and so do pull requests from a fork.
+login can, workflow files included. The narrower way that this version supports is a
+**fine-grained personal access token**, below.
 
-The key lives in `~/.config/repo-factory/github/app.pem` (mode 600, the directory 700) beside the
-door tokens, and `app.json` beside it holds the facts and no secret. Only the signer opens the
-key; it never reaches a page, a log, a build session (the sandbox binds neither
-`~/.config/repo-factory` nor the loop's environment) or GitHub. `maintain.identity` in `loop.yaml`
-picks: `auto` (the default: the app once installed, else the token file below, else the login),
-`app`, `token` or `login`. A repository the installation does not reach is refused before any
-call ("add it to repo-factory's app"), never the login; an app GitHub refuses (uninstalled,
-suspended, its key replaced) is said, and nothing falls back to the login.
-*Remove repo-factory's app* uninstalls it and deletes the key and record here; the registration is
-deleted on GitHub. `repo-factory github status|refresh|key --file|remove` does the same from the
-command line.
+**A GitHub App of its own (not offered yet).** The code for a repo-factory GitHub App is in the
+tree (`github_app.py`: issues, pull requests and contents write; metadata, checks and actions
+read; never administration, workflows, secrets or actions write, pinned by a test), but this
+version's page has no button for it and no real repository has been maintained through one.
+An App you made on GitHub yourself can be linked from the command line (`repo-factory github
+link --app-id N --file app.pem`; `repo-factory github status|refresh|remove`); with one
+installed, `maintain.identity: auto` (the default) uses it, a repository it does not reach is
+refused rather than falling back to the login, and its key stays in
+`~/.config/repo-factory/github/` (mode 600), never in a build session. Treat this as unproven.
 
-repo-factory's GitHub App is not the "repo-factory" OAuth App that *repo-factory's GitHub sign-in* goes through (the
-device flow; Settings › Publishing › GitHub › repo-factory's GitHub sign-in names it and its client id).
-The sign-in is enough to publish and to read your repositories; the App is the optional bot.
-After *Create*, the page waits five minutes for GitHub to send the browser back (or until
-*Cancel*), then puts Create back and says the try did not finish; a callback GitHub still sends
-within ten minutes is kept, so an app made late is not lost. An app that exists on GitHub but
-not here (a closed tab, a lost record) is **linked, never made twice**: *Link an app you made*
-(or `repo-factory github link --app-id N --file app.pem`) takes its App ID and a private key generated
-under its settings, checks the pair with `GET /app`, keeps the key at 0600 and reads the
-installation back. Nothing is created on GitHub.
-
-On another install, where repo-factory cannot write on its own repository, the factory
-issue becomes **Report to repo-factory ↗**: GitHub's new-issue page prefilled with the same body after
-a scrub (secrets, e-mail addresses, phone numbers, `@user`, paths, the host, the login), which
-the owner reads and submits; repo-factory files nothing. The owner's own filing goes through the same
-scrub.
-
-The other narrow identity is a **fine-grained personal access token**
+**A fine-grained personal access token**
 (on your account, or on a bot account that is a collaborator with write on each product repo):
 *Repository access* only the product repos; *Contents*, *Issues* and *Pull requests* read and
 write, *Metadata* read; no *Workflows*, *Administration* or *Secrets*. Put it in a file only you
@@ -298,13 +266,11 @@ maintain:
 
 The file is read for each `gh` call and handed to that subprocess only (a fix's `git push` asks
 the same `gh` for credentials); it is never logged, shown or kept, and a file other users can
-read is refused. It is set by hand, never from the app. `repo-factory maintain whoami`, Settings ›
-Maintenance and `repo-factory doctor` (its `maintain` line) say which identity is in use: the owner's
-login (with its scopes), repo-factory's own app (`repo-factory-<you>[bot]`, its permissions and how many
-maintained repos its installation reaches), a fine-grained token for your account or for a bot
-account, its expiry (a warning 30 days before), and how many maintained repos it reaches. With
-the app or a bot account, repo-factory's pull requests are visibly not yours. Publishing new
-repos keeps the owner's login.
+read is refused. It is set by hand, never from a page. `repo-factory maintain whoami` says which
+identity is in use: the owner's login (with its scopes), an App's bot, or a fine-grained token
+for your account or for a bot account, its expiry (a warning 30 days before), and how many
+maintained repos it reaches. With a bot account, repo-factory's pull requests are visibly not
+yours. Publishing new repos keeps the owner's login.
 
 ## Security
 

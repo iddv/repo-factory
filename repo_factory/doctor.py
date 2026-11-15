@@ -153,6 +153,6 @@ def run(say=print) -> int:
             ok, line = check()
         except Exception as e:  # noqa: BLE001 - one check, one line
             ok, line = False, f"{check.__name__}: {type(e).__name__}: {e}"
-        say(("ok " if ok else "missing: ") + line)
+        say(("ok " if ok else "warning: " if check is mem_line else "missing: ") + line)
         bad = bad or (needed and not ok)
     return 1 if bad else 0
