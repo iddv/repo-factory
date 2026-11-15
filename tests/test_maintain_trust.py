@@ -1,5 +1,5 @@
-"""After a fix session, the host trusts nothing the session could write (RFREV2 M3 to M5, S2,
-S3): the text you labelled ``go`` is the text the fix reads; a stranger's "Fixes #N" never
+"""After a fix session, the host trusts nothing the session could write:
+the text you labelled ``go`` is the text the fix reads; a stranger's "Fixes #N" never
 stops or wears a fix; an agent's token never opens an issue that carries ``go``; a workflow
 that may run anywhere but GitHub's own runners stops fixes. The stand-in GitHub of
 ``test_f3_maintenance`` (a fake ``gh`` over a local bare repository), scripted sessions: no

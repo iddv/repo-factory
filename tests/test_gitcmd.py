@@ -199,7 +199,7 @@ def test_the_hardening_works_without_a_cwd_and_in_a_fresh_dir(tmp_path):
     assert env["GIT_CEILING_DIRECTORIES"] == str(tmp_path.resolve().parent)
 
 
-# -- RFREV2 M1, M2: a tree's own config never chooses where the host's git goes ------------------
+# -- a tree's own config never chooses where the host's git goes ------------------
 def cloned(tmp_path: Path) -> tuple[Path, Path]:
     """A bare origin and the host's clone of it, its remotes pinned as the host wrote them."""
     src = tmp_path / "src"

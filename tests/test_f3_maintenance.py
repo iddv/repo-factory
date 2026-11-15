@@ -473,7 +473,7 @@ def test_a_self_hosted_runner_stops_merging_and_warns(merge_world):
     switch.set_merge(lp.cfg.home, REPO, True)
     own_fix(lp, fake)
     fake.checks = {"h1": "success"}
-    # the real doctor reads main's workflow (RFREV2 S7: no stub of the detection)
+    # the real doctor reads main's workflow (no stub of the detection)
     fake.files[".github/workflows/ci.yml"] = (
         "on: pull_request\njobs:\n  t:\n    runs-on: [linux, my-own-box]\n"
     )

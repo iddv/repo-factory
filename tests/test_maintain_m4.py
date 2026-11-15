@@ -333,7 +333,7 @@ def test_doctor_on_github_is_current_then_flags_drift_and_a_self_hosted_runner()
         ("self-hosted", True),
         ("\n      - self-hosted", True),
         ("\n      labels: [self-hosted]", True),
-        # RFREV2 M5: an allow-list; what cannot be told counts as not hosted
+        # an allow-list: what cannot be told counts as not hosted
         ("${{ matrix.os }}", True),
         ("${{ vars.RUNNER }}", True),
         ("[linux, my-own-box]", True),

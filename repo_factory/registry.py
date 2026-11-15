@@ -941,7 +941,7 @@ def r_restart_revise(ctx, f, s):
 def r_cut_ticket(ctx, f, s):
     row = s.row or {}
     labels = list(f.get("labels") or [])
-    # RFREV2 S2: go starts a fix, as you: only your press on the page or the command line
+    # go starts a fix, as you: only your press on the page or the command line
     # puts it on. An agent's token opens the issue without it, and says so.
     agent = bool(AGENT_ORIGIN.fullmatch(str(ctx.origin or "")))
     agent_go = agent and "go" in labels

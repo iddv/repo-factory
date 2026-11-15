@@ -292,7 +292,7 @@ def ended(loop, r: Repo, rec: dict, items: list[dict], now: float, out: dict) ->
             continue
         res = revise.result(Path(x["task"]))
         if res is None or (res.get("finished") or 0) < (x.get("started") or 0) - 5:
-            # never anyone's "Fixes #N" taken for this fix's own pull request (RFREV2 S3)
+            # never anyone's "Fixes #N" taken for this fix's own pull request
             res = {
                 "outcome": "failed",
                 "stage": "process",
@@ -311,7 +311,7 @@ def start_fix(loop, r, t, items, mine, pol, rec, now, slots, stop, out) -> None:
     if rec.get("revises") or slots[0] <= 0:
         return
     home = loop.cfg.home
-    # only a pull request this install's fix opened is "the fix of N" (RFREV2 S3): anyone
+    # only a pull request this install's fix opened is "the fix of N": anyone
     # else's "Fixes #N" is a row and never holds the fix
     open_prs = {i["number"] for i in items if i["is_pr"]}
     ours = {f["issue"] for pr, f in fixes.opened(home, r.full).items() if pr in open_prs}

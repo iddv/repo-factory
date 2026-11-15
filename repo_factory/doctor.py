@@ -58,7 +58,7 @@ SIGNIN_COPIED = (
     "builds copy this sign-in file into each session, where a build's own commands can read "
     "it: to avoid that, run claude setup-token and keep the token in Settings › Claude"
 )
-# RFREV2 M4: a fix's task is the text of an issue
+# a fix task is the text of an issue: no fix on the sign-in file unless allowed
 SIGNIN_NO_FIX = (
     "maintenance starts no fix while sessions would get this file: run claude setup-token "
     "first (or set maintain.allow_signin_file: true, Settings › Maintenance)"

@@ -1,4 +1,4 @@
-"""RFREV2 M1 and M2, in the sandbox lane: what a fix session writes into its clone's ``.git``
+"""In the sandbox lane: what a fix session writes into its clone's ``.git``
 from inside bubblewrap never makes the host run a command or hand over a credential.
 
 The planting runs in real bubblewrap with the workspace bound read-write, as a session's tools

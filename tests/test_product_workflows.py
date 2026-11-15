@@ -57,7 +57,7 @@ def test_what_holds_the_publish_is_said(tmp_path):
 
 
 def test_a_runner_that_cannot_be_told_holds_the_publish_too(tmp_path):
-    """RFREV2 M5: the publish hold uses maintenance's allow-list (runners.py)."""
+    """The publish hold uses maintenance's allow-list (runners.py)."""
     for runs_on, word in (
         ("${{ matrix.os }}", "expression"),
         ("[linux, my-own-box]", "'linux'"),
