@@ -10,8 +10,8 @@ One tick, in order:
    ``publish.when: ready`` publishes it privately on its own (``publish.approval: auto``, set
    by hand only, also makes it public);
 3. unless paused (``PAUSE``) or over the optional ``daily_usd``: **maintain** the published
-   repos when maintenance is on (every ``maintain.poll_s``: triage, fixes of ``go`` issues and
-   releases on GitHub, ``repo_factory/maintain/poll.py``), write the **brief** of up to
+   repositories maintenance is switched on for (every ``maintain.poll_s``: fixes of the
+   issues you labelled ``go``, ``repo_factory/maintain/watch.py``), write the **brief** of up to
    ``pitch_per_tick`` new tasks (``pitch.py``), and **start** queued builds up to
    ``concurrency`` (running fixes take build slots too).
 
@@ -123,7 +123,6 @@ class Loop:
         summary_model=None,
         honesty_model=None,
         gh=None,
-        triage_model=None,
         charter_model=None,
         lessons_model=None,
     ):
@@ -131,7 +130,7 @@ class Loop:
         self._lessons = lessons_model
         self.ledger = Ledger(self.cfg.db)
         self._model, self._summary, self._honesty = model, summary_model, honesty_model
-        self._triage, self._charter = triage_model, charter_model
+        self._charter = charter_model
         self._gh = gh
         self._stop_flag = False
         self._spawned: dict[str, int] = {}  # pre-push checks this loop started: idea -> pid
@@ -160,16 +159,6 @@ class Loop:
 
             self._honesty = claude(self.cfg["publish"].get("honesty_model"), "honesty")
         return self._honesty
-
-    @property
-    def triage_model(self):
-        if self._triage is None:
-            from .models import claude
-
-            self._triage = claude(
-                (self.cfg.get("maintain") or {}).get("triage_model"), "triage", timeout_s=300
-            )
-        return self._triage
 
     @property
     def charter_model(self):

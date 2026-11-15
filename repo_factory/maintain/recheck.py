@@ -3,7 +3,7 @@ the next poll or the doctor's next due date.
 
 GitHub cannot push to repo-factory (it binds to loopback only, so there is no address for a webhook),
 so what repo-factory knows of a repo comes from its poll: main's head read conditionally every
-``maintain.poll_s`` (``poll.read_head``), with the doctor and a project's drift computed again
+``maintain.poll_s`` (``watch.read_head``), with the doctor and a project's drift computed again
 when it moved. This press covers the rest, for whoever doubts a row: main's head (without the
 ETag), the drift doctor and the AGENTS.md row (a product's), and the project's clone, drift
 and numbers. It reads
@@ -63,9 +63,9 @@ def job_state(home, key: str) -> dict | None:
 
 
 def target(loop, key: str) -> dict:
-    from .poll import targets
+    from .watch import published
 
-    for t in targets(loop):
+    for t in published(loop):
         if (t.get("key") or t["repo"]) == key:
             return t
     raise RecheckError(f"{key or 'that'} is not a repository repo-factory maintains")
@@ -116,7 +116,7 @@ def run(loop, key: str, now: float | None = None, gh=None) -> dict:
     written back, over the cache as it is now (a poll may have written meanwhile)."""
     from . import doctor, revise
     from .github import Cache, Repo
-    from .poll import gh_for, read_head
+    from .watch import gh_for, read_head
 
     now = now or time.time()
     t = target(loop, key)
@@ -136,7 +136,7 @@ def run(loop, key: str, now: float | None = None, gh=None) -> dict:
     cur = cache.repo(key)  # the rows as they are now: only the doctor's go
     patch = {"head": rec.get("head")}
     if not adopted:
-        # AGENTS.md's row too (reads only: the poll's agents_state, never its comments)
+        # AGENTS.md's row too (reads only: revise.agents_state)
         ag = revise.agents_state(r, rec, now) or rec.get("agents_md")
         rows = [
             x

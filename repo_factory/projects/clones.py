@@ -2,7 +2,7 @@
 
 One clone per project repo, ``<loop home>/projects/clones/<owner>-<name>/``, shallow (the last
 200 commits, as maintenance clones), refreshed by the maintenance tick: cloned once with the
-maintenance ``gh`` (``maintain.poll.gh_for``), then fetched and reset to the default branch.
+maintenance ``gh`` (``maintain.watch.gh_for``), then fetched and reset to the default branch.
 An adopted repo already has a clone, kept by its onboarding and refreshed when its default
 branch moves (``poll.rebaseline``): that one is read as it is, never fetched or reset here,
 so a fix or a baseline working in it is never disturbed.
@@ -99,7 +99,7 @@ def refresh(loop, p: dict, gh=None, git_fn=None) -> dict:
     else:
         d = own_dir(home, rec["repo"])
         if gh is None:
-            from ..maintain.poll import gh_for
+            from ..maintain.watch import gh_for
 
             gh = gh_for(loop)
         if (d / ".git").is_dir() and gitcmd.pin_path(d).is_file():

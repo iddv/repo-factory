@@ -1,29 +1,4 @@
 {
- "accept_change": {
-  "calls": [
-   [
-    "app.change_accept",
-    [
-     "c00000001"
-    ],
-    {
-     "origin": "ui"
-    }
-   ]
-  ],
-  "click": "click",
-  "refused_from": [],
-  "result_keys": [
-   "result",
-   "say",
-   "url",
-   "what"
-  ],
-  "runs_on": "new",
-  "subjects": [
-   "new"
-  ]
- },
  "accept_claim": {
   "calls": [
    [
@@ -158,32 +133,6 @@
    "idea"
   ]
  },
- "charter_change": {
-  "calls": [
-   [
-    "app.change_charter",
-    [
-     "c00000001",
-     true,
-     ""
-    ],
-    {
-     "origin": "ui"
-    }
-   ]
-  ],
-  "click": "confirm",
-  "refused_from": [],
-  "result_keys": [
-   "result",
-   "say",
-   "what"
-  ],
-  "runs_on": "new",
-  "subjects": [
-   "new"
-  ]
- },
  "claude_login_forget": {
   "calls": [],
   "click": "confirm",
@@ -276,32 +225,6 @@
    "idea"
   ]
  },
- "decline_change": {
-  "calls": [
-   [
-    "app.change_decline",
-    [
-     "c00000001",
-     "not_now",
-     ""
-    ],
-    {
-     "origin": "ui"
-    }
-   ]
-  ],
-  "click": "click",
-  "refused_from": [],
-  "result_keys": [
-   "result",
-   "say",
-   "what"
-  ],
-  "runs_on": "new",
-  "subjects": [
-   "new"
-  ]
- },
  "edit_brief": {
   "calls": [
    [
@@ -326,22 +249,6 @@
   "runs_on": "idea:new",
   "subjects": [
    "idea"
-  ]
- },
- "edit_charter": {
-  "calls": [
-   [
-    "app.loop",
-    [],
-    {}
-   ]
-  ],
-  "click": "click",
-  "raises": "ActionError",
-  "refused_from": [],
-  "runs_on": "new",
-  "subjects": [
-   "new"
   ]
  },
  "edit_claim": {
@@ -388,30 +295,6 @@
   "subjects": [
    "build",
    "idea"
-  ]
- },
- "evolve_now": {
-  "calls": [
-   [
-    "app.evolve_now",
-    [
-     "p00000001"
-    ],
-    {
-     "origin": "ui"
-    }
-   ]
-  ],
-  "click": "click",
-  "refused_from": [],
-  "result_keys": [
-   "result",
-   "say",
-   "what"
-  ],
-  "runs_on": "new",
-  "subjects": [
-   "new"
   ]
  },
  "github_app_cancel": {
@@ -696,57 +579,6 @@
    "idea"
   ]
  },
- "pause_maintenance": {
-  "calls": [
-   [
-    "app.maintenance_state",
-    [
-     "p00000001",
-     true
-    ],
-    {
-     "origin": "ui"
-    }
-   ]
-  ],
-  "click": "click",
-  "refused_from": [],
-  "result_keys": [
-   "result",
-   "say",
-   "what"
-  ],
-  "runs_on": "new",
-  "subjects": [
-   "new"
-  ]
- },
- "pause_project": {
-  "calls": [
-   [
-    "app.project_state",
-    [
-     "p00000001",
-     "active"
-    ],
-    {
-     "origin": "ui"
-    }
-   ],
-   [
-    "app.loop",
-    [],
-    {}
-   ]
-  ],
-  "click": "click",
-  "raises": "TypeError",
-  "refused_from": [],
-  "runs_on": "new",
-  "subjects": [
-   "new"
-  ]
- },
  "pitch_again": {
   "calls": [
    [
@@ -866,30 +698,6 @@
    "idea"
   ]
  },
- "redraft_charter": {
-  "calls": [
-   [
-    "app.charter_redraft",
-    [
-     "p00000001"
-    ],
-    {
-     "origin": "ui"
-    }
-   ]
-  ],
-  "click": "click",
-  "refused_from": [],
-  "result_keys": [
-   "result",
-   "say",
-   "what"
-  ],
-  "runs_on": "new",
-  "subjects": [
-   "new"
-  ]
- },
  "reject": {
   "calls": [
    [
@@ -938,31 +746,6 @@
   "subjects": [
    "build",
    "idea"
-  ]
- },
- "restore_charter": {
-  "calls": [
-   [
-    "app.charter_restore",
-    [
-     "p00000001",
-     1
-    ],
-    {
-     "origin": "ui"
-    }
-   ]
-  ],
-  "click": "click",
-  "refused_from": [],
-  "result_keys": [
-   "result",
-   "say",
-   "what"
-  ],
-  "runs_on": "new",
-  "subjects": [
-   "new"
   ]
  },
  "resume_build": {
@@ -1170,30 +953,6 @@
   "subjects": [
    "build",
    "idea"
-  ]
- },
- "undo_change": {
-  "calls": [
-   [
-    "app.change_undo",
-    [
-     "c00000001"
-    ],
-    {
-     "origin": "ui"
-    }
-   ]
-  ],
-  "click": "click",
-  "refused_from": [],
-  "result_keys": [
-   "result",
-   "say",
-   "what"
-  ],
-  "runs_on": "new",
-  "subjects": [
-   "new"
   ]
  }
 }

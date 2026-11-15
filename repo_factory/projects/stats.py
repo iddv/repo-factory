@@ -219,7 +219,7 @@ def refresh(
     st = dict(old)
     errors = []
     if gh is None:
-        from ..maintain.poll import gh_for
+        from ..maintain.watch import gh_for
 
         gh = gh_for(loop)
     try:

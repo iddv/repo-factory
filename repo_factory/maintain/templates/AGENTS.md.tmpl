@@ -71,17 +71,15 @@ pre-migration backup is written before any upgrade.
 
 ## Maintenance protocol (issues and labels)
 
-Labels are the state; GitHub is the only record. `.github/labels.yml` defines them.
+`.github/labels.yml` defines the labels.
 
-1. **Pick** an open issue labelled `go` with no assignee and no `claim:*` label (or one whose
-   lease comment has expired and that has no open linked PR). `p1` before `p2` before `p3`.
-2. **Claim** it: a person assigns themself; an agent adds `claim:agent` and a comment
-   `<!-- repo-factory:claim lease_until=<UTC+6h> branch=<branch> -->  Working on this.` Leave issues
-   with `claim:repo-factory` or an assignee alone.
+1. **Pick** an open issue labelled `go` with no assignee and no open linked PR. `p1` before
+   `p2` before `p3`.
+2. **Take** it: a person assigns themself. Leave an issue with an assignee or an open linked PR
+   alone.
 3. **Branch** from `main`: `<who>/<N>-<slug>` (repo-factory uses `repo-factory/<N>-<slug>`).
 4. **Reproduce first:** write `tests/acceptance/test_<slug>.py` that fails on `main` for the
-   reason the issue describes. If you cannot make it fail, label `cannot-reproduce`, say why in a
-   comment, remove your claim, and stop.
+   reason the issue describes. If you cannot make it fail, say why in a comment and stop.
 5. **Fix** with the smallest change that makes it pass without weakening another test.
 6. **Verify:** run every command in *Setup, run, test*; the whole suite must be green; the
    README's quick start must still work as written.
@@ -89,14 +87,12 @@ Labels are the state; GitHub is the only record. `.github/labels.yml` defines th
    or `SECURITY.md` if a row changed. Leave `CHANGELOG.md` alone: the release notes list the
    merged pull requests.
 8. **Open a PR** with the template (`.github/pull_request_template.md`): what and why, the
-   failing test's name, the verification you ran, and `Fixes #N`. Remove your claim label; the
-   PR is now the lock. **Never push to `main`. Never change `.github/workflows/` in a fix PR.**
+   failing test's name, the verification you ran, and `Fixes #N`. **Never push to `main`. Never change `.github/workflows/` in a fix PR.**
    Never commit a secret, a database file or demo credentials.
-9. The owner reviews and merges on GitHub. A release follows (`.github/repo-factory.yml` ›
-   `release.on_merge`).
+9. The owner reviews and merges on GitHub.
 
-repo-factory follows exactly these steps; its comments carry `<!-- repo-factory:… -->` markers and the PR
-label `repo-factory`. Policy for this repo: `.github/repo-factory.yml`.
+repo-factory follows these steps for the issues its owner labels `go`, writes nothing on the
+issue, and labels its PR `repo-factory`. Policy for this repo: `.github/repo-factory.yml`.
 
 ## Provenance
 

@@ -125,26 +125,6 @@ def test_projects_changes_asks_and_lessons_contain_a_bad_row(made, monkeypatch):
     assert [a["id"] for a in asks] == ["c1", "c2"]
     check(asks[1], "change", "AttributeError")
 
-    from repo_factory.lessons import postmortem
-
-    monkeypatch.setattr(
-        postmortem,
-        "issue_lessons",
-        lambda data: [
-            {
-                "id": "l1",
-                "text": "t",
-                "applies_to": [],
-                "status": "active",
-                "born": {"issue": "me/good#1"},
-            },
-            {"id": "l2", "born": {"issue": "me/good#2"}},
-        ],
-    )
-    lessons = app.maintain_lessons()["lessons"]
-    assert [x["id"] for x in lessons] == ["l1", "l2"]
-    check(lessons[1], "lesson", "KeyError")
-
 
 def test_a_loop_step_that_cannot_be_read_is_listed_in_activity(made, monkeypatch):
     import time

@@ -351,7 +351,7 @@ class ProjectLink(TypedDict):
 
 
 class MaintainRow(TypedDict):
-    """One row of the last maintenance poll (``maintain.poll.today``): a repo's issue, PR or
+    """One row of the last maintenance poll (``maintain.watch.today``): a repo's issue, PR or
     repo-factory's own ask of it. Its other keys depend on its ``kind``."""
 
     kind: str

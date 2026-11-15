@@ -9,7 +9,6 @@ import pytest
 
 from repo_factory import registry as R
 from repo_factory.projects import charter as C
-from repo_factory.projects import jobs
 from repo_factory.projects.record import Projects, create_for_idea
 from repo_factory.ui import api
 
@@ -187,80 +186,12 @@ def test_no_charter_model_in_the_tests_unless_given(tmp_path):
     assert make_loop(tmp_path).charter_model is None
 
 
-def test_the_charter_actions_never_wait_on_a_model(world):
+def test_the_charter_reads_its_versions_and_no_action_writes_it(world):
     lp, p, root = world
     C.draft_for_project(lp, p["id"], FakeModel(RECEIPTS), root=root)
     app = api.App(lp.cfg.tasks_dir, "fake", lp.cfg.home)
-    code, out = call(
-        app,
-        "POST",
-        "/api/act",
-        None,
-        {
-            "kind": "redraft_charter",
-            "subject": {"kind": "new"},
-            "fields": {"project": p["id"]},
-            "origin": "ui",
-        },
-    )
-    assert code == 200 and "in the background" in out["say"]
-    assert jobs.state(lp.ledger, "charter", p["id"])["state"] == "queued"  # spawns nothing here
     code, ch = call(app, "GET", "/api/project/charter", {"id": p["id"]})
     assert code == 200 and ch["v"] == 1 and ch["text"].startswith("# Pitch\n")
-    code, out = call(
-        app,
-        "POST",
-        "/api/act",
-        None,
-        {
-            "kind": "edit_charter",
-            "subject": {"kind": "new"},
-            "fields": {
-                "project": p["id"],
-                "charter": ch["text"].replace(
-                    "# Scope tests\n", "# Scope tests\n- Is it still local?\n"
-                ),
-                "note": "local",
-            },
-            "origin": "cli",
-        },
-    )
-    assert code == 200 and "charter v2" in out["say"]
-    code, ch2 = call(app, "GET", "/api/project/charter", {"id": p["id"], "v": 2})
-    assert {"op": "+", "line": "- Is it still local?"} in ch2["diff"]
-    assert ch2["by"] == "owner" and [v["v"] for v in ch2["versions"]] == [2, 1]
-    code, out = call(
-        app,
-        "POST",
-        "/api/act",
-        None,
-        {
-            "kind": "restore_charter",
-            "subject": {"kind": "new"},
-            "fields": {"project": p["id"], "v": 1},
-            "origin": "ui",
-        },
-    )
-    assert code == 200 and "v3" in out["say"]
-    ev = Projects(lp.ledger).events(p["id"], limit=3)
-    assert ev[1]["data"].get("origin") == "cli"
     assert call(app, "GET", "/api/project/charter", {"id": p["id"], "v": 9})[0] == 404
-    code, out = call(
-        app,
-        "POST",
-        "/api/act",
-        None,
-        {
-            "kind": "edit_charter",
-            "subject": {"kind": "new"},
-            "fields": {"project": "p00000000", "charter": "x" * 50},
-            "origin": "ui",
-        },
-    )
-    assert code == 404
-
-
-def test_the_charter_actions_are_in_the_registry_and_offered_to_an_agent():
     for k in ("edit_charter", "redraft_charter", "restore_charter"):
-        assert k in R.ACTIONS and k in R.agent_default_actions()
-        assert R.schema(k)["required"][0] == "project"
+        assert k not in R.ACTIONS

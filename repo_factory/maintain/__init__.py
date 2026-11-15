@@ -1,18 +1,19 @@
 """Maintaining published products through GitHub (docs/maintain.md): labels as the protocol,
 ``.github/repo-factory.yml`` as the per-repo policy, ``AGENTS.md`` as the instructions any agent reads,
-and CI that keeps that file honest. GitHub is the record; nothing here keeps state.
+and CI that keeps that file honest.
 
 This package's static half: the label scheme (``labels``), the policy file
 (``policy``), the AGENTS.md renderer and drift doctor (``agentsmd``), the templates the
-products carry (``templates/``) and the backfill that gives an existing product all of them in
-one pull request (``backfill``). ``repo-factory maintain labels|policy|doctor|backfill`` (``cli``).
+products carry (``templates/``) and the setup pull request that gives a repository all of them
+(``backfill``). ``repo-factory maintain labels|policy|doctor|setup`` (``cli``).
 
-Its polling half: the GitHub client and the poll's disposable cache (``github``),
-triage with a no-tools model (``triage``) and the step of the loop's tick that runs it and
-handles Dependabot (``poll``); ``repo-factory maintain tick|status``.
+Its polling half: the GitHub client and the poll's disposable cache (``github``), and the poll
+of the repositories you switched maintenance on for (``watch``, with ``switch``, ``pauses``,
+``consent``, ``spend``, ``fixes`` and ``proposals``); ``repo-factory maintain tick|status``.
 
-Its revise half: the fix of a ``go`` issue (``revise``) and the release after a merge
-(``release``). Then who repo-factory is on GitHub (``identity``: the owner's login, or a
+Its fixing half: the fix of an issue you labelled ``go`` (``revise``, which writes nothing on
+the issue), the merge judge (``automerge``) and the release after a merge (``release``).
+Then who repo-factory is on GitHub (``identity``: the owner's login, or a
 fine-grained token of the owner's or a bot account's, ``repo-factory maintain whoami`` and the line in
 ``repo-factory doctor``), and the weekly drift doctor on GitHub (``doctor``); publishing writes these
 files into every new build's first commit (``loop.publish.maintenance_files``)."""

@@ -311,7 +311,7 @@ export interface ProjectLink {
   name: string;
 }
 
-/** One row of the last maintenance poll (``maintain.poll.today``): a repo's issue, PR or repo-factory's own ask of it. Its other keys depend on its ``kind``. */
+/** One row of the last maintenance poll (``maintain.watch.today``): a repo's issue, PR or repo-factory's own ask of it. Its other keys depend on its ``kind``. */
 export interface MaintainRow {
   kind: string;
   repo: string;

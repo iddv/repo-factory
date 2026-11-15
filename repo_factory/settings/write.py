@@ -257,7 +257,6 @@ RULES: dict[str, tuple] = {
     "maintain.enabled": ("bool",),
     "maintain.poll_s": ("int", 60, 86400),
     "maintain.cache_s": ("int", 0, 86400),
-    "maintain.triage_max_per_poll": ("int", 1, 86400),
     "maintain.repos": ("repos",),
     "maintain.concurrency": ("int", 0, 8),
     "maintain.max_usd": ("usd",),
@@ -266,10 +265,8 @@ RULES: dict[str, tuple] = {
     "maintain.proposals_model": ("model",),
     "maintain.net": ("enum", ("allowlist", "public")),
     "maintain.allow_signin_file": ("bool",),
-    "maintain.lesson_label": ("bool",),
     "maintain.doctor_days": ("int", 0, 90),
     "maintain.identity": ("enum", ("auto", "app", "token", "login")),
-    "maintain.refresh_max": ("int", 0, 5),
     "maintain.exam": ("enum", ("report", "require", "off")),
     # a token file is named in loop.yaml by hand; the page only removes the setting
     # (Remove this token setting, once GitHub refused the token): {key, clear: true}

@@ -77,7 +77,7 @@ def read(home) -> dict[str, dict]:
 def shown(x: dict) -> dict:
     """A kept proposal as the page shows it and Build this proposal posts it: title and reason
     sanitised (a list kept before that rule is sanitised on read), the kind one of ``KINDS``."""
-    from .triage import sanitize
+    from .words import sanitize
 
     return {
         **x,
@@ -215,7 +215,7 @@ def prompt(product: str, readme: str, titles: list[str]) -> str:
 
 
 def parse(text: str) -> list[dict]:
-    from .triage import sanitize
+    from .words import sanitize
 
     if not isinstance(text, str):
         return []
@@ -247,7 +247,7 @@ def run(loop, repo: str, model_call=None, now: float | None = None) -> dict:
     tools."""
     from . import spend, switch, watch
     from .github import GitHubError, Repo
-    from .poll import gh_for
+    from .watch import gh_for
 
     now = now or time.time()
     home = loop.cfg.home
@@ -315,7 +315,7 @@ def build(loop, repo: str, pid: str) -> dict:
     """Build this proposal: one issue on ``repo``, labelled ``go`` by you (the login that
     creates it), so the next poll fixes it. The proposal is marked built with its issue."""
     from .github import Repo
-    from .poll import gh_for
+    from .watch import gh_for
 
     home = loop.cfg.home
     items = of(home, repo)["items"]

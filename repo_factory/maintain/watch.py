@@ -38,12 +38,112 @@ import time
 from . import automerge, consent, doctor, fixes, pauses, release, revise, signin, spend, switch
 from . import policy as P
 from .github import BOTS, Cache, GitHubError, Repo
-from .poll import free_slots, gh_for, read_head, summary_of
-from .poll import targets as published
 
 SETUP_BRANCH = "repo-factory/maintenance"
 MAX_GO_READS = 30  # issues whose events one poll reads (the rest: the next poll)
 MERGE_KINDS = ("bug", "docs")  # what merging its own fixes may ever take
+
+
+def settings(cfg) -> dict:
+    return cfg.get("maintain") or {}
+
+
+def gh_for(loop, repo: str | None = None, scope: str = "maintain"):
+    """Maintenance's ``gh`` (``identity.resolve``): repo-factory's own GitHub App when
+    it is installed (a token for ``scope`` on ``repo`` alone), else ``maintain.token_env_file``'s
+    token, else the loop's own ``gh``: the owner's login."""
+    from .identity import gh_for as _gh_for
+
+    return _gh_for(loop, repo, scope)
+
+
+def published(loop) -> list[dict]:
+    """Every published build's repository (state ``published`` or ``public``), once each, with
+    its pause (``pauses.py``) on it: what the pages list and a request may name."""
+    out, seen = [], set()
+    held = pauses.read(loop.cfg.home)
+    for i in loop.ledger.all(("published", "public")):
+        full = (i.get("publish") or {}).get("repo")
+        if full and full not in seen:
+            seen.add(full)
+            p = i.get("pitch") or {}
+            out.append(
+                {
+                    "repo": full,
+                    "idea": i["id"],
+                    "product": p.get("product") or i["title"],
+                    "one_liner": p.get("one_liner") or "",
+                    "kind": "product",
+                    "paused": held.get(full),
+                }
+            )
+    return out
+
+
+def read_head(
+    r: Repo, rec: dict, branch: str, now: float, out: dict | None = None, fresh: bool = False
+) -> str | None:
+    """The branch's commit now, into ``rec["head"]`` (``{"sha", "etag", "branch", "at",
+    "moved"}``): one conditional read a poll, a 304 when nothing moved (no rate limit spent).
+    What is derived from the repo (the doctor) runs again when it differs from the commit it was
+    computed at. ``fresh``: ask without the ETag (a Re-check). A failed read keeps the last
+    answer; the doctor then falls back to its days."""
+    h = dict(rec.get("head") or {})
+    same = h.get("branch") == branch and h.get("sha")
+    try:
+        got = r.head(branch, None if fresh or not same else h.get("etag"))
+    except GitHubError as e:
+        if out is not None:
+            out["errors"].append(f"head: {e}")
+        return h.get("sha") if same else None
+    if got["changed"]:
+        if got["sha"] != h.get("sha"):
+            h["moved"] = now
+        h.update(sha=got["sha"], etag=got["etag"], branch=branch)
+    h["at"] = now
+    rec["head"] = h
+    return h.get("sha")
+
+
+def summary_of(pol: dict) -> dict:
+    """The policy file in the few words the page shows."""
+    return {
+        "status": pol["status"],
+        "trigger": pol["revise"]["trigger"],
+        "auto_go": pol["revise"]["auto_go"],
+        "factory_patch": pol["merge"]["factory_patch"],
+        "merge_kinds": list(pol["merge"].get("kinds") or []),
+        "max_lines": pol["merge"].get("max_lines"),
+        "dependabot": pol["merge"]["dependabot"],
+        "on_merge": pol["release"]["on_merge"],
+        "triage": pol["triage"]["enabled"],
+        "note": pol["spend"]["note"],
+    }
+
+
+def free_slots(loop, cache: Cache) -> int:
+    """How many fixes may start now: ``maintain.concurrency`` less the fixes running, and
+    never more than the build slots left (a fix shares ``concurrency`` with builds)."""
+    n = len(revise.running(cache))
+    mine = int(settings(loop.cfg).get("concurrency", 1) or 0) - n
+    shared = int(loop.cfg["concurrency"]) - len(loop.building()) - n
+    return max(0, min(mine, shared))
+
+
+def today(home) -> dict:
+    """Every repository's rows from the poll's cache, for Today: never a GitHub call, so the
+    page stays fast whatever GitHub does. ``{"rows": [...], "polled": ts}``."""
+    from .rows import overlay
+
+    d = Cache(home).read()
+    out, polled = [], None
+    for full, rec in sorted(d["repos"].items()):
+        for r in overlay(home, [{**x, "repo": full} for x in rec.get("rows") or []]):
+            out.append(
+                {**r, "product": rec.get("product") or full.split("/")[1], "idea": rec.get("idea")}
+            )
+        polled = max(polled or 0, rec.get("last_poll") or 0) or polled
+    return {"rows": out, "polled": polled}
 
 
 def targets(loop) -> list[dict]:
@@ -278,7 +378,7 @@ def poll_repo(loop, gh, t: dict, cache: Cache, now: float, slots: list[int], sto
         elif got.get("merged"):
             out["merged"].append(got["merged"])
             try:
-                rel = release.step(r, pol, lessons=False)
+                rel = release.step(r, pol)
                 if rel and rel.get("tag"):
                     out["release"] = rel
                     rec["release"] = {"tag": rel["tag"], "url": rel.get("url"), "at": now}
@@ -446,7 +546,7 @@ def merge_step(loop, r, items, pol, rec, now, own_prs, hosted) -> dict:
 
 def diff_refuses(r, pr: int, f: dict) -> str | None:
     """Why merging refuses repo-factory's fix pull request ``pr`` by what its diff holds, or
-    None (RFREV2 M6: the diff is judged, not the label). Its issue must carry exactly one kind
+    None (the diff is judged, not the label). Its issue must carry exactly one kind
     label, ``bug`` or ``docs`` (none: no merge). ``docs``: every changed file is a document
     (``*.md``, ``*.rst``, ``*.txt``, ``docs/``). ``bug``: the fix's reproducing test is in the
     diff. Either: no changed file runs somewhere (manifests, lock files, build and test

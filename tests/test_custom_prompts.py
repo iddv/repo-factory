@@ -36,8 +36,6 @@ BRIEF_IDS = {
     "fix",
     "pitch",
     "honesty",
-    "triage",
-    "lesson_issue",
     "build",
     "change",
     "product",

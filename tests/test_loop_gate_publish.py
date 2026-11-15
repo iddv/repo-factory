@@ -210,7 +210,7 @@ def test_publish_private_then_approve_public(tmp_path, fake_gh):
     assert out["state"] == "public" and repos(fake_gh)["owner/clinicbook"]["visibility"] == "public"
     # through the REST API, which every gh version supports (2.45's ``repo edit`` lacks
     # --accept-visibility-change-consequences, which newer releases require)
-    assert visibility()[0][3:] == ["repos/owner/clinicbook", "-f", "visibility=public"]
+    assert visibility()[0][3:] == ["repos/owner/clinicbook", "--raw-field", "visibility=public"]
     assert not any(c[:2] == ["repo", "edit"] for c in gh_calls(fake_gh))
 
 

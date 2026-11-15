@@ -12,9 +12,9 @@ import pytest
 from repo_factory.gh import Gh
 from repo_factory.maintain import fixes, revise, switch, watch
 
+from .maintain_common import Scripted, names_test
+from .maintain_common import fixes as fixes_step
 from .test_f3_maintenance import HOSTILE, OWNER, REPO, quiet, rows, world  # noqa: F401
-from .test_maintain_revise import Scripted, names_test
-from .test_maintain_revise import fixes as fixes_step
 
 EDITED = "edited after you labelled it: take go off and put it on again"
 
@@ -28,7 +28,7 @@ def starts(monkeypatch) -> list:
     monkeypatch.setattr(
         revise,
         "start",
-        lambda cfg, full, n, task, refresh=None: got.append(n) or {"pid": None, "task": str(task)},
+        lambda cfg, full, n, task: got.append(n) or {"pid": None, "task": str(task)},
     )
     return got
 

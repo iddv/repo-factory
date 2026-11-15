@@ -1,16 +1,17 @@
 """``repo-factory maintain labels|policy|doctor|tick|status|...`` (off and unlisted in this
 version: maintenance of what repo-factory published).
 
-    repo-factory maintain labels REPO [--dry-run] [--prune] | --print
+    repo-factory maintain labels REPO [--dry-run] | --print
     repo-factory maintain policy REPO | --file F | --template
     repo-factory maintain doctor PATH | --repo REPO
     repo-factory maintain whoami [--home H] [--json]     the identity in use: login or token, scope,
                                                 expiry, maintained repos reached
-    repo-factory maintain tick [--home H] [--json]       one poll now: triage, Dependabot, releases,
-                                                the next go issue's fix, Today's rows
+    repo-factory maintain tick [--home H] [--json]       one poll now (``watch.tick``)
     repo-factory maintain status [--home H] [--json]     what the last poll saw (no GitHub call)
     repo-factory maintain revise REPO N [--home H]       fix issue N now (the tick runs this detached)
-    repo-factory maintain release REPO [--home H]        release main if it moved past the newest tag
+    repo-factory maintain recheck REPO [--home H]        read one repo again now (reads only)
+    repo-factory maintain setup REPO [--home H]          the setup pull request (the switch runs it)
+    repo-factory maintain propose REPO [--home H]        this week's proposals (the tick runs it)
 
 ``gh`` runs as the logged-in user (``--gh`` replaces the command, as ``publish.gh_command``)."""
 
@@ -36,11 +37,6 @@ def add_maintain_group(sub) -> None:
     la = msub.add_parser("labels", help="create or update the label scheme on a repo")
     la.add_argument("repo", nargs="?", default=None, help="owner/name")
     la.add_argument("--dry-run", action="store_true", help="say what would change; change nothing")
-    la.add_argument(
-        "--prune",
-        action="store_true",
-        help="also delete labels that are not in the scheme (never the default)",
-    )
     la.add_argument("--print", action="store_true", help="print .github/labels.yml and exit")
     la.set_defaults(fn=cmd_labels)
 
@@ -93,72 +89,9 @@ def add_maintain_group(sub) -> None:
     )
     rc.set_defaults(fn=cmd_recheck)
 
-    mp = msub.add_parser(
-        "merge-policy",
-        help="open the pull request that turns repo-factory's "
-        "merging of its own fixes on or off "
-        "(.github/repo-factory.yml merge.factory_patch, merge.kinds)",
-    )
-    mp.add_argument("repo", help="owner/name of a product repo-factory published")
-    onoff = mp.add_mutually_exclusive_group(required=True)
-    onoff.add_argument("--on", dest="on", action="store_true", help="merge.factory_patch: ci-green")
-    onoff.add_argument("--off", dest="on", action="store_false", help="merge.factory_patch: never")
-    mp.add_argument(
-        "--kinds",
-        default="bug,docs",
-        help="what repo-factory may merge: bug, docs, security, dependency (default "
-        "bug,docs; feature never)",
-    )
-    mp.add_argument("--home", default=None)
-    mp.add_argument("--json", action="store_true")
-    mp.add_argument(
-        "--detach",
-        action="store_true",
-        help="the page's button (maintain_merge_policy): run it in the background "
-        "through repo-factory",
-    )
-    mp.add_argument("--yes", action="store_true", help="with --detach: confirm the pull request")
-    mp.set_defaults(fn=cmd_merge_policy)
-
-    cu = msub.add_parser(
-        "cleanup",
-        help="one PR moving repo-factory's build checks out of a "
-        "product published before they moved",
-    )
-    cu.add_argument("repo", help="owner/name")
-    cu.add_argument(
-        "--work", default=None, help="the clone (default <home>/maintain/cleanup/<name>)"
-    )
-    cu.add_argument(
-        "--drop-suite",
-        action="store_true",
-        help="also remove tests/acceptance/ (default: kept, the product's own)",
-    )
-    cu.add_argument(
-        "--task",
-        default=None,
-        help="the build's task folder, for the checks "
-        "asset (default: the loop idea published as "
-        "the repo)",
-    )
-    cu.add_argument(
-        "--model",
-        default=CLEANUP_MODEL,
-        help="writes AGENTS.md from the README and the code (one no-tools call)",
-    )
-    cu.add_argument(
-        "--no-model",
-        dest="use_model",
-        action="store_false",
-        help="keep AGENTS.md, only removing the lines about what the PR removes",
-    )
-    cu.add_argument("--dry-run", action="store_true", help="show the diff; push nothing")
-    cu.add_argument("--json", action="store_true")
-    cu.set_defaults(fn=cmd_cleanup)
-
     tk = msub.add_parser(
         "tick",
-        help="poll the maintained repos once now: triage new issues "
+        help="poll the repositories maintenance is switched on for, once now "
         "(what the loop's tick does every maintain.poll_s)",
     )
     tk.add_argument(
@@ -181,14 +114,6 @@ def add_maintain_group(sub) -> None:
     rv.add_argument("number", help="the issue")
     rv.add_argument("--home", default=None)
     rv.add_argument("--json", action="store_true")
-    rv.add_argument(
-        "--refresh",
-        type=int,
-        default=None,
-        metavar="PR",
-        help="re-do the fix of repo-factory's pull request PR on the new main, where it "
-        "conflicts (not an attempt; the poll starts this)",
-    )
     rv.set_defaults(fn=cmd_revise)
 
     su = msub.add_parser(
@@ -208,15 +133,6 @@ def add_maintain_group(sub) -> None:
     pp.add_argument("repo", help="owner/name")
     pp.add_argument("--home", default=None)
     pp.set_defaults(fn=cmd_propose)
-
-    rl = msub.add_parser(
-        "release",
-        help="tag and release main now if it moved past the newest "
-        "version tag (what the tick does after a merge)",
-    )
-    rl.add_argument("repo", help="owner/name")
-    rl.add_argument("--home", default=None)
-    rl.set_defaults(fn=cmd_release)
 
 
 def _gh(args):
@@ -238,9 +154,9 @@ def cmd_labels(args) -> None:
         return
     if not args.repo:
         sys.exit("repo-factory maintain labels: give a repo (owner/name) or --print")
-    res = labels.apply(_gh(args), args.repo, prune=args.prune, dry_run=args.dry_run)
+    res = labels.apply(_gh(args), args.repo, dry_run=args.dry_run)
     print(json.dumps(res, indent=1))
-    cmds = labels.prune_commands(args.repo, res["extra"]) if not args.prune else []
+    cmds = labels.prune_commands(args.repo, res["extra"])
     if cmds:
         print("to prune GitHub's default labels that ours replace:", *cmds, sep="\n  ")
 
@@ -375,9 +291,8 @@ def cmd_status(args) -> None:
         )
         print(
             f"{full}: {p.get('status', '?')}, polled {ago}; {c.get('issues', 0)} open issues "
-            f"({c.get('triage', 0)} triage, {c.get('needs-info', 0)} needs-info, "
-            f"{c.get('go', 0)} go, {c.get('needs-you', 0)} needs-you), "
-            f"{c.get('factory_prs', 0)} repo-factory PRs, {c.get('dependabot', 0)} dependabot"
+            f"({c.get('go_yours', 0)} labelled go by you), {c.get('prs', 0)} pull requests, "
+            f"{c.get('waiting', 0)} waiting for you"
         )
         for r in rec.get("rows") or []:
             print(f"  {r['kind']}: " + (f"#{r['number']} " if r.get("number") else "") + r["title"])
@@ -393,9 +308,7 @@ def cmd_revise(args) -> None:
     lp = _loop(args)
     if not str(args.number).isdigit():
         sys.exit(f"repo-factory maintain revise: {args.number} is not an issue number")
-    if args.refresh:
-        sys.exit("repo-factory maintain revise: --refresh is not part of this version")
-    res = Fix(lp, args.repo, int(args.number), quiet=True).run()
+    res = Fix(lp, args.repo, int(args.number)).run()
     if args.json:
         print(json.dumps(res, indent=1, default=str))
     else:
@@ -408,7 +321,7 @@ def cmd_revise(args) -> None:
             )
             + f" (${res.get('usd', 0):.2f})"
         )
-    if res["outcome"] not in ("pr", "refreshed", "already"):
+    if res["outcome"] != "pr":
         sys.exit(1)
 
 
@@ -445,7 +358,6 @@ def cmd_setup(args) -> None:
                 lp.cfg.layout.maintain / "setup" / repo.replace("/", "-"),
                 check=check,
                 still=still,
-                settings=False,
             )
         except Exception as e:  # noqa: BLE001 - said on the page
             why = f"{type(e).__name__}: {e}"
@@ -492,24 +404,6 @@ def cmd_propose(args) -> None:
     n = len(rec.get("items") or [])
     tail = f": {rec['error']}" if rec.get("error") else ""
     print(f"{args.repo}: {rec.get('state')}, {n} proposal(s){tail}")
-
-
-def cmd_release(args) -> None:
-    from . import policy, release
-    from .github import Repo
-    from .poll import gh_for
-
-    lp = _loop(args)
-    gh = gh_for(lp)
-    try:
-        res = release.step(
-            Repo(gh, args.repo),
-            policy.load(gh, args.repo),
-            lessons=bool(lp.cfg["maintain"].get("lesson_label", True)),
-        )
-    except policy.PolicyError as e:
-        sys.exit(f"repo-factory maintain release: {e}")
-    print(json.dumps(res, indent=1) if res else "nothing to release")
 
 
 # -- one door, two ways in ------------------------------------------------------------------------
@@ -613,58 +507,6 @@ def describer(model_id: str):
     return describe
 
 
-CLEANUP_MODEL = "claude-sonnet-5-5"
-
-
-def cmd_cleanup(args) -> None:
-    from ..settings import store as config
-    from . import cleanup
-
-    name = args.repo.split("/")[-1]
-    work = (
-        Path(args.work).expanduser() if args.work else config.home() / "maintain" / "cleanup" / name
-    )
-    task = Path(args.task).expanduser() if args.task else None
-    if task is None:
-        try:
-            from ..loop.daemon import Loop
-
-            task = cleanup.find_task(Loop(config.Config()), args.repo)
-        except Exception:  # noqa: BLE001 - no loop: no asset
-            task = None
-    model = None
-    if args.use_model:
-        from ..loop.models import claude
-
-        model = claude(args.model, "cleanup")
-    try:
-        res = cleanup.cleanup(
-            _gh(args),
-            args.repo,
-            work,
-            drop_suite=args.drop_suite,
-            model=model,
-            task=task,
-            dry_run=args.dry_run,
-            log=lambda m: print(m, file=sys.stderr),
-        )
-    except cleanup.CleanupError as e:
-        sys.exit(f"repo-factory maintain cleanup: {e}")
-    if args.json:
-        print(json.dumps(res, indent=1, default=str))
-        return
-    for d in res["done"] or ["nothing to change"]:
-        print(f"- {d}")
-    for x in res.get("left") or []:
-        print(f"  left for you: {x}")
-    if res.get("diff"):
-        print(res["diff"])
-    if args.dry_run and res.get("patch"):
-        print(res["patch"])
-    if res.get("pr"):
-        print(f"PR: {res['pr']['url']}")
-
-
 def cmd_recheck(args) -> None:
     import os
     import time
@@ -730,77 +572,3 @@ def cmd_recheck(args) -> None:
         print(f"project {pid}: clone, drift and numbers refreshed")
     for e in res["errors"]:
         print(f"error: {e}")
-
-
-def cmd_merge_policy(args) -> None:
-    import os
-    import time
-
-    from .. import proc
-    from . import mergepolicy as M
-
-    kinds = [k for k in args.kinds.split(",") if k.strip()]
-    if args.detach:
-        if not args.yes:
-            sys.exit(
-                "repo-factory maintain merge-policy --detach: this opens a pull request on the "
-                "repository; add --yes to confirm"
-            )
-        _say(
-            args,
-            _act(
-                args,
-                "maintain_merge_policy",
-                {"repo": args.repo, "on": args.on, "kinds": kinds},
-                confirm=True,
-            ),
-        )
-        return
-    lp = _loop(args)
-    home = lp.cfg.home
-    st = M.read_state(home, args.repo) or {}
-    mine = st.get("pid") == os.getpid()
-    M.write_state(
-        home,
-        args.repo,
-        state="running",
-        pid=os.getpid(),
-        start=proc.start_time(os.getpid()),
-        finished=None,
-        why=None,
-        pr=None,
-        since=st.get("since") if mine else time.time(),
-        on=args.on,
-        kinds=kinds,
-        by=st.get("by") if mine else "cli",
-    )
-    from .github import GitHubError
-
-    try:
-        res = M.run(lp, args.repo, args.on, kinds)
-    except BaseException as e:
-        said = isinstance(e, (M.PolicyPRError, GitHubError))
-        M.write_state(
-            home,
-            args.repo,
-            state="failed",
-            finished=time.time(),
-            why=(str(e) if said else f"{type(e).__name__}: {e}")[:600],
-        )
-        if said:
-            sys.exit(f"repo-factory maintain merge-policy: {e}")
-        raise
-    M.write_state(
-        home,
-        args.repo,
-        state="done",
-        finished=time.time(),
-        pr=res.get("pr"),
-        why=None if res["changed"] else res.get("say"),
-    )
-    if args.json:
-        print(json.dumps(res, indent=1, default=str))
-    elif res.get("pr"):
-        print(f"{args.repo}: {res['pr'].get('url') or '#' + str(res['pr']['number'])}")
-    else:
-        print(f"{args.repo}: {res['say']}")

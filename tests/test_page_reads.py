@@ -157,12 +157,6 @@ def test_a_read_never_seen_waits_a_moment_then_says_it_is_still_asking(world, mo
     gate.set()
     settle()
     assert rd.cached(("o/plots", "slow"), lambda: "never asked", default=mgh.PENDING) == "late"
-    monkeypatch.setattr(a, "maint_identity_read", lambda: gate.wait(10) or {})
-    gate.clear()
-    rd._hits.clear()
-    assert a.maint_identity()["pending"] is True
-    gate.set()
-    settle()
 
 
 def test_the_hand_gate_is_kept_beside_the_build_and_read_after_a_restart(world, monkeypatch):

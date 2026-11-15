@@ -3,8 +3,6 @@
     repo-factory lessons list [--candidate | --file F] [--pack P] [--lint] [--json]
     repo-factory lessons postmortem RUN_DIR | --score-dir DIR --pack P [--claims F] [--findings F]
                            [--no-apply] [--candidate F] [--model M] [--out F]
-    repo-factory lessons postmortem --issues [--repo R ...] [--home H] [--reread] [--no-apply]
-                           [--candidate F] [--model M]   (user-found bugs)
     repo-factory lessons credit RUN_DIR [--candidate F]
 
 Post-mortems and credit change the candidate (``policies/v5/lessons.next.yaml``, version
@@ -61,24 +59,6 @@ def add_lessons_group(sub) -> None:
         "--model", default=None, help="default: the run's builder model, else the CLI default"
     )
     pm.add_argument("--out", default=None, help="default: <run or score dir>/postmortem.json")
-    pm.add_argument(
-        "--issues",
-        action="store_true",
-        help="instead: the closed issues labelled lesson on the published repos, "
-        "one call each, once (the lesson-read comment)",
-    )
-    pm.add_argument(
-        "--repo",
-        action="append",
-        default=[],
-        help="with --issues: owner/name (repeatable; default: the repos the loop maintains)",
-    )
-    pm.add_argument("--home", default=None, help="with --issues: the loop home")
-    pm.add_argument(
-        "--reread",
-        action="store_true",
-        help="with --issues: read issues that already have the lesson-read comment",
-    )
     pm.add_argument("--json", action="store_true")
     pm.set_defaults(fn=cmd_postmortem)
 
@@ -146,77 +126,7 @@ def _run_ref(path: Path) -> str:
         return str(path)
 
 
-def cmd_postmortem_issues(args) -> None:
-    from ..github_user import connection
-    from ..maintain import identity
-    from ..settings.store import Config
-    from . import postmortem as pmod
-
-    cfg = Config(args.home)
-    repos = args.repo or identity.maintained_repos(cfg)
-    if not repos:
-        sys.exit(
-            "repo-factory lessons postmortem --issues: no repo (nothing published; give --repo)"
-        )
-    gh = identity.resolve(cfg, scope="issues") or connection(cfg)
-    data, cand = store.open_candidate(
-        current=Path(args.lessons) if args.lessons else None,
-        candidate=Path(args.candidate) if args.candidate else None,
-    )
-    llm = pmod.ClaudeCall(args.model or pmod.ISSUE_MODEL)
-    try:
-        res = pmod.issues_postmortem(
-            gh,
-            repos,
-            data,
-            llm=llm,
-            reread=args.reread,
-            apply=args.apply,
-            log=lambda m: print(m, file=sys.stderr),
-        )
-    except RuntimeError as e:
-        sys.exit(f"repo-factory lessons postmortem --issues: {e}")
-    if args.apply and any(x.get("lesson") for x in res["read"]):
-        store.save(cand, data)
-    res.update(candidate=str(cand), version=data["version"])
-    if res["usd"] and Path(cfg.db).exists():
-        from ..loop.ledger import Ledger
-        from ..loop.models import spend_kw
-
-        Ledger(cfg.db).spend("lesson", res["usd"], None, **spend_kw(getattr(llm, "tokens", None)))
-    if args.json:
-        print(json.dumps(res, indent=1, default=str))
-    else:
-        for x in res["read"]:
-            print(
-                f"{x['issue']}: "
-                + (
-                    f"{x['lesson']} ({x['miss']}): {x['text']}"
-                    if x["lesson"]
-                    else f"no lesson ({x['why'] or 'none proposed'})"
-                )
-                + (f"  [dropped: {'; '.join(x['dropped']['problems'])}]" if x["dropped"] else "")
-            )
-        for x in res["skipped"]:
-            print(f"{x['issue']}: skipped, {x['why']}")
-        for e in res["errors"]:
-            print(f"error: {e}")
-        added = [x["lesson"] for x in res["read"] if x["lesson"]]
-        print(
-            f"{len(res['read'])} read, ${res['usd']:.2f}; "
-            + (
-                f"added {', '.join(added)} to {cand} (v{data['version']}), waiting for the bench"
-                if added and args.apply
-                else "nothing added"
-            )
-        )
-    if res["errors"]:
-        sys.exit(1)
-
-
 def cmd_postmortem(args) -> None:
-    if args.issues:
-        return cmd_postmortem_issues(args)
     from . import postmortem as pmod
     from .pack import Pack, PackError
 

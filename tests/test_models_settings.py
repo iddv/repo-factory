@@ -93,15 +93,11 @@ def test_every_role_says_where_it_is_set(home):
         "oracle",
         "repair",
         "readiness",
-        "triage",
         "charter",
         "evolve",
     }
     assert roles["charter"]["setting"] == "projects.charter.model" and not roles["charter"]["set"]
     assert roles["summary"]["model"] == "claude-haiku-5-5" and not roles["summary"]["set"]
-    assert (
-        roles["triage"]["setting"] == "maintain.triage_model" and roles["triage"]["kind"] == "loop"
-    )
     assert roles["pitch"]["model"] is None and roles["pitch"]["setting"] == "pitch.model"
     assert roles["verify"]["setting"] == "build.models.verify"
     assert set(pipeline.MODEL_SECTIONS) == {k for k, *_, kind in models.ROLES if kind == "build"}

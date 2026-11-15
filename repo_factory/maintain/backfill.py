@@ -1,20 +1,19 @@
-"""Backfill: give an existing product everything maintenance needs, in one
-pull request the owner merges.
+"""The setup pull request: give a repository everything maintenance needs, in one pull
+request the owner merges (``repo-factory maintain setup REPO``, which the maintenance switch
+starts).
 
-``backfill(gh, repo, work)``:
+``backfill(gh, repo, work, check=...)``:
 
-1. clones ``main`` into ``work`` (or reuses the clone), branch ``repo-factory/maintenance`` (an
-   existing local or pushed branch is kept, so a hand-made commit on it survives a re-run);
+1. clones ``main`` into ``work`` afresh, branch ``repo-factory/maintenance`` (an existing pushed
+   branch is kept, so a hand-made commit on it survives a re-run);
 2. writes the files (``write_files``) and removes the old ``test.yml``; one commit;
 3. checks: the drift doctor (``agentsmd.check``) and, unless ``run_suites`` is off,
-   ``check_agents_md.py`` on the branch, which runs AGENTS.md's commands and both suites.
-   A failure stops here: nothing is pushed and no PR is opened;
+   ``check`` (``check_agents_md.py`` in the sandbox), which runs AGENTS.md's commands and both
+   suites. A failure stops here: nothing is pushed and no PR is opened;
 4. creates the missing labels (``labels.apply(missing_only=True)``: a label the repository already
-   has keeps its colour and description; never pruning); with ``settings`` (not the switch's
-   setup) it also sets ``delete_branch_on_merge`` and
-   enables Dependabot alerts; what the token cannot change is listed in the PR;
+   has keeps its colour and description; never pruning). No repository setting is changed;
 5. pushes the branch and opens the PR (or refreshes its body when one is open), labelled
-   ``repo-factory``, with the files, the policy, the checks and the morning checklist.
+   ``repo-factory``, with the files, the policy, the checks and the owner's checklist.
 
 Every step is idempotent: a second run changes nothing that is already right."""
 
@@ -24,9 +23,7 @@ import json
 import os
 import re
 import shutil
-import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 from .. import gitcmd, paths
@@ -162,109 +159,6 @@ def checkout(gh, repo: str, work: Path) -> None:
         git("checkout", "-q", "-B", BRANCH, base, cwd=work)
 
 
-class VenvError(BackfillError):
-    pass
-
-
-def throwaway_venv(parent: Path) -> Path:
-    """A fresh virtual environment with pip, made for one check (as CI's runner has): the
-    fence's ``python -m pip install …`` must never reach the user's own interpreter, and a
-    system Python without pip must not fail it (Beliefline, 2026-10-13)."""
-    from ..harness.isolation import base_python
-
-    d = Path(tempfile.mkdtemp(prefix="check-venv-", dir=parent))
-    uv = shutil.which("uv")
-    cmd = (
-        [uv, "venv", "-q", "--seed", "--python", base_python(), str(d)]
-        if uv
-        else [base_python(), "-m", "venv", "--clear", str(d)]
-    )
-    try:
-        p = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-    except (OSError, subprocess.TimeoutExpired) as e:
-        shutil.rmtree(d, ignore_errors=True)
-        raise VenvError(f"could not make a virtual environment for the check: {e}") from None
-    if p.returncode != 0 or not (d / "bin" / "python").exists():
-        shutil.rmtree(d, ignore_errors=True)
-        raise VenvError(
-            "could not make a virtual environment for the check: "
-            + (p.stderr or p.stdout).strip()[-300:]
-        )
-    return d
-
-
-def run_check(work: Path, python: str | None = None, timeout: int = 1800) -> dict:
-    """``check_agents_md.py`` on the branch, with the interpreter's directory first on PATH so
-    the fence's ``python`` is that interpreter. By default a throwaway venv with pip, made
-    beside the clone and removed afterwards; ``python`` (``--python``) overrides it."""
-    venv = None
-    if not python:
-        try:
-            venv = throwaway_venv(Path(work).parent)
-        except VenvError as e:
-            return {"ok": False, "summary": str(e), "output": ""}
-        python = str(venv / "bin" / "python")
-    # a throwaway HOME too: the product's data directory (``~/.<product>``) and anything its
-    # quick start leaves behind stay out of the user's own
-    home = Path(tempfile.mkdtemp(prefix="check-home-", dir=Path(work).parent))
-    env = {
-        k: v for k, v in os.environ.items() if k not in ("PYTHONHOME", "PYTHONPATH", "VIRTUAL_ENV")
-    }
-    env["PATH"] = str(Path(python).parent) + os.pathsep + env.get("PATH", "")
-    env["HOME"] = str(home)
-    if venv is not None:
-        env["VIRTUAL_ENV"] = str(venv)
-    try:
-        p = subprocess.run(
-            [python, ".github/scripts/check_agents_md.py"],
-            cwd=work,
-            env=env,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-        )
-    except subprocess.TimeoutExpired:
-        return {
-            "ok": False,
-            "summary": f"check_agents_md.py took longer than {timeout} s",
-            "output": "",
-        }
-    finally:
-        for d in (venv, home):
-            if d is not None:
-                shutil.rmtree(d, ignore_errors=True)
-    out = (p.stdout or "") + (p.stderr or "")
-    last = [ln for ln in out.splitlines() if ln.strip()][-1:] or [""]
-    return {"ok": p.returncode == 0, "summary": last[0], "output": out[-6000:]}
-
-
-def repo_settings(gh, repo: str) -> dict:
-    """``delete_branch_on_merge`` on and Dependabot alerts enabled; each step says whether it
-    took, so the PR can list what the owner must do by hand."""
-    res = {}
-    code, out, err = gh._run(
-        [
-            "api",
-            "-X",
-            "PATCH",
-            f"repos/{repo}",
-            "-F",
-            "delete_branch_on_merge=true",
-            "-q",
-            ".delete_branch_on_merge",
-        ],
-        None,
-    )
-    res["delete_branch_on_merge"] = (code == 0 and out.strip() == "true") or (err or out).strip()[
-        :200
-    ]
-    code, out, err = gh._run(["api", "-X", "PUT", f"repos/{repo}/vulnerability-alerts"], None)
-    if code == 0:
-        code, out, err = gh._run(["api", f"repos/{repo}/vulnerability-alerts"], None)
-    res["vulnerability_alerts"] = code == 0 or (err or out).strip()[:200]
-    return res
-
-
 def open_pr(gh, repo: str, body: str, work: Path) -> dict:
     found = json.loads(
         gh(
@@ -326,9 +220,7 @@ def open_pr(gh, repo: str, body: str, work: Path) -> dict:
 def pr_body(repo: str, res: dict, footer: str = "") -> str:
     p = policy.parse(policy.render(POLICY))
     lab = res.get("labels") or {}
-    st = res.get("settings") or {}
     chk = res.get("check") or {}
-    not_set = [k for k, v in st.items() if v is not True]
     files = res["files"]
     other = res.get("other_files") or []
     L = [
@@ -360,10 +252,6 @@ def pr_body(repo: str, res: dict, footer: str = "") -> str:
     ]
     if lab.get("extra"):
         L.append("- other labels on the repo: " + ", ".join(f"`{x}`" for x in lab["extra"]))
-    if st:
-        L += ["", "**Repository settings**", ""]
-        for k, v in st.items():
-            L.append(f"- `{k}`: " + ("set" if v is True else f"**not set** ({v})"))
     L += [
         "",
         "**Checks run before this PR**",
@@ -407,11 +295,6 @@ def pr_body(repo: str, res: dict, footer: str = "") -> str:
     )
     if not public:
         L.append("3. Check that Actions can run on this private repository, so CI runs.")
-    if not_set:
-        L.append(
-            f"{3 if public else 4}. Set by hand what could not be set: "
-            + ", ".join(f"`{k}`" for k in not_set)
-        )
     L += [
         "",
         "To use it: label one of your issues `go`; repo-factory proposes a fix as a pull "
@@ -439,25 +322,23 @@ def backfill(
     repo: str,
     work: Path,
     *,
+    check,
     describe=None,
-    python: str | None = None,
     run_suites: bool = True,
     apply_labels: bool = True,
-    settings: bool = True,
     pr: bool = True,
     trailer: str = "",
     footer: str = "",
     notes: list[str] | None = None,
     log=print,
-    check=None,
     still=None,
 ) -> dict:
-    """``check``: the AGENTS.md check, ``work -> {"ok", "summary", "output"}`` (default
-    ``run_check``; maintenance's setup passes one that runs in the sandbox). ``still``: called
-    just before anything is written on GitHub; a reason it returns stops the run there, with
-    nothing written (maintenance switched off or paused meanwhile)."""
+    """``check``: the AGENTS.md check, ``work -> {"ok", "summary", "output"}`` (maintenance's
+    setup passes one that runs in the sandbox). ``still``: called just before anything is
+    written on GitHub; a reason it returns stops the run there, with nothing written
+    (maintenance switched off or paused meanwhile)."""
     work = Path(work)
-    run = check or (lambda w: run_check(w, python))
+    run = check
     res: dict = {"repo": repo, "work": str(work), "branch": BRANCH, "notes": list(notes or [])}
     log(f"{repo}: checkout {BRANCH}")
     checkout(gh, repo, work)
@@ -533,8 +414,6 @@ def backfill(
         res["nothing_to_add"] = True
     if apply_labels:
         res["labels"] = labels.apply(gh, repo, missing_only=True)
-    if settings:
-        res["settings"] = repo_settings(gh, repo)
     if pr:
         # what the PR says about CI minutes depends on it (None: GitHub did not say)
         code, out, _ = gh._run(
@@ -548,10 +427,9 @@ def backfill(
     return res
 
 
-# -- the press (registry ``maintain_backfill``): the same command, detached -----------------------
-# A maintained product whose AGENTS.md is missing or does not run has a row that says so
-# (advice: it holds no fix; revise.py, ``agents_state``); this PR is its remedy. The page and
-# the command line start it; it runs in the background and its state is a small file beside its clone.
+# -- the switch's setup: ``repo-factory maintain setup REPO``, detached -------------------------
+# Switching maintenance on starts it; it runs in the background and its state is a small file
+# beside its clone, which the repository's page reads.
 def state_path(home, repo: str) -> Path:
     return paths.Layout(home).maintain / "backfill" / f"{repo.split('/')[-1]}.state.json"
 

@@ -185,8 +185,9 @@ DEFAULTS: dict = {
     # else the login), app, token or login. Publishing always uses the login. doctor_days: how
     # often each repo's AGENTS.md and workflows are checked for drift and runners that are not
     # GitHub's own (read at least once, and again when main moves: they stop fixes);
-    # 0: never. triage_*, lesson_label, refresh_max and exam belong to the old poll and are
-    # not read by this one (exam aside: a fix still reports the release's checks).
+    # 0: never. triage_model, triage_max_per_poll, lesson_label, refresh_max and
+    # policy_command are read by nothing: they stay only so an older loop.yaml still loads.
+    # exam: a fix reports the release's checks.
     "maintain": {
         "enabled": False,
         "poll_s": 900,
@@ -222,12 +223,9 @@ DEFAULTS: dict = {
         "lesson_label": True,
         "doctor_days": 7,
         "revise_command": None,
-        # refresh_max: how many times repo-factory re-does one of its fix PRs on a main
-        # that moved under it with a conflict (current.py); not an attempt; 0: never
         "refresh_max": 2,
         # recheck_command: tests only (Re-check, the read the page starts, detached)
         "recheck_command": None,
-        # policy_command: tests only (the merge policy PR the switch opens, detached)
         "policy_command": None,
         # exam: on a product fix PR, report runs the latest release's checks asset
         # against the branch and posts the result, require fails the PR on a

@@ -103,7 +103,7 @@ def where(loop, p: dict) -> dict:
 def _gh(loop, repo: str | None = None):
     """Maintenance's identity, narrowed to filing and reading issues on ``repo`` (repo-factory's own
     app: a token with issues write and metadata read on that one repository)."""
-    from ..maintain.poll import gh_for
+    from ..maintain.watch import gh_for
 
     return gh_for(loop, repo, "issues")
 

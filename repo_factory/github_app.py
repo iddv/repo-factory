@@ -85,7 +85,7 @@ NEVER = (
     "pages",
 )
 # What each call asks for (the review's rule: the fewest permissions, one repository):
-#   maintain: the poll on one repo (labels, comments, pull requests, releases, CI reads);
+#   maintain: the poll on one repo (reads, its own pull requests and labels, releases, CI);
 #   issues: filing and reading issues (factory issues, Projects); push: a fix's git push;
 #   fix: the fix process's API calls (the issue, the pull request, its CI); read: reads.
 SCOPES = {

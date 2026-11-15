@@ -1,8 +1,7 @@
 """A maintenance token GitHub refused:``maintain.token_env_file``'s token answered
 401 (expired or revoked). With another identity that works (repo-factory's GitHub sign-in here),
 maintenance stops trying it and does not show it as the identity; the doctor names it once, as a
-warning; Settings › Publishing › Maintenance offers Remove this token setting, which goes through
-the one settings writer behind the house confirm. A fake ``gh``: no network, no model."""
+warning; removing the setting goes through the one settings writer behind the house confirm. A fake ``gh``: no network, no model."""
 
 import json
 import secrets as pysecrets
@@ -13,7 +12,7 @@ import yaml
 
 from repo_factory import github_user as gu
 from repo_factory.gh import Gh
-from repo_factory.maintain import identity, poll
+from repo_factory.maintain import identity, watch
 from repo_factory.ui import api
 
 from .loop_common import make_loop
@@ -96,7 +95,7 @@ def test_with_the_sign_in_working_maintenance_stops_using_the_refused_token(worl
     lp = make_loop(home.parent / "lp")
     lp.cfg.data["maintain"]["token_env_file"] = str(f)
     identity.note_refused(lp.cfg.home, f)
-    assert poll.gh_for(lp) is lp.gh  # the sign-in, not the dead token
+    assert watch.gh_for(lp) is lp.gh  # the sign-in, not the dead token
     cfg.data["maintain"]["identity"] = "token"  # the owner chose the token: kept
     assert identity.maintain_gh(cfg).env_file == f
 
@@ -132,11 +131,10 @@ def test_the_page_offers_remove_this_token_setting_through_the_one_writer(world)
     identity.note_refused(lp.cfg.home, f)
     a = api.App(lp.cfg.tasks_dir, "fake", lp.cfg.home)
     a.loop, a.loop_cfg = (lambda: lp), (lambda: lp.cfg)
-    code, body = 200, json.dumps(a.maintain_summary()).encode()
-    i = json.loads(body)["identity"]
-    assert code == 200 and i["refused_token"] == str(f) and i["token_skipped"]
-    assert i["kind"] == "connection" and i["login"] == "ann"
-    assert "stays where it is" in i["remove_confirm"]
+    assert identity.token_refused(lp.cfg) == str(f) and identity.token_skipped(lp.cfg)
+    from repo_factory.settings.write import SENSITIVE
+
+    assert "stays where it is" in SENSITIVE["maintain.token_env_file"]
 
     def post(b):
         return api.handle("POST", "/api/loop/settings", None, json.dumps(b).encode(), app=a)

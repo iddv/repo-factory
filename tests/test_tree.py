@@ -134,6 +134,32 @@ def test_ci_workflow_cancels_superseded_runs():
     assert "matrix" not in text
 
 
+def test_nothing_in_the_package_comments_force_pushes_or_changes_a_repository_setting():
+    """The earlier poll commented on issues, force-pushed refreshes, updated pull request branches
+    and changed repository settings; none of it is in the package any more, and nothing brings
+    it back: no comment writer, no force push, no branch update, no settings change."""
+    pattern = re.compile(
+        r'comment_with_marker|force-with-lease|"-f"|update-branch|delete_branch_on_merge'
+    )
+    pkg = ROOT / "repo_factory"
+    files = [
+        p
+        for p in pkg.rglob("*")
+        if p.is_file()
+        and "__pycache__" not in p.parts
+        and "node_modules" not in p.parts
+        and (p.suffix in (".py", ".tmpl", ".md", ".yml", ".yaml") or p.parent.name == "templates")
+    ]
+    assert len(files) > 100
+    hits = [
+        f"{p.relative_to(ROOT)}:{n}: {line.strip()}"
+        for p in files
+        for n, line in enumerate(p.read_text(errors="replace").splitlines(), 1)
+        if pattern.search(line)
+    ]
+    assert hits == [], "\n".join(hits)
+
+
 def test_git_tracks_no_generated_or_private_files():
     tracked = subprocess.run(
         ["git", "-C", str(ROOT), "ls-files"], capture_output=True, text=True, check=True

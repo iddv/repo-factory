@@ -1,6 +1,6 @@
 """The identity seam with repo-factory's own GitHub App: ``maintain.identity``
-auto, the app's ``Gh`` narrowed to one repository per call, the poll acting as the bot, an
-issue the bot filed counted as repo-factory's own, commits authored as the bot, a fix's push with
+auto, the app's ``Gh`` narrowed to one repository per call, the poll acting as the bot, a
+``go`` the bot put on counted as yours, commits authored as the bot, a fix's push with
 the push scope, ``whoami``'s line and ``repo-factory doctor``'s, and no behaviour change without an
 app. The fake GitHub from tests/fake_github.py; ``gh`` is a fake run."""
 
@@ -13,14 +13,14 @@ import yaml
 
 from repo_factory import github_app as G
 from repo_factory.gh import Gh
-from repo_factory.maintain import identity, poll, revise, triage
+from repo_factory.maintain import identity, policy, revise, switch, watch
 from repo_factory.settings import write as settings
 from repo_factory.ui import api
 
 from .fake_github import FakeGitHub
-from .loop_common import FakeModel, make_loop
-from .test_maintain_triage import NOW, stamp
-from .test_maintain_triage import FakeGitHub as Hub
+from .loop_common import make_loop
+from .maintain_common import NOW, stamp
+from .maintain_common import FakeHub as Hub
 
 pytestmark = [
     pytest.mark.skipif(G.available() is not None, reason=G.available() or ""),
@@ -73,20 +73,20 @@ def test_the_setting_is_checked_and_login_wins_over_an_installed_app(world):
         settings.check("maintain.identity", "bot")
     assert "identity" in settings.MAINTAIN
     lp.cfg.data["maintain"]["identity"] = "login"
-    assert poll.gh_for(lp, REPO) is lp.gh and identity.resolve(lp.cfg) is None
+    assert watch.gh_for(lp, REPO) is lp.gh and identity.resolve(lp.cfg) is None
     lp.cfg.data["maintain"]["identity"] = "token"
-    assert poll.gh_for(lp, REPO) is lp.gh  # no token file: the login
+    assert watch.gh_for(lp, REPO) is lp.gh  # no token file: the login
 
 
 # -- with the app installed ------------------------------------------------------------------
 def test_the_app_acts_narrowed_to_one_repository_per_call(world):
     lp, hub, fake, made = world
     app = install(fake)
-    g = poll.gh_for(lp, REPO)
+    g = watch.gh_for(lp, REPO)
     assert g.credential == "app" and g.login_name == "factory-o[bot]" and g.scope == "maintain"
     assert g.repos == (REPO,) and made[-1] == ("maintain", (REPO,))
     assert identity.login_of(g) == "factory-o[bot]" and g.login() == "factory-o[bot]"
-    i = poll.gh_for(lp, "o/repo_factory", "issues")
+    i = watch.gh_for(lp, "o/repo_factory", "issues")
     assert i.scope == "issues" and i.repos == ("o/repo_factory",)
     # the narrowed push identity for a fix's git push
     p = identity.narrow(g, "push")
@@ -105,7 +105,7 @@ def test_the_app_acts_narrowed_to_one_repository_per_call(world):
         f"user.email={fake.bot_user_id}+factory-o[bot]@users.noreply.github.com",
     ]
     # a repository the installation does not reach: refused before any call, never the login
-    out = poll.gh_for(lp, "o/elsewhere")
+    out = watch.gh_for(lp, "o/elsewhere")
     code, _, err = out._subprocess(["api", "repos/o/elsewhere"])
     assert code == 4 and "not installed on o/elsewhere" in err
     assert out is not lp.gh
@@ -114,7 +114,7 @@ def test_the_app_acts_narrowed_to_one_repository_per_call(world):
 def test_describe_whoami_and_the_doctor_line_for_the_app(world, tmp_path):
     lp, hub, fake, made = world
     app = install(fake)
-    g = poll.gh_for(lp, REPO)
+    g = watch.gh_for(lp, REPO)
     d = identity.describe(g, repos=[REPO, "o/other"])
     assert d["kind"] == "app" and d["login"] == "factory-o[bot]" and d["reach"] == [1, 2]
     assert d["status"] == "warn" and "Add repositories" in d["line"]
@@ -136,59 +136,50 @@ def test_describe_whoami_and_the_doctor_line_for_the_app(world, tmp_path):
     app.forget()
     d = identity.describe(g, repos=[REPO])
     assert d["status"] == "fail" and "uninstalled" in d["line"]
-    assert poll.gh_for(lp, REPO) is not lp.gh
+    assert watch.gh_for(lp, REPO) is not lp.gh
     status, line = identity.doctor(home)
     assert status == "fail"
 
 
-def test_the_poll_acts_as_the_bot_and_its_own_issues_count_as_the_owners(world):
+def test_the_poll_acts_as_the_bot_and_a_go_the_bot_put_on_counts_as_yours(world, monkeypatch):
     lp, hub, fake, made = world
     install(fake)
-    hub.policy_text = (
-        "repo-factory: 1\nstatus: maintained\nrevise:\n  trigger: owner\ntriage:\n  enabled: true\n"
-    )
-    hub.issues[5] = {
-        "number": 5,
-        "title": "Change idea from repo-factory",
-        "body": "x",
-        "user": {"login": "factory-o[bot]"},
-        "author_association": "NONE",
-        "labels": [{"name": "triage"}],
-        "state": "open",
-        "created_at": stamp(NOW - 3600),
-        "updated_at": stamp(NOW - 600),
-        "comments": 0,
-        "assignees": [],
-        "html_url": f"https://github.com/{REPO}/issues/5",
-    }
+    hub.policy_text = policy.render({"status": "maintained"})
+    for n, who in ((5, "factory-o[bot]"), (6, "a-stranger")):
+        hub.issues[n] = {
+            "number": n,
+            "title": f"Build this proposal {n}",
+            "body": "x",
+            "user": {"login": "factory-o[bot]"},
+            "author_association": "NONE",
+            "labels": [{"name": "bug"}, {"name": "go"}],
+            "state": "open",
+            "created_at": stamp(NOW - 3600 + n),
+            "updated_at": stamp(NOW - 600),
+            "comments": 0,
+            "assignees": [],
+            "html_url": f"https://github.com/{REPO}/issues/{n}",
+        }
+        hub.label(n, "go", who)
     i, _ = lp.ledger.add("plots", "typed", title="Plotkeeper")
     lp.ledger.update(i["id"], state="published", publish={"repo": REPO})
-    res = json.dumps(
-        {
-            "kind": "bug",
-            "prio": "p2",
-            "summary": "a bug",
-            "needs_info": None,
-            "duplicate_of": None,
-            "answer": None,
-        }
+    switch.set_on(lp.cfg.home, REPO, True)
+    started = []
+    monkeypatch.setattr(
+        revise,
+        "start",
+        lambda cfg, full, n, task: started.append(n) or {"pid": None, "task": str(task)},
     )
-    out = poll.maintain_tick(lp, model=FakeModel(res))
+    watch.tick(lp)
     assert made and made[0] == ("maintain", (REPO,))
-    assert out["repos"][0]["triaged"] and out["repos"][0]["triaged"][0]["go"] is True
-    assert "go" in hub.labels_of(5)
-    # the same decision without the bot: a stranger's issue gets no go
-    item = {"number": 6, "labels": [], "author": "factory-o[bot]", "is_pr": False}
-    pol = {"status": "maintained", "revise": {"trigger": "owner", "kinds": ["bug"]}}
-    r = {"kind": "bug", "prio": "p2"}
-    assert triage.decide(item, r, pol, owner="o")["go"] is None
-    assert triage.decide(item, r, pol, owner="o", bot="factory-o[bot]")["go"]
+    assert started == [5], "the bot's go is yours; a stranger's is not"
+    assert [m for m, *_ in hub.calls if m not in ("GET", "QUERY")] == [], "nothing written"
 
 
 def test_a_commit_as_the_bot_and_a_push_with_the_push_token(world, tmp_path, monkeypatch):
     lp, hub, fake, made = world
     app = install(fake)
-    g = poll.gh_for(lp, REPO)
+    g = watch.gh_for(lp, REPO)
     work = tmp_path / "w"
     root = work / "repo"
     root.mkdir(parents=True)
@@ -203,26 +194,18 @@ def test_a_commit_as_the_bot_and_a_push_with_the_push_token(world, tmp_path, mon
         check=True,
     ).stdout.strip()
     assert who == f"factory-o[bot] <{fake.bot_user_id}+factory-o[bot]@users.noreply.github.com>"
-    # Fix.remote: the push scope's token in that one git call's environment
-    seen = {}
-
-    def fake_git(*args, cwd, check=True, env=None):
-        seen["args"], seen["env"] = args, env
-        return ""
-
-    monkeypatch.setattr(revise, "git", fake_git)
+    # Fix.git_auth: the push scope's token, for the host's own push (carry.push)
     fix = revise.Fix.__new__(revise.Fix)
     fix.gh, fix.work = g, work
-    revise.Fix.remote(fix, "push", "-q", "origin", "repo-factory/1-x")
-    assert seen["args"][:2] == ("-c", "credential.https://github.com.helper=")
-    assert seen["args"][-4:] == ("push", "-q", "origin", "repo-factory/1-x")
-    assert seen["env"]["GH_TOKEN"] == app.token("push", [REPO])
+    auth, env = revise.Fix.git_auth(fix)
+    assert auth[:2] == ["-c", "credential.https://github.com.helper="]
+    assert env["GH_TOKEN"] == app.token("push", [REPO])
     assert fake.token_requests[-1]["permissions"] == {"contents": "write", "metadata": "read"}
     # the app gone: the push fails in words, as a broken token file would
     fake.uninstall()
     app.forget()
     with pytest.raises(revise.ReviseError, match="uninstalled"):
-        revise.Fix.remote(fix, "push", "-q", "origin", "repo-factory/1-x")
+        revise.Fix.git_auth(fix)
 
 
 def test_the_settings_page_says_the_app_and_never_a_secret(world):
@@ -232,13 +215,9 @@ def test_the_settings_page_says_the_app_and_never_a_secret(world):
     lp.ledger.update(i["id"], state="published", publish={"repo": REPO})
     a = api.App(lp.cfg.tasks_dir, "fake", lp.cfg.home)
     a.loop, a.loop_cfg = (lambda: lp), (lambda: lp.cfg)
-    code, body = 200, json.dumps(a.maintain_summary()).encode()
-    text = body.decode()
-    assert code == 200 and "ghs_" not in text and "BEGIN" not in text
-    d = json.loads(text)
-    assert d["identity"]["kind"] == "app" and d["identity"]["bot_login"] == "factory-o[bot]"
-    assert d["identity"]["mode"] == "auto" and d["settings"]["identity"] == "auto"
-    assert d["identity"]["github"]["kind"] == "app"
+    text = json.dumps(a.maintenance())
+    assert "ghs_" not in text and "BEGIN" not in text
+    assert json.loads(text)["settings"]["identity"] == "auto"
     code, _, body = api.handle(
         "POST", "/api/maintain/settings", None, json.dumps({"identity": "login"}).encode(), app=a
     )

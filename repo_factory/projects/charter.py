@@ -578,7 +578,7 @@ def draft_for_project(
 def github_docs(loop, repo: str) -> dict:
     """The repo's documents read from GitHub (no clone here): ``{name: text}``."""
     from ..maintain.github import GitHubError, Repo
-    from ..maintain.poll import gh_for
+    from ..maintain.watch import gh_for
 
     r, out = Repo(gh_for(loop), repo), {}
     for name in DOCS:

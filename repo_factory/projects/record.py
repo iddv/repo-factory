@@ -36,8 +36,8 @@ CONTRACTS = {
     "stats": stored_projects.Stats,
 }
 EVENTS = ("created", "charter", "topic", "evolve", "change", "maintenance", "stats", "state")
-# Today's maintenance rows that wait for the owner (maintain.poll.rows, adopted_rows, doctor);
-# an AGENTS.md row is advice since FX3 (it holds no fix): attention, never needs-you
+# Today's maintenance rows that wait for the owner (maintain.watch, doctor); an AGENTS.md row
+# is advice (it holds no fix): attention, never needs-you
 NEEDS_YOU_ROWS = (
     "needs_you",
     "factory_pr",
@@ -543,8 +543,6 @@ def page(loop, pid: str) -> dict:
         nver = c.execute(
             "SELECT COUNT(*) FROM charter_versions WHERE project = ?", (pid,)
         ).fetchone()[0]
-    from ..maintain import current
-
     repos = []
     for r, (_, rec) in zip(p["repos"], recs):
         pol = rec.get("policy") or {}
@@ -557,14 +555,14 @@ def page(loop, pid: str) -> dict:
                 "last_poll": rec.get("last_poll"),
                 "ci": rec.get("ci"),
                 "error": rec.get("error"),
-                # repo-factory's own fix PRs (MQ): the merge policy, the queue, each one's state
+                # repo-factory's own fix PRs: the merge policy and the merge queue
                 "merge": {
                     "factory_patch": pol.get("factory_patch"),
                     "kinds": pol.get("merge_kinds"),
                     "max_lines": pol.get("max_lines"),
                     "product": p.get("kind") == "built",
                     "queue": rec.get("queue"),
-                    "prs": current.summary(rec),
+                    "prs": {},
                 },
             }
         )

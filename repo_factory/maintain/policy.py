@@ -1,7 +1,7 @@
 """The per-repo policy file, ``.github/repo-factory.yml``.
 
 ``DEFAULTS`` are the documented values a new file starts from; ``MISSING`` is what a repo
-without the file gets: repo-factory answers and labels, and spends nothing (``status: as-is``,
+without the file gets: no fix starts and nothing is spent (``status: as-is``,
 ``revise.trigger: off``, every merge ``never``, no releases). ``parse`` rejects unknown keys
 and bad values so a typo cannot silently turn something on.
 
@@ -169,11 +169,11 @@ def load(gh, repo: str, ref: str | None = None) -> dict:
 
 def effective(loop, target, gh=None) -> dict:
     """One reader for the poll, the fix and the page: a product's
-    ``.github/repo-factory.yml`` (``load``). ``target``: a ``poll.targets`` entry or a repo
+    ``.github/repo-factory.yml`` (``load``). ``target``: a ``watch.published`` entry or a repo
     name."""
     full = target if isinstance(target, str) else target["repo"]
     if gh is None:
-        from .poll import gh_for
+        from .watch import gh_for
 
         gh = gh_for(loop)
     return load(gh, full)

@@ -5,6 +5,13 @@ that started it, the repo repo-factory published (or the repo you adopted), a **
 topic** in the watcher, the **change ideas** repo-factory proposes, the repo's maintenance, its numbers
 and its history. Build › Projects lists them; each has a page.
 
+**In this version nothing reaches the projects package from the page or the command line
+beyond reading it**: the actions that edited a charter, checked for ideas, accepted, declined
+or undid a change idea, paused a project or paused its maintenance, and the commands that
+drafted a charter or ran a check for ideas, are gone, so nothing here files an issue or acts
+on GitHub. What follows describes the code as it was written; maintenance itself is
+[maintain.md](maintain.md).
+
 ## When a project is born
 
 - **At publish.** When a build is published (privately; `projects.create.on: public` waits for
@@ -113,9 +120,9 @@ row of the repo's maintenance waits), **attention** (CI red, a dependency update
 `projects.health.stale_pr_days`, a drift finding, the last poll failed), **maintenance paused**
 ("Maintenance paused since 29 Oct 10:04, by you"), **paused**, or **ok**.
 
-**Pause project** stops its ideas (no check for ideas, no charter draft, nothing filed);
-maintenance of its repo goes on. **Pause maintenance** stops that, in repo-factory, at once
-([maintain.md](maintain.md), "Pause maintenance on one project").
+A paused project has no check for ideas, no charter draft and nothing filed; pausing
+maintenance of its repository is the repository's own **Pause** on its page
+([maintain.md](maintain.md)).
 
 ## Commands
 
@@ -125,10 +132,6 @@ repo-factory projects show ID                    # its charter version, repos, t
 repo-factory projects backfill [--dry-run]       # a project for every published build and confirmed
                                         # adopted repo that has none; drafts their charters
                                         # (one call each) and makes their topics
-repo-factory projects charter ID                 # draft (or redraft) the charter: one model call
-repo-factory projects charter ID --file F        # your text as a new version; --restore N; --print
-repo-factory projects evolve ID [--force]        # one check for ideas now (the loop runs it weekly)
-repo-factory projects maintenance ID paused|on   # pause its repo's maintenance in repo-factory, or resume it
 ```
 
 Each takes `--home` (the loop home, default `~/.repo-factory`). Nothing in the page or `repo-factory mcp`

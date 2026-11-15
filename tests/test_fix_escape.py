@@ -21,9 +21,9 @@ from repo_factory.harness import sandbox
 from repo_factory.harness.isolation import bwrap_cmd
 from repo_factory.maintain import switch
 
+from .maintain_common import Scripted, names_test
+from .maintain_common import fixes as fixes_step
 from .test_f3_maintenance import REPO, quiet, world  # noqa: F401
-from .test_maintain_revise import Scripted, names_test
-from .test_maintain_revise import fixes as fixes_step
 
 PLANT = r"""
 import pathlib, subprocess, sys

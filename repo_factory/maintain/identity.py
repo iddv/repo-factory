@@ -470,7 +470,7 @@ def finish(d: dict) -> dict:
 
 
 def maintained_repos(cfg) -> list[str]:
-    """The repos maintenance polls (``poll.targets``' list) without opening a loop: the
+    """The repos maintenance may poll (``watch.published``' list) without opening a loop: the
     published builds in the ledger, if there is one, and ``maintain.repos``."""
     out = []
     if Path(cfg.db).exists():
@@ -567,9 +567,8 @@ def held_lines(home) -> list[dict]:
                 out.append(
                     {
                         "status": "warn",
-                        "line": f"{full}: {what}; open the "
-                        f"backfill PR (Settings › Publishing › Maintenance, or repo-factory maintain backfill "
-                        f"{full})",
+                        "line": f"{full}: {what}; the setup pull request writes it "
+                        f"(repo-factory maintain setup {full})",
                     }
                 )
     return out

@@ -27,8 +27,7 @@ def test_every_kind_is_complete():
 
 
 def test_the_confirm_class_is_exactly_these_kinds():
-    # one build's controls that stop work are confirm class too (Resume build is a click);
-    # a scope change changes what the project is (its charter)
+    # one build's controls that stop work are confirm class too (Resume build is a click)
     assert (
         {k for k, a in R.ACTIONS.items() if a.click == "confirm" and k != "stop"}
         == set(R.CONFIRM_CLASS)
@@ -42,7 +41,6 @@ def test_the_confirm_class_is_exactly_these_kinds():
             "cancel",
             "restart_revise",
             "accept_claim",
-            "charter_change",
             # making, replacing or removing repo-factory's own credential
             "github_app_create",
             "github_app_key",

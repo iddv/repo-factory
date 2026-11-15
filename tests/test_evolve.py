@@ -3,7 +3,7 @@ replies (tests/fixtures/projects/replies/*.evolve.txt) and a fixed gather (no cl
 network): the ideas land with their class and state; a second run raises the agreeing count and
 adds nothing; a minor change asks after two runs; a non-goal match becomes scope; a declined
 idea is skipped; a quiet project makes no call; duplicates of open issues are tracked; the
-presets; the scope ask's charter change; the doors answer at once."""
+presets; the scope ask's charter change; no action reaches it from the page."""
 
 import json
 import re
@@ -161,15 +161,8 @@ def test_a_scope_change_asks_with_the_charter_diff_and_accept_writes_a_version(w
         "starts empty with no default password.",
     } in ask["diff"]
     assert any(d["op"] == "+" and "3.10+" in d["line"] for d in ask["diff"])
-    body = {
-        "kind": "charter_change",
-        "subject": {"kind": "new"},
-        "origin": "ui",
-        "fields": {"change": scope[0]["id"], "answer": "accept"},
-    }
-    assert call(app, "POST", "/api/act", None, body)[0] == 409  # confirm class
-    code, out = call(app, "POST", "/api/act", None, {**body, "confirm": True})
-    assert code == 200, out
+    assert "charter_change" not in R.ACTIONS  # nothing reaches it from the page in this version
+    X.charter_change(lp, scope[0]["id"], True, "", "ui")
     p2 = Projects(lp.ledger).must(p["id"])
     assert p2["charter_v"] == 2 and any("3.10+" in x["text"] for x in p2["charter"]["promises"])
     assert X.must(lp.ledger, scope[0]["id"])["state"] == "queued"
@@ -368,64 +361,19 @@ def test_the_tick_starts_due_runs_in_the_background(world):
     assert life.start_runs(lp, ps, later, []) == []
 
 
-def test_the_doors_answer_at_once(world):
+def test_the_project_page_lists_the_ideas(world):
     make, _ = world
     lp, p = make()
     app = api.App(lp.cfg.tasks_dir, "fake", lp.cfg.home)
-    t0 = time.time()
-    code, out = call(
-        app,
-        "POST",
-        "/api/act",
-        None,
-        {
-            "kind": "evolve_now",
-            "subject": {"kind": "new"},
-            "fields": {"project": p["id"]},
-            "origin": "cli",
-        },
-    )
-    assert code == 200 and "in the background" in out["say"] and time.time() - t0 < 5
-    assert (
-        call(
-            app,
-            "POST",
-            "/api/act",
-            None,
-            {
-                "kind": "evolve_now",
-                "subject": {"kind": "new"},
-                "fields": {"project": p["id"]},
-                "origin": "ui",
-            },
-        )[0]
-        == 409
-    )
     evolve.run(lp, p["id"], FakeModel(EVOLVE["receipts"]))
-    minor = next(ch for ch in X.all_of(lp.ledger, p["id"]) if ch["class"] == "minor")
-    code, out = call(
-        app,
-        "POST",
-        "/api/act",
-        None,
-        {
-            "kind": "accept_change",
-            "subject": {"kind": "new"},
-            "fields": {"change": minor["id"]},
-            "origin": "ui",
-        },
-    )
-    assert code == 200 and X.must(lp.ledger, minor["id"])["state"] == "queued"
-    code, pg = 200, app.project_record(p["id"])
+    pg = app.project_record(p["id"])
     assert len(pg["ideas"]) == 7 and pg["evolve"]["proposed"] == 7 and pg["evolve"]["next"]
     assert pg["autonomy"] == {"patch": "auto", "minor": "ask", "scope": "ask"}
 
 
-def test_the_project_actions_are_in_the_registry_and_an_agent_may_run_them():
+def test_no_action_reaches_the_project_ideas():
     for k in ("evolve_now", "accept_change", "decline_change", "charter_change"):
-        assert k in R.ACTIONS and k in R.agent_default_actions() and k in R.PROJECT_KINDS
-    assert R.ACTIONS["charter_change"].click == "confirm"
-    assert "confirm" in R.schema("charter_change")["required"]
+        assert k not in R.ACTIONS
 
 
 # -- Needs you by rule ----------------------------------------------------------------------------

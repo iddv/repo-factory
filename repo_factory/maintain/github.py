@@ -1,15 +1,15 @@
 """The GitHub side of maintenance: one product repository read and written
 through the ``gh`` CLI's REST calls, and the poll's disposable cache.
 
-``Repo`` reads issues, pull requests, labels, collaborators, the latest release and the CI state
-of a commit, and writes labels and marker comments. Every write is idempotent: labels are added
-or removed only when that changes something, and a comment is found by its ``<!-- repo-factory:… -->``
-marker before one is posted. The ``gh`` is ``publish.Gh`` (its ``_run(args, cwd)`` is
-replaceable), so tests use a fake and never the network.
+``Repo`` reads issues, pull requests, labels, the latest release and the CI state of a commit,
+and writes what maintenance writes: labels (added or removed only when that changes something),
+a fix's pull request, an issue you asked for, a merge and a release. It posts no comment. The
+``gh`` is ``publish.Gh`` (its ``_run(args, cwd)`` is replaceable), so tests use a fake and never
+the network.
 
 ``Cache`` is ``<loop home>/maintain/cache.json``: when each repo was last polled and what the
-poll saw (the rows Today shows). It holds nothing that GitHub does not: delete it and the next
-poll reads the last 30 days again and arrives at the same labels and comments."""
+poll saw (the rows the pages show). It is disposable: delete it and the next poll writes it
+again."""
 
 from __future__ import annotations
 
@@ -85,7 +85,7 @@ def issue(x: dict) -> dict:
 
 
 def _commit(c: dict) -> dict:
-    """A commit as the REST API returns it, in the fields ``current.py`` reads."""
+    """A commit as the REST API returns it, in the fields ``automerge.known_head`` reads."""
     com = c.get("commit") or {}
     return {
         "sha": c.get("sha") or "",
@@ -487,54 +487,9 @@ class Repo:
             "by": editor.get("login") if isinstance(editor, dict) else None,
         }
 
-    def find_marker(self, number: int, marker: str, comments: list | None = None) -> dict | None:
-        for c in comments if comments is not None else self.comments(number):
-            if marker in c["body"]:
-                return c
-        return None
-
-    def comment_with_marker(
-        self,
-        number: int,
-        marker: str,
-        body: str,
-        *,
-        edit: bool = True,
-        comments: list | None = None,
-    ) -> dict:
-        """The one comment carrying ``marker`` on the issue: edited when it exists (or left
-        alone with ``edit=False``), posted when it does not. ``body`` must contain the
-        marker, so the next call finds it."""
-        if marker not in body:
-            raise ValueError("the comment must carry its marker")
-        old = self.find_marker(number, marker, comments)
-        if old:
-            if edit and old["body"].strip() != body.strip():
-                self.api(
-                    f"repos/{self.full}/issues/comments/{old['id']}",
-                    method="PATCH",
-                    payload={"body": body},
-                )
-                return {"id": old["id"], "action": "edited"}
-            return {"id": old["id"], "action": "unchanged"}
-        r = json.loads(
-            self.api(
-                f"repos/{self.full}/issues/{int(number)}/comments",
-                method="POST",
-                payload={"body": body},
-            )
-            or "{}"
-        )
-        return {"id": r.get("id"), "action": "posted"}
-
-    def delete_comment(self, comment_id: int) -> None:
-        try:
-            self.api(f"repos/{self.full}/issues/comments/{int(comment_id)}", method="DELETE")
-        except GitHubError as e:  # already gone: the end state is the same
-            if "404" not in str(e) and "Not Found" not in str(e):
-                raise
-
     def close(self, number: int, reason: str = "not_planned") -> None:
+        """Close an issue (only ``projects/filing.py``'s undo calls it; nothing reaches that
+        in this version)."""
         self.api(
             f"repos/{self.full}/issues/{int(number)}",
             method="PATCH",
@@ -554,7 +509,7 @@ class Repo:
             },
         )
 
-    # -- repo-factory's own pull requests: kept current, and merged on green (current.py, automerge.py)
+    # -- repo-factory's own pull requests: judged and merged (automerge.judge, watch.merge_step)
     def pull(self, number: int) -> dict:
         """One pull request with what the REST list leaves out: the head commit and branch,
         whose repository the branch is in, mergeability and the diff's size."""
@@ -618,79 +573,7 @@ class Repo:
         )
         return int(r.get("behind_by") or 0)
 
-    def update_branch(self, number: int, expected_head: str) -> None:
-        """GitHub's *Update branch*: main merged into the pull request's branch, only while
-        ``expected_head`` is its head. A conflict is a 422."""
-        self.api(
-            f"repos/{self.full}/pulls/{int(number)}/update-branch",
-            method="PUT",
-            payload={"expected_head_sha": expected_head},
-        )
-
-    def edit_pr(self, number: int, **fields) -> None:
-        """``body``, ``title`` or ``state`` (``closed``) of a pull request."""
-        self.api(f"repos/{self.full}/pulls/{int(number)}", method="PATCH", payload=fields)
-
-    def put_file(
-        self,
-        path: str,
-        text: str,
-        branch: str,
-        message: str,
-        sha: str | None = None,
-        author: dict | None = None,
-    ) -> dict:
-        """One file written on ``branch`` through the contents API (a commit)."""
-        import base64
-
-        r = json.loads(
-            self.api(
-                f"repos/{self.full}/contents/{quote(path)}",
-                method="PUT",
-                payload={
-                    "message": message,
-                    "branch": branch,
-                    "content": base64.b64encode(text.encode()).decode(),
-                    **({"sha": sha} if sha else {}),
-                    **({"author": author, "committer": author} if author else {}),
-                },
-            )
-            or "{}"
-        )
-        return {"commit": ((r.get("commit") or {}).get("sha")) or None}
-
-    def blob_sha(self, path: str, ref: str) -> str | None:
-        try:
-            r = self.get(f"repos/{self.full}/contents/{quote(path)}?ref={quote(ref, safe='')}")
-        except GitHubError as e:
-            if "404" in str(e) or "Not Found" in str(e):
-                return None
-            raise
-        return (r or {}).get("sha")
-
-    def set_branch(self, branch: str, sha: str) -> None:
-        """``refs/heads/<branch>`` at ``sha``: created, or moved there (forced) when it
-        exists. Only ever a branch repo-factory owns (``repo-factory/…``)."""
-        if not branch.startswith("repo-factory/"):
-            raise GitHubError(
-                f"repo-factory only writes its own repo-factory/ branches, not {branch}"
-            )
-        try:
-            self.api(
-                f"repos/{self.full}/git/refs",
-                method="POST",
-                payload={"ref": f"refs/heads/{branch}", "sha": sha},
-            )
-        except GitHubError as e:
-            if "already exists" not in str(e) and "422" not in str(e):
-                raise
-            self.api(
-                f"repos/{self.full}/git/refs/heads/{quote(branch, safe='/')}",
-                method="PATCH",
-                payload={"sha": sha, "force": True},
-            )
-
-    # -- revise and release (M3) -----------------------------------------------------------
+    # -- a fix's pull request, Open issue, a proposal's issue, a release -------------------
     def create_issue(self, title: str, body: str, labels=()) -> dict:
         r = json.loads(
             self.api(
@@ -720,22 +603,6 @@ class Repo:
             or "{}"
         )
         return {"number": r.get("number"), "url": r.get("html_url")}
-
-    def ready(self, number: int) -> None:
-        """A draft pull request marked ready for review (``gh pr ready``: GraphQL's
-        ``markPullRequestReadyForReview``)."""
-        code, out, err = self.gh._run(["pr", "ready", str(int(number)), "--repo", self.full], None)
-        if code != 0:
-            raise GitHubError(f"gh pr ready {int(number)}: {(err or out or '').strip()[:300]}")
-
-    def request_reviewers(self, number: int, who: list[str]) -> None:
-        users = [x for x in who if "/" not in x]
-        teams = [x.split("/", 1)[1] for x in who if "/" in x]
-        self.api(
-            f"repos/{self.full}/pulls/{int(number)}/requested_reviewers",
-            method="POST",
-            payload={"reviewers": users, "team_reviewers": teams},
-        )
 
     def tags(self) -> list[dict]:
         return [

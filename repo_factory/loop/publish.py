@@ -441,10 +441,10 @@ def _values(stage: Path, full: str) -> dict:
 
 
 def maintenance_github(gh: Gh, full: str) -> dict:
-    """Right after ``gh repo create``: the label scheme (created, never pruned) and the repo
-    settings (``delete_branch_on_merge``, Dependabot alerts). A failure is recorded, never
-    fatal: the repo is published either way and the backfill command can redo it."""
-    from ..maintain import backfill, labels
+    """Right after ``gh repo create``: the label scheme (created, never pruned). No repository
+    setting is changed. A failure is recorded, never fatal: the repo is published either way
+    and maintenance's setup pull request applies the labels again."""
+    from ..maintain import labels
 
     out: dict = {"errors": []}
     try:
@@ -452,10 +452,6 @@ def maintenance_github(gh: Gh, full: str) -> dict:
         out["labels"] = {k: len(v) for k, v in lab.items() if k != "extra"}
     except PublishError as e:
         out["errors"].append(f"labels: {e}")
-    try:
-        out["settings"] = backfill.repo_settings(gh, full)
-    except Exception as e:  # noqa: BLE001 - recorded, not fatal
-        out["errors"].append(f"settings: {type(e).__name__}: {e}")
     return out
 
 
@@ -574,5 +570,6 @@ def update_release_text(
 def make_public(gh: Gh, full: str) -> None:
     # The REST call, not ``gh repo edit --visibility``: that needs
     # ``--accept-visibility-change-consequences``, which older gh releases (Ubuntu 24.04's
-    # 2.45) don't know, and newer ones refuse to run without.
-    gh("api", "-X", "PATCH", f"repos/{full}", "-f", "visibility=public")
+    # 2.45) don't know, and newer ones refuse to run without. ``--raw-field`` is ``-f`` spelled
+    # out (a string field), so no short flag reads as a force anywhere in the package.
+    gh("api", "-X", "PATCH", f"repos/{full}", "--raw-field", "visibility=public")

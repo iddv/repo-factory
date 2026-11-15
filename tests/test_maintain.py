@@ -341,18 +341,12 @@ def test_dependabot_and_forms_parse(tmp_path):
 
 
 # -- labels ------------------------------------------------------------------------------------
-def test_the_scheme_has_22_labels_in_their_groups():
-    assert len(labels.LABELS) == len(set(labels.NAMES)) == 22
+def test_the_scheme_has_20_labels_in_their_groups():
+    assert len(labels.LABELS) == len(set(labels.NAMES)) == 20
     assert labels.KINDS == ["bug", "feature", "question", "security", "dependency", "docs", "task"]
     assert labels.PRIORITIES == ["p1", "p2", "p3"]
-    assert {
-        "go",
-        "needs-you",
-        "claim:repo-factory",
-        "claim:agent",
-        "lesson",
-        "repo-factory",
-    } <= set(labels.NAMES)
+    assert {"go", "needs-you", "lesson", "repo-factory"} <= set(labels.NAMES)
+    assert not [n for n in labels.NAMES if n.startswith("claim:")], "no claims, no leases"
     assert all(re.fullmatch(r"[0-9a-f]{6}", c) for _, c, _, _ in labels.LABELS)
 
 
@@ -379,26 +373,27 @@ def test_apply_creates_each_label_once_and_is_a_no_op_the_second_time():
     gh = Gh(run=fake)
     res = labels.apply(gh, "o/r")
     creates = [c for c in fake.calls if c[:2] == ["label", "create"]]
-    assert len(creates) == 22 and all(c[-1] == "--force" and "--repo" in c for c in creates)
-    assert res["updated"] == ["bug"] and len(res["created"]) == 21
+    assert len(creates) == 20 and all(c[-1] == "--force" and "--repo" in c for c in creates)
+    assert res["updated"] == ["bug"] and len(res["created"]) == 19
     assert res["extra"] == ["enhancement"] and "enhancement" in fake.labels  # never pruned
     fake.calls.clear()
     res = labels.apply(gh, "o/r")
     assert [c for c in fake.calls if c[:2] != ["label", "list"]] == []
-    assert len(res["unchanged"]) == 22
+    assert len(res["unchanged"]) == 20
     assert labels.prune_commands("o/r", res["extra"]) == [
         'gh label delete "enhancement" --repo o/r --yes'
     ]
 
 
-def test_prune_only_when_asked_and_dry_run_changes_nothing():
+def test_nothing_is_ever_deleted_and_dry_run_changes_nothing():
     fake = FakeGh()
     fake.labels["invalid"] = {"name": "invalid", "color": "e4e669", "description": ""}
     gh = Gh(run=fake)
-    res = labels.apply(gh, "o/r", prune=True, dry_run=True)
-    assert res["pruned"] == ["invalid"] and fake.labels.keys() == {"invalid"}
-    labels.apply(gh, "o/r", prune=True)
-    assert "invalid" not in fake.labels and len(fake.labels) == 22
+    res = labels.apply(gh, "o/r", dry_run=True)
+    assert res["extra"] == ["invalid"] and fake.labels.keys() == {"invalid"}
+    labels.apply(gh, "o/r")
+    assert "invalid" in fake.labels and len(fake.labels) == 21
+    assert not [c for c in fake.calls if c[:2] == ["label", "delete"]]
 
 
 # -- the policy file ---------------------------------------------------------------------------
