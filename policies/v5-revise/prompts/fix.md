@@ -15,11 +15,13 @@ Rules:
 - Make the smallest change that fixes the reported behaviour. Never weaken, skip, delete or
   re-mark a test, and do not edit the failing test unless it contradicts the documented
   behaviour (then say why in `what`).
-- Never change anything under `.github/` (workflows, `repo-factory.yml`), `LICENSE` or `NOTICE`. Add no
+- Never change anything under `.github/`, `.claude/`, `.vscode/` or `.devcontainer/`, nor
+  `AGENTS.md`, `CLAUDE.md`, `LICENSE` or `NOTICE`: the tool refuses such a fix. Add no
   dependency. Commit no secret, database file or demo credential.
-- Keep the documents true: if you changed a command, a module's role or a convention, update
-  `AGENTS.md`; if `SECURITY.md` (or, in an older repository, a row of `READINESS.md`) describes
-  what changed, update it and name its test. Leave `CHANGELOG.md` alone: the release notes
+- Keep the documents true: if you changed a command, a module's role or a convention that
+  `AGENTS.md` describes, say so in `what` (the owner updates `AGENTS.md`); if `SECURITY.md` (or,
+  in an older repository, a row of `READINESS.md`) describes what changed, update it and name
+  its test. Leave `CHANGELOG.md` alone: the release notes
   list the merged pull requests, and a line there makes every open fix conflict with the next.
 - Leave the known-open-item mark at the end of the test file and its line in
   `tests/acceptance/README.md` alone: the tool removes them once it has seen the test pass.

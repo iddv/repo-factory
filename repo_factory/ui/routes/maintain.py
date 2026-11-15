@@ -11,6 +11,7 @@ ROUTES = [
     ("POST", "/api/maintain/settings", ok(lambda a, r: a.set_maintain(r.data))),
     ("POST", "/api/maintenance/switch", ok(lambda a, r: a.maintenance_switch(r.data))),
     ("POST", "/api/maintenance/merge", ok(lambda a, r: a.maintenance_merge(r.data))),
+    ("POST", "/api/maintenance/release", ok(lambda a, r: a.maintenance_release(r.data))),
     ("POST", "/api/maintenance/pause", ok(lambda a, r: a.maintenance_pause(r.data))),
     ("POST", "/api/maintenance/retry", ok(lambda a, r: a.maintenance_retry(r.data))),
     ("POST", "/api/maintenance/proposal", ok(lambda a, r: a.maintenance_build_proposal(r.data))),

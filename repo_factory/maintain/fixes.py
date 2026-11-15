@@ -120,6 +120,11 @@ def ended(home, repo: str, number: int, out: dict, now: float | None = None) -> 
         }
         if outcome == "pr":
             line.update(head=out.get("head"), branch=out.get("branch"), url=out.get("url"))
+            # what merging judges the diff by: the kind the fix ran as and its reproducing test
+            line.update(
+                kind=out.get("kind") if isinstance(out.get("kind"), str) else None,
+                test=out.get("test") if isinstance(out.get("test"), str) else None,
+            )
         rec.update(line, attempts=n)
         rec["history"] = ([*(rec.get("history") or [])] + [line])[-KEEP:]
         d[key(repo, number)] = rec

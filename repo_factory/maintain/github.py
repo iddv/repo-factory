@@ -105,6 +105,23 @@ class Repo:
             raise GitHubError(f"not a repository name: {full!r}")
         self.gh, self.full = gh, full
         self.owner = full.split("/")[0]
+        # the default branch every read and write below means by default (RFREV2 S9):
+        # ``default_branch`` reads it once; "main" until then
+        self.base = "main"
+
+    def default_branch(self) -> str:
+        """The repository's default branch, read once (``repos/<full>``) and kept in
+        ``self.base``; "main" when GitHub's answer does not say (a read that fails raises)."""
+        got = self.get(f"repos/{self.full}") or {}
+        name = got.get("default_branch") if isinstance(got, dict) else None
+        if (
+            isinstance(name, str)
+            and name.strip()
+            and "/" not in name.strip(".")
+            and ".." not in name
+        ):
+            self.base = name.strip()
+        return self.base
 
     # -- the transport ---------------------------------------------------------------------
     def api(
@@ -206,9 +223,10 @@ class Repo:
             else None
         )
 
-    def ci_status(self, ref: str = "main") -> dict:
+    def ci_status(self, ref: str | None = None) -> dict:
         """The check runs on ``ref`` folded into one word: ``success`` (every run finished
         green), ``failure``, ``pending`` or ``none`` (no CI ran, e.g. Actions is off)."""
+        ref = ref or self.base
         r = (
             self.get(f"repos/{self.full}/commits/{quote(ref, safe='')}/check-runs?per_page=100")
             or {}
@@ -264,8 +282,9 @@ class Repo:
             )
         return out[:limit]
 
-    def tree(self, ref: str = "main") -> list[dict]:
+    def tree(self, ref: str | None = None) -> list[dict]:
         """Every path on ``ref``: ``[{"path", "type": blob|tree}]`` (one call)."""
+        ref = ref or self.base
         r = self.get(f"repos/{self.full}/git/trees/{quote(ref, safe='')}?recursive=1") or {}
         return [
             {"path": x.get("path"), "type": x.get("type")}
@@ -273,8 +292,19 @@ class Repo:
             if x.get("path")
         ]
 
-    def file(self, path: str, ref: str = "main") -> str | None:
+    def modes(self, ref: str) -> dict[str, str]:
+        """Every path on ``ref`` with its git mode (``120000`` a link, ``160000`` a
+        submodule), from one tree read."""
+        r = self.get(f"repos/{self.full}/git/trees/{quote(ref, safe='')}?recursive=1") or {}
+        return {
+            str(x.get("path")): str(x.get("mode") or "")
+            for x in r.get("tree") or []
+            if isinstance(x, dict) and x.get("path")
+        }
+
+    def file(self, path: str, ref: str | None = None) -> str | None:
         """One file's text on ``ref``; None when it is not there."""
+        ref = ref or self.base
         try:
             return self.api(
                 f"repos/{self.full}/contents/{quote(path)}?ref={quote(ref, safe='')}", raw=True
@@ -284,11 +314,12 @@ class Repo:
                 return None
             raise
 
-    def head(self, branch: str = "main", etag: str | None = None) -> dict:
+    def head(self, branch: str | None = None, etag: str | None = None) -> dict:
         """The branch's head commit, asked conditionally: ``{"sha", "etag", "changed"}``. With
         the ``etag`` of the last answer, an unchanged branch is GitHub's 304, which costs no
         rate limit (``sha`` None, ``changed`` False). GitHub cannot push to a loopback-only
         repo-factory, so this is how every poll learns that main moved."""
+        branch = branch or self.base
         args = ["api", "-i", "-H", "Accept: application/vnd.github.sha"]
         if etag:
             args += ["-H", f"If-None-Match: {etag}"]
@@ -575,8 +606,9 @@ class Repo:
     def commit(self, sha: str) -> dict:
         return _commit(self.get(f"repos/{self.full}/commits/{quote(sha, safe='')}") or {})
 
-    def behind(self, head: str, base: str = "main") -> int:
+    def behind(self, head: str, base: str | None = None) -> int:
         """How many commits ``base`` has that ``head`` does not (0: up to date)."""
+        base = base or self.base
         r = (
             self.get(
                 f"repos/{self.full}/compare/{quote(base, safe='')}..."
@@ -671,13 +703,19 @@ class Repo:
         return {"number": r.get("number"), "url": r.get("html_url")}
 
     def create_pr(
-        self, title: str, head: str, body: str, base: str = "main", draft: bool = False
+        self, title: str, head: str, body: str, base: str | None = None, draft: bool = False
     ) -> dict:
         r = json.loads(
             self.api(
                 f"repos/{self.full}/pulls",
                 method="POST",
-                payload={"title": title, "head": head, "base": base, "body": body, "draft": draft},
+                payload={
+                    "title": title,
+                    "head": head,
+                    "base": base or self.base,
+                    "body": body,
+                    "draft": draft,
+                },
             )
             or "{}"
         )
@@ -705,8 +743,9 @@ class Repo:
             for t in self.get(f"repos/{self.full}/tags?per_page=100", paginate=True)
         ]
 
-    def compare(self, base: str, head: str = "main") -> list[dict]:
+    def compare(self, base: str, head: str | None = None) -> list[dict]:
         """The commits on ``head`` since ``base``, oldest first: ``[{"sha", "message"}]``."""
+        head = head or self.base
         r = (
             self.get(f"repos/{self.full}/compare/{quote(base, safe='')}...{quote(head, safe='')}")
             or {}
@@ -720,7 +759,7 @@ class Repo:
         """The merged pull requests a commit on main came from."""
         return [issue(x) for x in self.get(f"repos/{self.full}/commits/{sha}/pulls") or []]
 
-    def create_release(self, tag: str, target: str = "main") -> dict:
+    def create_release(self, tag: str, target: str | None = None) -> dict:
         r = json.loads(
             self.api(
                 f"repos/{self.full}/releases",
@@ -728,7 +767,7 @@ class Repo:
                 payload={
                     "tag_name": tag,
                     "name": tag,
-                    "target_commitish": target,
+                    "target_commitish": target or self.base,
                     "generate_release_notes": True,
                 },
             )

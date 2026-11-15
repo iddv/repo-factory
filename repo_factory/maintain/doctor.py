@@ -30,7 +30,7 @@ MAX_PATHS = 5000
 SELF_HOSTED = "not a GitHub-hosted runner"  # in agentsmd.check's line for such a workflow
 
 
-def hosted_now(r: Repo, ref: str = "main") -> list[str]:
+def hosted_now(r: Repo, ref: str | None = None) -> list[str]:
     """The workflows on ``ref`` that may run off GitHub's own runners, read now (the tree and
     each workflow file): what a fix's start and its push check, whatever the doctor's last
     result says."""
@@ -48,7 +48,7 @@ def hosted_now(r: Repo, ref: str = "main") -> list[str]:
     return out
 
 
-def check_repo(r: Repo, ref: str = "main") -> list[str]:
+def check_repo(r: Repo, ref: str | None = None) -> list[str]:
     """``agentsmd.check`` on the repo's ``ref`` as GitHub has it. ``[]``: current."""
     paths = r.tree(ref)[:MAX_PATHS]
     with tempfile.TemporaryDirectory(prefix="repo-factory-doctor-") as d:
@@ -123,6 +123,7 @@ def rows(full: str, rec: dict) -> list[dict]:
     hosted = d.get("self_hosted") or []
     drift = [p for p in probs if p not in hosted]
     base = f"https://github.com/{full}"
+    branch = rec.get("base") if isinstance(rec.get("base"), str) else "main"
     # checked: when the result was computed (the row says its age), at which commit of main
     seen = {"checked": d.get("at"), "head": (d.get("head") or "")[:7] or None}
     out = []
@@ -133,7 +134,7 @@ def rows(full: str, rec: dict) -> list[dict]:
                 "number": None,
                 "title": hosted[0],
                 "problems": hosted,
-                "url": f"{base}/tree/main/.github/workflows",
+                "url": f"{base}/tree/{branch}/.github/workflows",
                 "updated": d.get("at"),
                 "created": d.get("at"),
                 **seen,
@@ -147,7 +148,7 @@ def rows(full: str, rec: dict) -> list[dict]:
                 "title": f"AGENTS.md has drifted: {len(drift)} problem"
                 + ("s" if len(drift) != 1 else ""),
                 "problems": drift[:10],
-                "url": f"{base}/blob/main/AGENTS.md",
+                "url": f"{base}/blob/{branch}/AGENTS.md",
                 "updated": d.get("at"),
                 "created": d.get("at"),
                 **seen,

@@ -74,9 +74,22 @@ def read(home) -> dict[str, dict]:
     return {k: v for k, v in d.items() if isinstance(v, dict)} if isinstance(d, dict) else {}
 
 
+def shown(x: dict) -> dict:
+    """A kept proposal as the page shows it and Build this proposal posts it: title and reason
+    sanitised (a list kept before that rule is sanitised on read), the kind one of ``KINDS``."""
+    from .triage import sanitize
+
+    return {
+        **x,
+        "title": sanitize(" ".join(str(x.get("title") or "").split()), 90),
+        "why": sanitize(" ".join(str(x.get("why") or "").split()), 300),
+        "kind": x.get("kind") if x.get("kind") in KINDS else "task",
+    }
+
+
 def of(home, repo: str) -> dict:
     rec = read(home).get(repo) or {}
-    items = [x for x in rec.get("items") or [] if isinstance(x, dict)]
+    items = [shown(x) for x in rec.get("items") or [] if isinstance(x, dict)]
     return {
         "at": rec.get("at"),
         "usd": rec.get("usd"),
@@ -202,6 +215,8 @@ def prompt(product: str, readme: str, titles: list[str]) -> str:
 
 
 def parse(text: str) -> list[dict]:
+    from .triage import sanitize
+
     if not isinstance(text, str):
         return []
     a, b = text.find("{"), text.rfind("}")
@@ -215,8 +230,10 @@ def parse(text: str) -> list[dict]:
     for x in (got.get("proposals") if isinstance(got, dict) else None) or []:
         if not isinstance(x, dict):
             continue
-        title = " ".join(str(x.get("title") or "").split())[:90]
-        why = " ".join(str(x.get("why") or "").split())[:300]
+        # RFREV2 S4: links out, mentions as code, before anything is kept: the page shows
+        # exactly what Build this proposal would post under your name
+        title = sanitize(" ".join(str(x.get("title") or "").split()), 90)
+        why = sanitize(" ".join(str(x.get("why") or "").split()), 300)
         kind = x.get("kind") if x.get("kind") in KINDS else "task"
         if title:
             pid = "q" + hashlib.sha256(title.lower().encode()).hexdigest()[:8]
@@ -312,7 +329,9 @@ def build(loop, repo: str, pid: str) -> dict:
         "opened on the owner's press. The go label is the owner's: repo-factory proposes a fix "
         "as a pull request.\n"
     )
-    labels = ["go", *([x["kind"]] if x.get("kind") in ("bug", "docs", "security") else [])]
+    # RFREV2 M6: the issue carries the proposal's kind, whatever it is (a feature or task is
+    # fixed as one, and merging never takes it); ``of`` made an unknown stored kind a task
+    labels = ["go", x["kind"]]
     got = Repo(gh_for(loop, repo), repo).create_issue(x["title"], body, labels)
     with _locked(home) as d:
         rec = d.get(repo) or {}

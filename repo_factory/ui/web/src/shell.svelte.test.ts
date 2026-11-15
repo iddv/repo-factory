@@ -371,8 +371,31 @@ describe("Projects and maintenance", () => {
     await until(() => !!document.querySelector("#waiting"));
     expect(document.querySelector("#waiting")?.textContent).toContain("not by you");
     expect(document.querySelector("#maint-self-hosted")?.textContent).toContain("self-hosted runner");
-    expect((document.querySelector("#maint-merge input") as HTMLInputElement).disabled).toBe(true);
+    expect((document.querySelector("#maint-merge-on") as HTMLButtonElement).disabled).toBe(true);
     expect(document.querySelector("#fixes")?.textContent).toContain("#12: opened a pull request");
+  });
+
+  it("asks before merging turns on, says merges are not released, and releasing is its own switch", async () => {
+    let merge = false;
+    const page = (): Record<string, unknown> => ({ ...repo({ switch: { on: true, merge, release: false }, rows: [] }), brief: { one_liner: "", who: "", brief: "" }, build: null, published: null, state: "published", month_usd: 0 });
+    routes["api/project"] = () => ({ body: page() });
+    routes["POST api/maintenance/merge"] = (b) => {
+      merge = (b as { on: boolean }).on;
+      return { body: { ...MAINT_EMPTY, repos: [repo({ switch: { on: true, merge, release: false } })] } };
+    };
+    await open("#/projects/i1234abcd");
+    await until(() => !!document.querySelector("#maint-merge-on"));
+    expect(document.querySelector("#maint-release")).toBeNull();
+    (document.querySelector("#maint-merge-on") as HTMLButtonElement).click();
+    await settle();
+    expect(posts).toEqual([]); // the first press only asks
+    expect(text()).toContain("with nobody reading it first");
+    expect(text()).toContain("Merges are not released: that is its own switch, off.");
+    ([...document.querySelectorAll(".ask button")].find((b) => b.textContent === "Merge them") as HTMLButtonElement).click();
+    await until(() => posts.length === 1);
+    expect(posts[0]).toEqual(["api/maintenance/merge", { repo: "octo-owner/plots", on: true }]);
+    await until(() => !!document.querySelector("#maint-release-on"));
+    expect(document.querySelector("#maint-release")?.textContent).toContain("Off by default, whatever the policy file says.");
   });
 
   it("says run claude setup-token first while fixes would get the sign-in file", async () => {

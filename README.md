@@ -124,12 +124,13 @@ Releases page>`, `repo-factory doctor`, `repo-factory ui`. Then read
 
 | Setting | Default |
 |---|---|
-| Publish | **Asks first:** a ready build waits at "Ready: publish?" until you press. Publishing starts the product's own CI on your account (one Linux job; a workflow asking for a self-hosted runner, `pull_request_target` or a write token holds the publish) |
+| Publish | **Asks first:** a ready build waits at "Ready: publish?" until you press. Publishing starts the product's own CI on your account (one Linux job; a workflow that may run off GitHub's own runners, `pull_request_target` or a write token holds the publish) |
 | Visibility | **Private**; only you make a repository public |
 | Spend | **$25 a build, $50 a day**; either can be changed or set to none |
-| Maintenance | **Off** until you switch it on for a repository; then it fixes only issues **you** labelled `go`, each as a pull request, and writes nothing on any issue; **$20 a month** and **$5 a fix** |
-| Merging its own fixes | **Off**; a second switch per repository (bugs and docs, green CI, never a workflow file) |
-| Lessons | **On:** a held build writes at most one lesson (a few cents), carried into later briefs until you switch it off |
+| Maintenance | **Off** until you switch it on for a repository; then it fixes only issues **you** labelled `go` (and nobody edited since), each as a pull request, and writes nothing on any issue; no fix while builds sign in with Claude Code's own sign-in file (run `claude setup-token`) or while a workflow may run off GitHub's own runners; **$20 a month** and **$5 a fix** |
+| Merging its own fixes | **Off**; a second switch per repository, which asks first: only a fix whose issue says `bug` (its test in the diff) or `docs` (documents only), never a change to a manifest, a lock file, build or test settings, `.github/` or an agent's or editor's file, green CI |
+| Releasing after a merge | **Off**; a third switch per repository, whatever the policy file says |
+| Lessons | **On, and each new lesson waits:** a held build writes at most one lesson (a few cents); it goes into later briefs only once you switch it on |
 | Issues | Only an issue **you** opened, or labelled `build` yourself, becomes a task; its text is data |
 | The page | Loopback only (127.0.0.1); writes need a sign-in token |
 
@@ -141,7 +142,10 @@ network namespace. The sandbox holds no GitHub credential; the host does every p
 remains:** egress to the internet is open during a build, so code can send what it can read
 (the workspace) anywhere; a package installed during a build runs its install code inside the
 sandbox; a model can name a dependency that is hostile; and the exam and the gate are the same
-system as the builder. **Read a product before you make it public or run it elsewhere.**
+system as the builder. Maintenance gives a session someone else's words (an issue you labelled
+`go`): its pull request runs the fix's code in the product's CI at once (only ever on GitHub's
+own runners), and with merging on, a fix you have not read can be merged (bugs and docs, judged
+by the diff). **Read a product before you make it public or run it elsewhere.**
 [SECURITY.md](SECURITY.md) has the full table and how to report a problem privately.
 
 ## Contributing

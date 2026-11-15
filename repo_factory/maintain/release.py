@@ -104,7 +104,7 @@ def step(r: Repo, pol: dict, *, lessons: bool = True) -> dict | None:
     cur = newest(tags, prefix)
     if cur is None:
         return {"skipped": f"no {prefix}X.Y.Z tag to count from"}
-    commits = r.compare(cur[1], "main")
+    commits = r.compare(cur[1])
     if not commits:
         return None
     prs, seen = [], set()

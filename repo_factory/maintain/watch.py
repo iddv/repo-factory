@@ -78,16 +78,37 @@ def tick(loop, now: float | None = None) -> dict:
     out["spend"] = stop
     slots = [0 if stop else free_slots(loop, cache)]
     me = login_of(loop.gh)
+    token_logins: dict[str, str | None] = {}  # "you" includes the token file's login, read once
     for t in ts:
         try:
             gh = gh_for(loop, t["repo"])
             t["login"] = me
             t["bot"] = gh.login_name if getattr(gh, "credential", None) == "app" else None
+            t["token"] = acting_login(gh, token_logins)
             out["repos"].append(poll_repo(loop, gh, t, cache, now, slots, stop))
         except Exception as e:  # noqa: BLE001 - the next repo still runs
             out["repos"].append({"repo": t["repo"], "errors": [f"{type(e).__name__}: {e}"]})
     loop.ledger.meta("maintain_last_poll", now)
     return out
+
+
+def acting_login(gh, seen: dict | None = None) -> str | None:
+    """The login of the token file maintenance acts with (``maintain.token_env_file``), or
+    None without one: "you" is every identity this install acts as (the signed-in login, its
+    App's bot, this token's user), so an issue that token labelled ``go`` (Build this
+    proposal) counts as yours. Read once per file (``seen``)."""
+    from .identity import login_of
+
+    f = getattr(gh, "env_file", None)
+    if not f:
+        return None
+    key = str(f)
+    if seen is not None and key in seen:
+        return seen[key]
+    got = login_of(gh)
+    if seen is not None:
+        seen[key] = got
+    return got
 
 
 def row(kind: str, item: dict | None, title: str, why: str, **more) -> dict:
@@ -112,6 +133,7 @@ def poll_repo(loop, gh, t: dict, cache: Cache, now: float, slots: list[int], sto
     out: dict = {"repo": full, "waiting": 0, "started": [], "ended": [], "merged": [], "errors": []}
     r = Repo(gh, full)
     try:
+        r.default_branch()  # once a poll: every read and write below means this branch
         items = r.issues(state="open")
     except GitHubError as e:
         rec.update(error=str(e), last_try=now)
@@ -131,12 +153,13 @@ def poll_repo(loop, gh, t: dict, cache: Cache, now: float, slots: list[int], sto
                 None,
                 ".github/repo-factory.yml cannot be read",
                 f"{e}; maintenance leaves this repository alone until it is fixed",
-                url=f"https://github.com/{full}/blob/main/.github/repo-factory.yml",
+                url=f"https://github.com/{full}/blob/{r.base}/.github/repo-factory.yml",
             )
         )
     rec.update(last_try=now, idea=t["idea"], product=t["product"])
-    read_head(r, rec, "main", now, out)
-    me = {x for x in (t.get("login"), t.get("bot")) if x}
+    rec["base"] = r.base
+    read_head(r, rec, r.base, now, out)
+    me = {x for x in (t.get("login"), t.get("bot"), t.get("token")) if x}
     ended(loop, r, rec, items, now, out)
     own_prs = fixes.opened(home, full)
     mine, go_reads = [], 0
@@ -222,7 +245,7 @@ def poll_repo(loop, gh, t: dict, cache: Cache, now: float, slots: list[int], sto
                 "; ".join(hosted)[:400]
                 + ": repo-factory starts no fix here (its pull request would run the fix's code "
                 "on that machine) and never merges; read the workflow",
-                url=f"https://github.com/{full}/tree/main/.github/workflows",
+                url=f"https://github.com/{full}/tree/{r.base}/.github/workflows",
             )
         )
     held = signin.blocks(loop.cfg)
@@ -248,7 +271,11 @@ def poll_repo(loop, gh, t: dict, cache: Cache, now: float, slots: list[int], sto
         except GitHubError as e:
             got = {"why": f"GitHub did not answer: {e}"}
         rec["queue"] = got
-        if got.get("merged"):
+        # a release after the merge only with the repository's third switch on (off by
+        # default, whatever the policy file says)
+        if got.get("merged") and not switch.releases(home, full):
+            out["merged"].append(got["merged"])
+        elif got.get("merged"):
             out["merged"].append(got["merged"])
             try:
                 rel = release.step(r, pol, lessons=False)
@@ -391,6 +418,8 @@ def merge_step(loop, r, items, pol, rec, now, own_prs, hosted) -> dict:
             pull = r.pull(n)
             if not f.get("head") or pull["head"] != f["head"]:
                 j = {"verdict": "refused", "why": "its head is not the commit repo-factory pushed"}
+            elif why := diff_refuses(r, n, f):
+                j = {"verdict": "refused", "why": why}
             else:
                 j = automerge.judge(r, item, judged, book)
         except GitHubError as e:
@@ -413,6 +442,49 @@ def merge_step(loop, r, items, pol, rec, now, own_prs, hosted) -> dict:
                 out["merged"] = n
         out["items"].append(line)
     return out
+
+
+def diff_refuses(r, pr: int, f: dict) -> str | None:
+    """Why merging refuses repo-factory's fix pull request ``pr`` by what its diff holds, or
+    None (RFREV2 M6: the diff is judged, not the label). Its issue must carry exactly one kind
+    label, ``bug`` or ``docs`` (none: no merge). ``docs``: every changed file is a document
+    (``*.md``, ``*.rst``, ``*.txt``, ``docs/``). ``bug``: the fix's reproducing test is in the
+    diff. Either: no changed file runs somewhere (manifests, lock files, build and test
+    settings, ``.github/``, agents' and editors' files, git's own) and none is a link or a
+    submodule. ``f``: the fix's line in ``fixes.json``."""
+    from . import labels as L
+
+    n = f.get("issue")
+    if not isinstance(n, int):
+        return "its issue is not known"
+    kinds = sorted({x for x in r.issue(n)["labels"] if x in L.KINDS})
+    if not kinds:
+        return f"issue #{n} has no kind label: only a bug or docs fix whose issue says so merges"
+    if len(kinds) > 1:
+        return f"issue #{n} carries more than one kind ({', '.join(kinds)}): no merge"
+    kind = kinds[0]
+    if kind not in MERGE_KINDS:
+        return f"a `{kind}`: repo-factory never merges one; read it and merge it yourself"
+    files = r.pull_changes(pr)
+    if not files:
+        return "its diff could not be read"
+    for x in files:
+        why = automerge.never_path(x)
+        if why:
+            return f"{why}: merging never takes that"
+    modes = r.modes(str(f.get("head")))
+    odd = [x for x in files if modes.get(x) in ("120000", "160000")]
+    if odd:
+        return f"`{odd[0]}` is a link or a submodule: merging never takes one"
+    if kind == "docs":
+        other = [x for x in files if not automerge.is_document(x)]
+        if other:
+            return f"a docs fix that changes `{other[0]}`, which is not a document"
+    if kind == "bug":
+        test = f.get("test")
+        if not isinstance(test, str) or test not in files:
+            return "its reproducing test is not in the diff"
+    return None
 
 
 def rows_of(home, repo: str) -> dict:

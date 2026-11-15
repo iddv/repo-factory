@@ -74,6 +74,10 @@ FAILED = re.compile(r"<!-- repo-factory:revise attempt=(\d+) result=failed\b")
 RESET = "<!-- repo-factory:revise reset"
 TICKET = "<!-- repo-factory:ticket v1 -->"              # an issue repo-factory opened (chat's Cut a ticket)
 FORBIDDEN = (".github/workflows/", ".github/repo-factory.yml", "LICENSE", "NOTICE")
+# RFREV2 M6: what a fix never changes besides FORBIDDEN: all of .github/, and the files an agent
+# or an editor runs or obeys (a fix that needs one is a row for the person)
+NEVER_DIRS = (".github/", ".claude/", ".vscode/", ".devcontainer/", ".idea/", ".cursor/")
+NEVER_NAMES = ("AGENTS.md", "CLAUDE.md", ".cursorrules")
 MISSES = ("scope", "verify", "readiness", "security", "interpretation")
 NO_RETRY = ("error",)                            # stages no model made: an exception in repo-factory
 # the kinds whose test reproduces a failure; any other kind but docs gets a test that specifies
@@ -114,6 +118,16 @@ def slug(title: str, n: int = 40) -> str:
             break
         out = f"{out}-{w}" if out else w
     return out or "issue"
+
+
+def safe_title(title: str) -> str:
+    """An issue's title as a fix copies it into a commit message, a pull request's title and
+    the first line of its body (RFREV2 S11): sanitised (no link, mentions as code, one line)
+    and with every issue reference broken (``#9`` becomes ``# 9``, ``GH-9`` ``GH- 9``), so a
+    "closes #9" in someone's title closes nothing and links nothing."""
+    t = triage.sanitize(" ".join(str(title or "").split()), 200)
+    t = re.sub(r"#(?=\d)", "# ", t)
+    return re.sub(r"(?i)\bGH-(?=\d)", "GH- ", t)
 
 
 def branch_name(number: int, title: str) -> str:
@@ -394,6 +408,9 @@ def scope_violations(changed: list[str]) -> list[str]:
             bad.append(f"{f}: outside the repository")
         elif any(f == x or f.startswith(x) for x in FORBIDDEN):
             bad.append(f"{f}: a fix never changes this file")
+        elif any(f.startswith(d) or f"/{d}" in f"/{f}" for d in NEVER_DIRS) or name in NEVER_NAMES:
+            bad.append(f"{f}: an agent's, an editor's or CI's file: a fix never changes one; "
+                       "if the fix needs it, change it yourself")
         else:
             for what, pat, ok in BAD_FILES:
                 if pat.search(name) and not (ok and ok.search(name)):
@@ -476,6 +493,10 @@ class Fix:
         self.loop, self.full, self.number = loop, full, int(number)
         self.gh = gh_for(loop)
         self.r = Repo(self.gh, full)
+        try:  # the default branch, read once (RFREV2 S9): "main" when it cannot be read
+            self.r.default_branch()
+        except GitHubError:
+            pass
         self.s = settings(loop.cfg)
         self.pol = P.load(self.gh, full)
         self.t = next((t for t in targets(loop) if t["repo"] == full),
@@ -627,7 +648,9 @@ class Fix:
         from .identity import login_of
         if self.item["state"] != "open" or "go" not in self.item["labels"]:
             return "the issue is no longer open and labelled go"
-        me = {x for x in (login_of(self.loop.gh), getattr(self.gh, "login_name", None)) if x}
+        from .watch import acting_login
+        me = {x for x in (login_of(self.loop.gh), getattr(self.gh, "login_name", None),
+                          acting_login(self.gh)) if x}
         try:
             return consent.why_not(self.r, self.item, me)
         except GitHubError as e:
@@ -757,7 +780,7 @@ class Fix:
     def changed(self, base: str | None = None) -> list[str]:
         """What the workspace changes against the commit the fix started from (recorded at
         the checkout, before any session: a ref a session moved changes nothing here)."""
-        base = base or getattr(self, "base", None) or "origin/main"
+        base = base or getattr(self, "base", None) or f"origin/{self.r.base}"
         out = git("diff", "--name-only", "--no-renames", base, cwd=self.repo).split()
         out += git("ls-files", "--others", "--exclude-standard", cwd=self.repo).split()
         return sorted({f for f in out if not f.startswith(".repo-factory/")})
@@ -769,7 +792,7 @@ class Fix:
         self.work.mkdir(parents=True)
         self.gh("repo", "clone", self.full, str(self.repo), "--", "-q")
         gitcmd.pin(self.repo)
-        git("checkout", "-q", "-B", self.branch, "origin/main", cwd=self.repo)
+        git("checkout", "-q", "-B", self.branch, f"origin/{self.r.base}", cwd=self.repo)
         self.base = git("rev-parse", "HEAD", cwd=self.repo).strip()
         excl = self.repo / ".git" / "info" / "exclude"
         excl.parent.mkdir(parents=True, exist_ok=True)
@@ -974,7 +997,7 @@ class Fix:
             if old.startswith("refs/heads/"):
                 self.remote("push", "-q", "origin", "--delete", old[len("refs/heads/"):],
                             check=False)
-        pr = self.r.create_pr(f"Fix #{self.number}: {self.item['title']}", self.branch,
+        pr = self.r.create_pr(f"Fix #{self.number}: {safe_title(self.item['title'])}", self.branch,
                               self.pr_body(changed))
         self.r.set_labels(pr["number"], ["repo-factory", self.kind], have=[])
         self.emit("delivered", node=self.sessions, branch=self.branch, out=str(self.repo),
@@ -982,7 +1005,7 @@ class Fix:
         return pr
 
     def message(self) -> str:
-        return (f"Fix #{self.number}: {self.item['title']}\n\n"
+        return (f"Fix #{self.number}: {safe_title(self.item['title'])}\n\n"
                 f"{triage.sanitize(self.fix.get('what') or 'The fix.', 900)}\n\n"
                 f"Fixes #{self.number}\n")
 
@@ -1037,7 +1060,7 @@ class Fix:
         except carry.CarryError as e:
             raise Stop("deliver", str(e)) from None
         self.branch = branch
-        pr = self.r.create_pr(f"Fix #{self.number}: {self.item['title']}", branch,
+        pr = self.r.create_pr(f"Fix #{self.number}: {safe_title(self.item['title'])}", branch,
                               self.pr_body(changed))
         self.r.set_labels(pr["number"], ["repo-factory", self.kind], have=[])
         self.emit("delivered", node=self.sessions, branch=branch, out=str(dest),
@@ -1048,7 +1071,7 @@ class Fix:
         """The project's charter on this diff: a promise's sentence gone
         from the README, a dependency added where the charter says standard library only."""
         from ..projects.charter_check import for_fix
-        base = base or getattr(self, "base", None) or "origin/main"
+        base = base or getattr(self, "base", None) or f"origin/{self.r.base}"
 
         def at_base(f: str) -> str | None:
             try:
@@ -1073,7 +1096,7 @@ class Fix:
                 + (f" flow={flow}" if flow else "") + (f" test={self.test}" if self.test else "")
                 + " -->")
         return "\n".join([
-            f"Fix #{self.number}: {self.item['title']}", "",
+            f"Fix #{self.number}: {safe_title(self.item['title'])}", "",
             f"**What:** {triage.sanitize(f.get('what') or 'see the diff', 900)}",
             f"**Why it happened:** {triage.sanitize(f.get('why') or 'not stated', 300)}",
             f"**Reproduced by:** {repro}",
@@ -1170,7 +1193,7 @@ class Fix:
                 out.update(outcome="refreshed" if self.refresh else "pr", pr=pr["number"],
                            url=pr["url"], test=self.test, why=why,
                            **({"head": pr["head"]} if self.refresh or self.quiet else {}),
-                           **({"branch": pr["branch"]} if self.quiet else {}))
+                           **({"branch": pr["branch"], "kind": self.kind} if self.quiet else {}))
                 if not self.quiet:
                     (self.done_refresh if self.refresh else self.done_pr)(pr)
             except Stop as e:

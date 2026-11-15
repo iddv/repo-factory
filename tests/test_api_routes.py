@@ -134,6 +134,7 @@ POST = [
     ("/api/maintenance/switch", {}),
     ("/api/maintenance/switch", {"repo": "someone/thing", "on": True}),
     ("/api/maintenance/merge", {}),
+    ("/api/maintenance/release", {}),
     ("/api/maintenance/pause", {}),
     ("/api/maintenance/retry", {}),
     ("/api/maintenance/proposal", {}),

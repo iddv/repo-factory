@@ -118,9 +118,13 @@ class F3Hub(FakeHub):
                 return 0, "[]", ""
             files = getattr(self, "pr_files", {})
             return 0, json.dumps([{"filename": f, "changes": c} for f, c in files.items()]), ""
-        if path == f"{base}/git/trees/main":  # main's paths: here only its workflow files
+        if path.startswith(f"{base}/git/trees/"):  # main's workflows, and the PR's files
             self.calls.append(("GET", a[-1], None))
-            return 0, json.dumps({"tree": [{"path": f, "type": "blob"} for f in self.files]}), ""
+            modes = getattr(self, "modes", {})
+            on_main = path.endswith(("/main", "/trunk"))
+            paths = [*self.files, *([] if on_main else getattr(self, "pr_files", {}))]
+            tree = [{"path": f, "type": "blob", "mode": modes.get(f, "100644")} for f in paths]
+            return 0, json.dumps({"tree": tree}), ""
         if path.startswith(f"{base}/contents/.github/workflows/"):
             name = path.split("/contents/", 1)[1]
             if name in self.files:
@@ -182,7 +186,7 @@ def world(tmp_path, monkeypatch):
 # -- off until switched on ------------------------------------------------------------------------
 def test_maintenance_is_off_until_switched_on_and_reads_nothing(world):
     lp, fake, _ = world
-    assert switch.get(lp.cfg.home, REPO) == {"on": False, "merge": False}
+    assert switch.get(lp.cfg.home, REPO) == {"on": False, "merge": False, "release": False}
     assert not lp.maintain_due()
     out = watch.tick(lp)
     assert out["off"] and out["repos"] == []
@@ -414,12 +418,19 @@ def own_fix(lp, fake, sha="h1", files=None):
         "ref": "repo-factory/14-huge",
         "repo": {"full_name": REPO},
     }
-    fake.pr_files = files or {"app.py": 2}
+    fake.pr_files = files or {"app.py": 2, "tests/test_huge_id.py": 12}
     fixes.ended(
         lp.cfg.home,
         REPO,
         14,
-        {"outcome": "pr", "pr": 40, "head": sha, "branch": "repo-factory/14-huge"},
+        {
+            "outcome": "pr",
+            "pr": 40,
+            "head": sha,
+            "branch": "repo-factory/14-huge",
+            "kind": "bug",
+            "test": "tests/test_huge_id.py",
+        },
     )
 
 
@@ -440,7 +451,7 @@ def test_a_green_own_fix_merges_only_with_the_switch_on(merge_world):
     switch.set_merge(lp.cfg.home, REPO, True)
     lp.ledger.meta("maintain_last_poll", 0)
     watch.tick(lp, now=time.time() + 1000)
-    assert fake.merged == [40]
+    assert fake.merged == [40], watch.rows_of(lp.cfg.home, REPO)["queue"]["items"][0]["why"]
 
 
 def test_a_red_or_workflow_fix_never_merges(merge_world):

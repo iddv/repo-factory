@@ -6,16 +6,13 @@
   import { ago } from "../../lib/format";
   import { read } from "../../lib/reads.svelte";
   import Press from "../../ui/Press.svelte";
-  import { KIND_WORD, buildProposal, mergeOn, pause, retry, standing, switchOn, usd, type Project } from "./maintenance";
-  let mergeError = $state("");
-  async function flipMerge(repo: string, on: boolean): Promise<void> {
-    mergeError = "";
-    try {
-      await mergeOn(repo, on);
-    } catch (e) {
-      mergeError = (e as Error).message;
-    }
-  }
+  import { KIND_WORD, buildProposal, mergeOn, pause, releaseOn, retry, standing, switchOn, usd, type Project } from "./maintenance";
+  // what the merge and release switches do, said before either turns on
+  const MERGE_WORDS = (released: boolean): string =>
+    "From the next poll, repo-factory merges one of its own fix pull requests a poll, with nobody reading it first: only a fix this install opened, whose issue is labelled bug or docs; a docs fix only when every changed file is a document; a bug fix only with its reproducing test in the diff; never a change to a manifest, a lock file, build or test settings, .github/, an agent's or editor's file, or a link; every check green. " +
+    (released ? "Each merge is then released (a tag and a GitHub release, which run any workflow on tags or releases, with its secrets)." : "Merges are not released: that is its own switch, off.");
+  const RELEASE_WORDS =
+    "After each merge, repo-factory creates a tag and a GitHub release with your token. Any workflow of this repository that runs on tags or releases runs then, with its secrets (a package upload, if you added one), with nobody reading the change first.";
 
   let { id }: { id: string } = $props();
   const when = (t: number): string => (ago(t) === "now" ? "just now" : `${ago(t)} ago`);
@@ -83,17 +80,28 @@
         {/if}
       </div>
       {#if p.switch.on}
-        <label class="switch" id="maint-merge">
-          <input
-            type="checkbox"
-            checked={p.switch.merge}
-            disabled={warnings.length > 0}
-            onchange={(e) => void flipMerge(p.repo, e.currentTarget.checked)}
-          />
-          Merge its own fixes when CI is green
-        </label>
-        {#if mergeError}<p class="err" role="alert">{mergeError}</p>{/if}
-        <p class="muted small">Off by default. Bugs and docs only, every check green, never a change under <code>.github/</code>, never a pull request anyone else pushed to, never while a workflow may run off GitHub's own runners; then a patch release, when the policy file allows one.</p>
+        <div id="maint-merge">
+          <p><strong>Merge its own fixes when CI is green:</strong> {p.switch.merge ? "on" : "off"}.</p>
+          <div class="controls">
+            {#if p.switch.merge}
+              <Press label="Stop merging" id="maint-merge-off" run={async () => { await mergeOn(p.repo, false); return "Off: nothing merges."; }} />
+            {:else}
+              <Press label="Merge its own fixes" id="maint-merge-on" disabled={warnings.length > 0} why={warnings.length ? "a workflow on main may run off GitHub's own runners" : null} confirm={MERGE_WORDS(p.switch.release === true)} yes="Merge them" run={async () => { await mergeOn(p.repo, true); return "On: from the next poll."; }} />
+            {/if}
+          </div>
+          <p class="muted small">Off by default. Only a fix this install opened, whose issue says <code>bug</code> or <code>docs</code>: a docs fix changes documents only; a bug fix carries its reproducing test; no fix that changes a file that runs somewhere (manifests, lock files, build and test settings, <code>.github/</code>, agent and editor files) or a link; every check green; never a pull request anyone else pushed to; never while a workflow may run off GitHub's own runners.</p>
+        </div>
+        {#if p.switch.merge}
+          <div id="maint-release">
+            <p><strong>Release after each merge:</strong> {p.switch.release ? "on" : "off"}.</p>
+            {#if p.switch.release}
+              <Press label="Stop releasing" id="maint-release-off" run={async () => { await releaseOn(p.repo, false); return "Off: merges are not released."; }} />
+            {:else}
+              <Press label="Release after each merge" id="maint-release-on" confirm={RELEASE_WORDS} yes="Release them" run={async () => { await releaseOn(p.repo, true); return "On: the next merge is released."; }} />
+            {/if}
+            <p class="muted small">Off by default, whatever the policy file says.</p>
+          </div>
+        {/if}
       {/if}
       {#if p.setup?.state === "failed"}<p class="err" role="alert" id="maint-setup-failed">The setup stopped: {p.setup.why}</p>{/if}
       {#if p.setup?.url}<p class="small">Setup pull request: <a href={p.setup.url} target="_blank" rel="noopener">#{p.setup.pr} ↗</a></p>{/if}

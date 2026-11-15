@@ -1796,6 +1796,20 @@ class App:
             raise HttpError(409, str(e))
         return self.maintenance()
 
+    def maintenance_release(self, body: dict) -> dict:
+        """A patch release after each of its own merges, for one repository (your press; off
+        by default, whatever the policy file says; only while merging is on for it)."""
+        from ..maintain import switch
+
+        repo, on = self._published(body), body.get("on")
+        if not isinstance(on, bool):
+            raise HttpError(400, "on must be true or false")
+        try:
+            switch.set_release(self.loop().cfg.home, repo, on, by="ui")
+        except ValueError as e:
+            raise HttpError(409, str(e))
+        return self.maintenance()
+
     def maintenance_pause(self, body: dict) -> dict:
         """Pause or resume maintenance on one repository: the next poll skips it at once,
         and the pause is a file, so it survives a restart."""

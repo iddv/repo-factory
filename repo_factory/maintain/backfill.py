@@ -9,7 +9,9 @@ pull request the owner merges.
 3. checks: the drift doctor (``agentsmd.check``) and, unless ``run_suites`` is off,
    ``check_agents_md.py`` on the branch, which runs AGENTS.md's commands and both suites.
    A failure stops here: nothing is pushed and no PR is opened;
-4. applies the labels (``labels.apply``, never pruning), sets ``delete_branch_on_merge`` and
+4. creates the missing labels (``labels.apply(missing_only=True)``: a label the repository already
+   has keeps its colour and description; never pruning); with ``settings`` (not the switch's
+   setup) it also sets ``delete_branch_on_merge`` and
    enables Dependabot alerts; what the token cannot change is listed in the PR;
 5. pushes the branch and opens the PR (or refreshes its body when one is open), labelled
    ``repo-factory``, with the files, the policy, the checks and the morning checklist.
@@ -530,7 +532,7 @@ def backfill(
         pr = False  # main has every file already: the labels are all that is left
         res["nothing_to_add"] = True
     if apply_labels:
-        res["labels"] = labels.apply(gh, repo)
+        res["labels"] = labels.apply(gh, repo, missing_only=True)
     if settings:
         res["settings"] = repo_settings(gh, repo)
     if pr:

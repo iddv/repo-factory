@@ -56,6 +56,101 @@ LOCKFILES = {
 }
 GREEN = ("success", "skipped")  # a skipped job's `if:` was false; nothing else counts
 
+# RFREV2 M6: files whose change runs somewhere (an install, a build, a test run, an editor or
+# an agent on the next person's machine): merging never takes a diff that touches one, whatever
+# its kind. Names anywhere in the tree, then folders, then name patterns.
+RUNS_NAMES = {
+    # package manifests (their lock files are LOCKFILES)
+    "pyproject.toml",
+    "setup.py",
+    "setup.cfg",
+    "MANIFEST.in",
+    "Pipfile",
+    "package.json",
+    ".npmrc",
+    ".yarnrc",
+    ".yarnrc.yml",
+    "Cargo.toml",
+    "go.mod",
+    "Gemfile",
+    "composer.json",
+    "environment.yml",
+    "environment.yaml",
+    "build.rs",
+    "pom.xml",
+    "build.gradle",
+    "build.gradle.kts",
+    "settings.gradle",
+    "deno.json",
+    "deno.jsonc",
+    "bunfig.toml",
+    # build and test configuration
+    "conftest.py",
+    "tox.ini",
+    "pytest.ini",
+    "noxfile.py",
+    ".coveragerc",
+    "Makefile",
+    "makefile",
+    "GNUmakefile",
+    "justfile",
+    "Justfile",
+    "Taskfile.yml",
+    "Taskfile.yaml",
+    "CMakeLists.txt",
+    "Rakefile",
+    "Dockerfile",
+    "Containerfile",
+    ".dockerignore",
+    "docker-compose.yml",
+    "docker-compose.yaml",
+    "compose.yml",
+    "compose.yaml",
+    "tsconfig.json",
+    ".babelrc",
+    ".mocharc.json",
+    ".mocharc.yml",
+    ".pre-commit-config.yaml",
+    # agents and editors, and what git itself reads
+    "AGENTS.md",
+    "CLAUDE.md",
+    ".cursorrules",
+    ".gitattributes",
+    ".gitmodules",
+    ".envrc",
+}
+RUNS_DIRS = (".github/", ".claude/", ".vscode/", ".devcontainer/", ".idea/", ".cursor/", ".husky/")
+RUNS_PATTERNS = (
+    r"requirements[^/]*\.(?:txt|in)",
+    r"constraints[^/]*\.txt",
+    r"Dockerfile\..*",
+    r"(?:jest|vite|vitest|webpack|rollup|babel|eslint|prettier|playwright|svelte|tailwind|"
+    r"postcss|karma|cypress|next|nuxt|astro)\.config\.[cm]?[jt]s",
+    r".*\.mk",
+)
+DOCUMENTS = (".md", ".rst", ".txt")
+
+
+def runs_somewhere(f: str) -> str | None:
+    """Why a change of ``f`` runs somewhere (a manifest, a lock file, build or test settings,
+    ``.github/``, an agent's or editor's file, git's own), or None."""
+    import re
+
+    p = PurePosixPath(f)
+    if p.name in LOCKFILES or p.name.endswith(".lock"):
+        return f"`{f}` is a lockfile"
+    if any(f.startswith(d) or f"/{d}" in f"/{f}" for d in RUNS_DIRS):
+        return f"`{f}` is in a folder whose files run somewhere (CI, an agent, an editor)"
+    if p.name in RUNS_NAMES or any(re.fullmatch(x, p.name) for x in RUNS_PATTERNS):
+        return f"`{f}` runs somewhere (a manifest, build or test settings, an agent's file)"
+    return None
+
+
+def is_document(f: str) -> bool:
+    """A document a ``docs`` fix may change: ``*.md``, ``*.rst``, ``*.txt`` or under
+    ``docs/``, and nothing that runs somewhere (``AGENTS.md``, ``requirements.txt``)."""
+    return (f.startswith("docs/") or f.endswith(DOCUMENTS)) and runs_somewhere(f) is None
+
 
 def may_merge_kind(kind: str | None, merge: dict) -> bool:
     return bool(kind) and kind not in NEVER_KINDS and kind in (merge.get("kinds") or [])
@@ -70,23 +165,29 @@ def is_on(pol: dict) -> bool:
 
 
 def never_path(f: str) -> str | None:
-    """Why auto-merge never takes a diff touching ``f``, or None."""
+    """Why auto-merge never takes a diff touching ``f``, or None: ``.github/``, a licence or
+    notice, and everything that runs somewhere (``runs_somewhere``)."""
     p = PurePosixPath(f)
     if f.startswith(".github/"):
         return f"`{f}` is under .github/"
     name = p.name.upper()
     if name.startswith(("LICENSE", "LICENCE", "NOTICE", "COPYING")):
         return f"`{f}` is a licence or notice file"
-    if p.name in LOCKFILES:
-        return f"`{f}` is a lockfile"
-    return None
+    return runs_somewhere(f)
 
 
 def checks(r: Repo, sha: str) -> dict:
     """The check runs on ``sha``, judged strictly: ``green`` (every one finished ``success``
     or ``skipped``, and at least one ``success``), ``pending``, ``red`` or ``none``."""
-    got = r.get(f"repos/{r.full}/commits/{sha}/check-runs?per_page=100") or {}
-    runs = got.get("check_runs") or []
+    # every page: a head with more than 100 check runs is judged on all of them
+    pages = r.get(f"repos/{r.full}/commits/{sha}/check-runs?per_page=100", paginate=True) or []
+    runs = [
+        x
+        for page in pages
+        if isinstance(page, dict)
+        for x in (page.get("check_runs") or [])
+        if isinstance(x, dict)
+    ]
     if not runs:
         return {"state": "none", "runs": 0}
     waiting = [x.get("name") for x in runs if x.get("status") != "completed"]
@@ -171,7 +272,7 @@ def judge(r: Repo, item: dict, pol: dict, b: dict) -> dict:
     if who:
         return no(f"changes requested by {', '.join(who)}")
     base = {"sha": pull["head"], "lines": lines, "kind": sorted(kinds)[0], "title": pull["title"]}
-    if r.behind(pull["head"], "main"):
+    if r.behind(pull["head"]):
         return {
             **base,
             "verdict": "wait",

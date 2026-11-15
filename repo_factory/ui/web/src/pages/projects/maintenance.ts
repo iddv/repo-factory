@@ -40,7 +40,7 @@ export interface Repo {
   idea: string;
   product: string;
   one_liner: string;
-  switch: { on: boolean; merge: boolean; at?: number };
+  switch: { on: boolean; merge: boolean; release?: boolean; at?: number };
   paused: string | null;
   polled: number | null;
   error: string | null;
@@ -87,6 +87,7 @@ async function press(path: string, body: Record<string, unknown>): Promise<Maint
 
 export const switchOn = (repo: string, on: boolean) => press("api/maintenance/switch", { repo, on });
 export const mergeOn = (repo: string, on: boolean) => press("api/maintenance/merge", { repo, on });
+export const releaseOn = (repo: string, on: boolean) => press("api/maintenance/release", { repo, on });
 export const pause = (repo: string, paused: boolean) => press("api/maintenance/pause", { repo, paused });
 export const retry = (repo: string, number: number) => press("api/maintenance/retry", { repo, number });
 export const buildProposal = (repo: string, id: string) => press("api/maintenance/proposal", { repo, id });

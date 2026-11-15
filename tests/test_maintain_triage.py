@@ -83,6 +83,8 @@ class FakeGitHub:
             return 1, "", "HTTP 404: Not Found"
         rest = p[len(base) :]
         ok = lambda obj: (0, json.dumps(obj), "")  # noqa: E731
+        if rest == "" and method == "GET":  # the repository: its default branch
+            return ok({"full_name": self.repo, "default_branch": getattr(self, "branch", "main")})
         if rest == "/contents/.github/repo-factory.yml":
             return (
                 (1, "", "gh: Not Found (HTTP 404)")
