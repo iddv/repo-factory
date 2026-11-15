@@ -101,6 +101,14 @@ def _setting(section: dict, key: str, default):
     return default if v is None else v
 
 
+# where a repair round (the automatic one, or Ask for changes) stopped, in a person's words
+REPAIR_STAGE_WORDS = {
+    "build": "while it made the change",
+    "verify": "at the check",
+    "repair": "while it repaired",
+    "reverify": "at the check after the change",
+}
+
 SANDBOX_HOLD = (
     "Builds need bubblewrap, and it is missing or cannot make a sandbox here: install "
     "it (repo-factory doctor says how); held builds start again by themselves."
@@ -945,7 +953,7 @@ class Loop:
         delivered = ((g.get("checks") or {}).get("delivered") or {}).get("ok")
         if not delivered or base_round(task / ".den") is None:
             raise LoopError(
-                f"{idea['id']}: its build delivered nothing to change (Retry builds it again)"
+                f"{idea['id']}: its build delivered nothing to change (Build again builds it once more)"
             )
         rec = dict(idea.get("build") or {})
         cap = rv.get("max_per_build")
@@ -1207,7 +1215,8 @@ class Loop:
             stage, _, why = why.partition(": ")
         else:
             stage = out.get("stage") or "the round"
-        reason = f"revise failed in {stage}: {why}"
+        where = REPAIR_STAGE_WORDS.get(stage, stage)
+        reason = f"the repair round did not fix it ({where}): {why}"
         reason += "" if "the build is as it was" in reason else "; the build is as it was"
         log(f"{idea['id']} {idea['title']}: held: {reason}")
         return self.ledger.update(
@@ -1321,7 +1330,9 @@ class Loop:
         product = (idea.get("pitch") or {}).get("product") or idea.get("title")
         try:
             data = lessons.load(self.cfg.home)
-            if idea.get("state") != "held" or lessons.looked_at(data, idea["id"], rnd):
+            # the held round's gate, not the state of the moment: the automatic repair round
+            # starts in the same tick as this process, and leaves that gate as it was
+            if g.get("verdict") in (None, "ready") or lessons.looked_at(data, idea["id"], rnd):
                 return None
             reasons = lessons.learnable(list(g.get("reasons") or []))
             if not reasons:
@@ -1699,7 +1710,9 @@ class Loop:
         if (idea.get("publish") or {}).get("url"):
             raise LoopError(f"{idea['id']} is published: its stopped round is history now")
         if not builds.resumable(task, rnd, stopped_ok=True):
-            raise LoopError(f"round {rnd} can no longer be resumed: Retry builds it again")
+            raise LoopError(
+                f"round {rnd} can no longer be resumed: Build again builds it once more"
+            )
         self._snapshot(idea, rec)
         (task / ".den" / "v5" / f"r{int(rnd)}" / builds.STOPPED).unlink(
             missing_ok=True
@@ -1796,7 +1809,7 @@ class Loop:
                 + (f" (its task folder is kept in {moved[0]})" if moved else ""),
                 history=hist,
             )
-        reason = f"cancelled by the owner ({origin}) before it started again: Retry builds it"
+        reason = f"cancelled by the owner ({origin}) before it started again: Build again builds it"
         return self.ledger.update(
             idea["id"],
             state="held",
@@ -1840,7 +1853,7 @@ class Loop:
                 return self._requeue_as_was(
                     self.ledger.must(idea["id"]), u["was"], "Stop round", u.get("origin") or "cli"
                 )
-            said = f"undo: the round could not continue ({e}); Retry builds it again"
+            said = f"undo: the round could not continue ({e}); Build again builds it once more"
             log(f"{idea['id']} {idea['title']}: {said}")
             return self.ledger.update(idea["id"], note=said, history={"failure": True})
 
@@ -1896,7 +1909,7 @@ class Loop:
                 + ("; Resume continues the stopped round" if resumable else ""),
                 history=hist,
             )
-        reason = f"{said}: Retry builds it again" + (
+        reason = f"{said}: Build again builds it once more" + (
             "; Resume continues the stopped round" if resumable else ""
         )
         return self.ledger.update(

@@ -439,7 +439,7 @@ def w_revise(s):
         return "only a held or ready build is revised"
     checks = (row.get("gate") or {}).get("checks") or {}
     if not (checks.get("delivered") or {}).get("ok"):
-        return "its build delivered nothing to change: Retry builds it again"
+        return "its build delivered nothing to change: Build again builds it once more"
     if st == "held" and row.get("cant_revise"):  # the hold is repo-factory's own sandbox
         return row["cant_revise"]
     if not _cfg(s, "revise", "enabled", default=True):

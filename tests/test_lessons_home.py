@@ -83,6 +83,14 @@ def test_holds_the_builder_could_not_avoid_write_nothing():
         "tests: 2 tests fail",
     ]
     assert lessons.learnable(reasons) == ["tests: 2 tests fail"]
+    # stopped before its code was written: the rest (no README, no tests) is where it was cut
+    cut = [
+        "spend: the spend cap stopped it before the build stage could run ($0.76 spent); "
+        "raise the cap in Settings › Spend, then press Build again",
+        "tests: the README documents no test command",
+        "safe_defaults: red: The README's quick-start commands work as written (no README)",
+    ]
+    assert lessons.learnable(cut) == []
     assert lessons.hold_names(["tests: x", "safe_defaults: red: y", "tests: z"]) == [
         "tests",
         "safe_defaults",
@@ -275,6 +283,24 @@ def test_the_page_reads_and_switches_a_lesson(tmp_path):
     }
     with pytest.raises(api.HttpError):
         app.lesson_switch({"id": "L1", "on": "no"})
+
+
+def test_the_lesson_is_written_while_the_automatic_repair_round_waits_or_runs(
+    tmp_path, monkeypatch
+):
+    """With the defaults a held build gets an automatic repair round in the same tick as the
+    post-mortem's process starts: that process must still look at the held round."""
+    lp, iid, _ = built(tmp_path, HELD, build={"auto_repair": 1})
+    monkeypatch.delenv(lessons.INLINE_ENV)
+    monkeypatch.setenv(lessons.SPAWN_ENV, "1")
+    started = []
+    monkeypatch.setattr(lessons, "spawn", lambda cfg, i: started.append(i) or 1)
+    out = lp.gate(iid)
+    assert started == [iid] and out["state"] == "queued"  # the repair round is on its way
+    assert lp.lesson_now(iid) is not None
+    (x,) = lessons.load(lp.cfg.home)["lessons"]
+    assert x["from"]["idea"] == iid and x["waiting"] is True
+    assert lp.lesson_now(iid) is None and len(lp._lessons.prompts) == 1  # once per round
 
 
 def test_pitch_json_is_unchanged_by_lessons():

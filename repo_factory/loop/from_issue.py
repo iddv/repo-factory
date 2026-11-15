@@ -122,16 +122,16 @@ def read(gh, ref: str, me: str | None = None) -> dict:
         by = labelled_by(_json(gh, f"repos/{full}/issues/{n}/events", "--paginate"))
         if not by or by.lower() != me.lower():
             raise IssueRefused(
-                f"{full}#{n} was opened by {author or 'someone else'}, and its `{LABEL}` label "
+                f"{full}#{n} was opened by {author or 'someone else'}, and its {LABEL} label "
                 f"was put on by {by or 'someone else'}, not by you ({me}): repo-factory builds "
-                f"only from an issue you opened, or one you labelled `{LABEL}` yourself"
+                f"only from an issue you opened, or one you labelled {LABEL} yourself"
             )
         why = f"you labelled it {LABEL}"
     else:
         raise IssueRefused(
             f"{full}#{n} was opened by {author or 'someone else'}, not by you ({me}): "
             f"repo-factory builds only from an issue you opened, or one you labelled "
-            f"`{LABEL}` yourself"
+            f"{LABEL} yourself"
         )
     title = " ".join(str(issue.get("title") or "").split())[:MAX_TITLE]
     body = str(issue.get("body") or "").replace("\r\n", "\n").strip()

@@ -78,7 +78,10 @@ def test_a_security_review_that_did_not_run_holds_whatever_may_override_says():
     assert [r.split(":")[0] for r in v2["reasons"]] == ["security", "tests", "completeness"]
     said = v2["reasons"][0]
     assert said.startswith("security: the security review did not run (")
-    assert said.endswith("Retry builds it again with the review") or "Settings › Spend" in said
+    assert (
+        said.endswith("Build again builds it once more, with the review")
+        or "Settings › Spend" in said
+    )
     for allowed in (None, ["tests", "completeness", "security"]):
         plan = gate.override_plan(v2["checks"], [], allowed)
         assert plan["refused"] == [("security", gate.NEVER_UNREVIEWED)]
@@ -90,11 +93,12 @@ def test_a_security_review_that_did_not_run_holds_whatever_may_override_says():
 def test_the_hold_says_why_the_review_did_not_run_and_what_to_press():
     capped = "the build's cap: $11.79 spent of $12.00, the stage needs $0.30 to start"
     assert gate.unreviewed(capped) == (
-        f"the security review did not run ({capped}); raise the cap in Settings › Spend, then Retry"
+        f"the security review did not run ({capped}); raise the cap in Settings › Spend, "
+        "then press Build again"
     )
     assert gate.unreviewed(None) == (
-        "the security review did not run (no reason was recorded); Retry builds it again "
-        "with the review"
+        "the security review did not run (no reason was recorded); Build again builds it once "
+        "more, with the review"
     )
     # a verdict stored before this change (gate.json keeps ok and detail) is known too
     assert gate.is_unreviewed({"ok": False, "detail": gate.unreviewed("x")})

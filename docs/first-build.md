@@ -11,8 +11,9 @@ repo-factory doctor
 ```
 
 prints one line for each thing it needs: Claude Code signed in, bubblewrap able to make a
-sandbox, git, and the GitHub CLI logged in (only publishing needs `gh`). Each line says "ok",
-or one sentence with the command that fixes it. For builds, a long-lived Claude login token is
+sandbox, git, the GitHub CLI logged in (only publishing needs `gh`), and the free memory (a
+build needs about 5 GB; less is a warning). Each line says "ok", or one sentence with the
+command that fixes it. For builds, a long-lived Claude login token is
 safer than Claude Code's own sign-in (`claude setup-token`): with the sign-in, a copy of its
 credentials file is inside each session's sandbox.
 
@@ -63,7 +64,7 @@ a build takes about an hour and costs about $10; the range was 32 minutes to alm
 
 When the gate passes, the page says **Ready: publish?** with the checks it passed. Nothing is
 on GitHub yet. A build that did not pass is **held**, with each reason in plain words; **Ask for
-changes** sends it another round with your note, and **Retry** builds it again. A build whose
+changes** sends it another round with your note, and **Build again** builds it once more. A build whose
 security review did not run is held, and Publish anyway never publishes it.
 
 **Publish** runs the pre-push checks (a secrets scan, a look at the product's own workflows and

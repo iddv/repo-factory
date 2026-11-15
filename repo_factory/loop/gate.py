@@ -63,7 +63,7 @@ NOT_MEASURED = {
 }
 NOTHING_MEASURED = (
     "nothing was measured: no flow was checked and the security review did "
-    "not run; Retry builds it again"
+    "not run; Build again builds it once more"
 )
 # The security hold when the review did not run: these words start its detail, so a stored
 # verdict (gate.json keeps only ok and detail) is still known for what it is
@@ -153,7 +153,7 @@ def evaluate(task: Path, *, build: int | None = None) -> dict:
             False,
             f"the spend cap stopped it before the {stage} stage could run "
             f"(${float(st.get('cost_usd') or 0):.2f} spent); raise the cap in Settings › Spend, "
-            "then Retry",
+            "then press Build again",
         )
     put(
         "delivered",
@@ -319,9 +319,9 @@ def unreviewed(why) -> str:
     why = str(why or "").strip()
     capped = "cap" in why or "budget" in why
     then = (
-        "raise the cap in Settings › Spend, then Retry"
+        "raise the cap in Settings › Spend, then press Build again"
         if capped
-        else "Retry builds it again with the review"
+        else "Build again builds it once more, with the review"
     )
     return f"{UNREVIEWED} ({why or 'no reason was recorded'}); {then}"
 

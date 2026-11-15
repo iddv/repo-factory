@@ -93,10 +93,10 @@ def test_every_role_says_where_it_is_set(home):
         "oracle",
         "repair",
         "readiness",
-        "charter",
-        "evolve",
+        "proposals",
     }
-    assert roles["charter"]["setting"] == "projects.charter.model" and not roles["charter"]["set"]
+    assert roles["proposals"]["setting"] == "maintain.proposals_model"
+    assert roles["proposals"]["model"] == "claude-sonnet-5-5" and not roles["proposals"]["set"]
     assert roles["summary"]["model"] == "claude-haiku-5-5" and not roles["summary"]["set"]
     assert roles["pitch"]["model"] is None and roles["pitch"]["setting"] == "pitch.model"
     assert roles["verify"]["setting"] == "build.models.verify"
@@ -104,12 +104,9 @@ def test_every_role_says_where_it_is_set(home):
 
 
 def test_the_models_other_pages_set_are_chosen_here_too(app, home):
-    """The charter's and the checks' models are roles: set through the same writer, into the
-    keys their own pages read."""
-    for role, path in (
-        ("charter", ("projects", "charter", "model")),
-        ("evolve", ("projects", "evolve", "model")),
-    ):
+    """The weekly proposals' model is a role: set through the same writer, into the key
+    maintenance reads (``maintain.proposals_model``)."""
+    for role, path in (("proposals", ("maintain", "proposals_model")),):
         code, m = call(app, "POST", "/api/models", body={"role": role, "model": "claude-haiku-5-5"})
         assert code == 200, (role, m)
         got = Config(home).data

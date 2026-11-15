@@ -39,6 +39,28 @@ def test_the_record_counts_finished_builds_with_a_cost():
     }
 
 
+def test_a_build_counts_every_round_not_its_last():
+    """A build held after an automatic repair round: its record is the whole build (the first
+    round's hour and $12 and the repair's three minutes), never the repair round alone."""
+    got = record.of([row(cost_usd=0.46, wall_s=182, build_usd=12.94, build_s=3960)])
+    assert got["median_usd"] == 12.94 and got["median_s"] == 3960 and got["total_usd"] == 12.94
+
+
+def test_the_whole_build_from_its_ledger(tmp_path):
+    den = tmp_path / ".den"
+    den.mkdir()
+    lines = [
+        {"build": 1, "ts": 1100.0, "wall_s": 100.0, "usd": 0.5},  # 1000 to 1100
+        {"build": 1, "ts": 4000.0, "wall_s": 600.0, "usd": 10.0},  # to 4000
+        {"build": 1, "ts": 3900.0, "wall_s": 500.0, "usd": 1.0},  # in parallel: not twice
+        {"build": 2, "ts": 9180.0, "wall_s": 180.0, "usd": 0.46},  # a later round: 180 s
+    ]
+    (den / "ledger.jsonl").write_text("".join(json.dumps(x) + "\n" for x in lines))
+    usd, secs = api.ledger_build(den)
+    assert round(usd, 2) == 11.96 and secs == 3000 + 180
+    assert api.ledger_build(tmp_path / "none") == (None, None)
+
+
 def test_no_builds_is_an_empty_record():
     got = record.of([])
     assert got["builds"] == 0 and got["median_usd"] is None and got["lean"] is None
