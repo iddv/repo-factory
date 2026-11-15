@@ -428,6 +428,34 @@ class Repo:
     def issue(self, number: int) -> dict:
         return issue(self.get(f"repos/{self.full}/issues/{int(number)}"))
 
+    def last_edit(self, number: int) -> dict:
+        """When an issue's body was last edited and by whom (GraphQL ``lastEditedAt``,
+        ``editor``; a read): ``{"at": epoch or None, "by": login or None}``. A title's
+        change is a ``renamed`` event (``events``)."""
+        owner, name = self.full.split("/")
+        q = (
+            "query($owner:String!,$name:String!,$n:Int!){repository(owner:$owner,name:$name)"
+            "{issue(number:$n){lastEditedAt editor{login}}}}"
+        )
+        out = self.api(
+            "graphql",
+            method="POST",
+            payload={"query": q, "variables": {"owner": owner, "name": name, "n": int(number)}},
+        )
+        try:
+            data = json.loads(out or "null")
+        except ValueError:
+            raise GitHubError("gh api graphql: the answer could not be read") from None
+        got = ((data or {}).get("data") or {}).get("repository") or {}
+        got = got.get("issue") if isinstance(got, dict) else None
+        if not isinstance(got, dict):
+            raise GitHubError("gh api graphql: no issue in the answer")
+        editor = got.get("editor")
+        return {
+            "at": epoch(got.get("lastEditedAt")),
+            "by": editor.get("login") if isinstance(editor, dict) else None,
+        }
+
     def find_marker(self, number: int, marker: str, comments: list | None = None) -> dict | None:
         for c in comments if comments is not None else self.comments(number):
             if marker in c["body"]:

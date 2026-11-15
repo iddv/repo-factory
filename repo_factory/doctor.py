@@ -48,6 +48,8 @@ def claude_line() -> tuple[bool, str]:
     line = f"Claude Code {version}, signed in ({login['words']})"
     if login["on"] == "signin":
         line += "; " + SIGNIN_COPIED
+        if not _signin_allowed():
+            line += "; " + SIGNIN_NO_FIX
     return True, line
 
 
@@ -56,6 +58,21 @@ SIGNIN_COPIED = (
     "builds copy this sign-in file into each session, where a build's own commands can read "
     "it: to avoid that, run claude setup-token and keep the token in Settings › Claude"
 )
+# RFREV2 M4: a fix's task is the text of an issue
+SIGNIN_NO_FIX = (
+    "maintenance starts no fix while sessions would get this file: run claude setup-token "
+    "first (or set maintain.allow_signin_file: true, Settings › Maintenance)"
+)
+
+
+def _signin_allowed() -> bool:
+    try:
+        from .maintain import signin
+        from .settings.store import Config
+
+        return signin.allowed(Config())
+    except Exception:  # noqa: BLE001 - settings that cannot be read: not allowed
+        return False
 
 
 def bwrap_line() -> tuple[bool, str]:

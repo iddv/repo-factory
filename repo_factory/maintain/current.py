@@ -177,6 +177,7 @@ def merge_main(r: Repo, pull: dict) -> str | None:
 
         try:
             r.gh("repo", "clone", r.full, str(repo), "--", "-q")
+            gitcmd.pin(repo)
             git("checkout", "-q", "-B", branch, f"origin/{branch}")
             if git("rev-parse", "HEAD").strip() != head:
                 return None

@@ -15,32 +15,61 @@ paused, and a repository that is switched off or paused is not read at all. Per 
    `status: maintained`: a product repo-factory published carries it from its first commit, so
    fixes may start at the next poll after the switch; for any other repository the setup pull
    request puts it there. A file that cannot be read is a row on the project's page.
-2. **Your word.** Each open issue labelled `go` has its events read: only a `go` put on by the
-   login maintenance acts for (yours, or your GitHub App's) counts. Everything else (anyone
-   else's issue, a `go` someone else put on, anyone else's pull request, Dependabot's) is a
-   "Waiting for you" row. No model call, no label, no comment.
+2. **Your word** (`maintain/consent.py`). Each open issue labelled `go` has its events read:
+   only a `go` put on by the login maintenance acts for (yours, or your GitHub App's) counts.
+   When someone else opened the issue, its title (a `renamed` event) and its body (GitHub's
+   `lastEditedAt`) must not have been changed by anyone but you after that `go`: a fix reads
+   the text as it is, so an issue edited after your label waits, with the words "edited after
+   you labelled it: take go off and put it on again". When the edit time cannot be read, it
+   waits too. Everything else (anyone else's issue, a `go` someone else put on, anyone else's
+   pull request, Dependabot's) is a "Waiting for you" row. No model call, no label, no comment.
+   A pull request someone else opened that says "Fixes #N" is a row ("a pull request by X says
+   it fixes #N"): it never holds the fix of N and is never counted as repo-factory's; only a
+   pull request this install's fix opened (its line in `fixes.json`, with the commit it pushed
+   and its `repo-factory/` branch) is "the fix of N".
 3. **Fixes.** When a slot is free (`maintain.concurrency`, shared with builds), nothing of the
    repository is running, maintenance's money is not spent and the issue does not wait for you,
    the oldest of your `go` issues without an open fix gets one: `repo-factory maintain revise
-   REPO N`, detached (`revise.Fix`, quiet). It reads the issue's events again before it spends
-   anything, and the switch, the pauses and the monthly limit before every session and before
-   the push. Its sessions run in the build sandbox, with no GitHub credential, and with
-   `maintain.net: allowlist` reach only `maintain.net_hosts`. The issue's text reaches them
-   only between document markers. The result is a pull request on a new `repo-factory/` branch
-   (a later attempt takes the next free name; nothing is force-pushed), labelled
-   `repo-factory` and its kind, with what was reproduced and tested; the scope check refuses
-   any change to `.github/workflows/`, the policy file, LICENSE or NOTICE. Attempts, outcomes
-   and why live in `<home>/maintain/fixes.json`; after `revise.max_attempts` failed attempts
-   the issue waits for your **Retry**.
+   REPO N`, detached (`revise.Fix`, quiet). It reads the issue's events (and its edit time)
+   again before it spends anything and again before the push, and the switch, the pauses and
+   the monthly limit before every session and before the push. No fix starts, and none is
+   pushed, while a workflow on `main` may run anywhere but GitHub's own hosted runners (a fix's
+   pull request runs the fix's code in the product's CI at once; see 5), or while sessions
+   would sign in with Claude Code's own sign-in file (see "Claude's sign-in" below). Its
+   sessions run in the build sandbox, with no GitHub credential, and with `maintain.net:
+   allowlist` reach only `maintain.net_hosts`: by default the Claude API and the Python
+   package index, nothing on GitHub (see "Where a fix's session may connect"). The issue's
+   text reaches them only between document markers.
+   **After the sessions the host trusts nothing they could write** (`maintain/carry.py`): the
+   session's clone, `.git` included, is never fetched or pushed from. The host clones the
+   repository afresh into its own folder beside the workspace, from the address it builds from
+   the repository's name (`https://github.com/<owner>/<name>.git`), at the commit the fix
+   started from; it copies the changed files over as files (a link, a path out of the tree or
+   through a link is refused), checks the scope again on that tree, commits there and pushes.
+   The host's git (`gitcmd.py`) also refuses any tree whose own config sets an `http.` setting
+   or a remote's proxy, and refuses to fetch or push where a tree's remote is not the one the
+   host wrote at its clone. The result is a pull request on a new `repo-factory/` branch (a
+   later attempt takes the next free name; nothing is force-pushed), labelled `repo-factory`
+   and its kind, with what was reproduced and tested; the scope check refuses any change to
+   `.github/workflows/`, the policy file, LICENSE or NOTICE. Attempts, outcomes and why live in
+   `<home>/maintain/fixes.json`; after `revise.max_attempts` failed attempts the issue waits
+   for your **Retry**.
 4. **Merging** (`watch.merge_step`), only with the repository's merge switch on (off by
    default): at most one of the pull requests this install's fixes opened, a poll, through
    `automerge.judge` (kind `bug` or `docs`, not a draft, no `hold`, under `merge.max_lines`,
    nothing under `.github/`, no licence or lock file, no changes requested, up to date, every
    check green), only while its head is the commit the fix pushed, and never while a workflow
-   on `main` names a self-hosted runner. Then `release.step` cuts a patch release when the
-   policy's `release.on_merge` allows it.
-5. **The drift doctor** (reads only): AGENTS.md against the tree, and any workflow on a
-   self-hosted runner, shown as a warning.
+   on `main` may run off GitHub's own runners. Then `release.step` cuts a patch release when
+   the policy's `release.on_merge` allows it.
+5. **The drift doctor** (reads only): AGENTS.md against the tree, and any workflow that may run
+   anywhere but GitHub's own hosted runners (`repo_factory/runners.py`): a job is hosted only
+   when every `runs-on` label is `ubuntu-*`, `windows-*` or `macos-*`; an expression
+   (`${{ vars.RUNNER }}`), a runner group, any other label (`self-hosted`, `[linux, my-own-box]`)
+   or a reusable workflow cannot be told and counts as not hosted. The one expression read is
+   `runs-on: ${{ matrix.<key> }}` when the job's matrix is written out and every value of that
+   key (its list and each `include` entry's) is a plain label: each must then be hosted. Such a workflow is a warning on
+   the page and stops fixes and merging. The publish hold for a new product
+   (`loop/workflows.py`) uses the same rule.
 6. **This week's proposals** (`maintain/proposals.py`), with `maintain.proposals` on: once a week
    a detached `repo-factory maintain propose REPO` makes one no-tools call ($0.50 at most) on
    the README and the open issues' titles. Nothing is built from a proposal until you press
@@ -59,6 +88,29 @@ paused, and a repository that is switched off or paused is not read at all. Per 
 Nothing else: no comment and no label on any issue, no push to the default branch, no
 repository setting. The App, when you make one (Settings › GitHub), can write issues, pull
 requests and contents only; never workflows, secrets or administration.
+
+An agent's token never puts `go` on an issue: an agent's **Open issue** (`cut_ticket`) opens the
+issue without it and says so; only your press on the page or the command line puts it on.
+
+### Claude's sign-in
+
+A fix's task is someone else's words. When builds sign in with Claude Code's own sign-in
+(`claude auth login`), its sign-in file is copied into each session, where that session can
+read it. So while that is how sessions would sign in, **maintenance starts no fix**: the
+project's page, the switch's confirm and `repo-factory doctor` say "run `claude setup-token`
+first". Keep the token it prints in Settings › Claude: a session gets it through a pipe, never
+as a file. `maintain.allow_signin_file: true` (Settings › Maintenance, off by default) lets
+fixes run on the sign-in file anyway, for a person who accepts that.
+
+### Where a fix's session may connect
+
+With `maintain.net: allowlist` (the default), a fix's session reaches only
+`maintain.net_hosts`: by default `api.anthropic.com`, `pypi.org` and `files.pythonhosted.org`.
+GitHub's hosts are not on it. You may add them in `loop.yaml` by hand (never from a request;
+Settings › Maintenance shows the list); know
+what that opens: a fix's task is the text of an issue, and a session that brings its own token
+(from that text) could post what it reads, your repository's source included, to a gist or a
+repository on GitHub. The host does every GitHub write itself; a session never needs GitHub.
 
 ### Money
 

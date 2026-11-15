@@ -1,8 +1,10 @@
 """The product's own GitHub workflows, looked at before the push.
 
 Publishing starts the product's CI on the owner's account. A workflow the build wrote can ask
-for more than a small public project needs: a self-hosted runner (model-written code on the
-owner's own machine, under an organisation with shared runners), ``pull_request_target`` (a
+for more than a small public project needs: a runner that is not one of GitHub's own
+(model-written code on the owner's own machine, under an organisation with shared runners;
+``runners.py``: only ``ubuntu-*``, ``windows-*`` and ``macos-*`` labels count as hosted, and
+an expression, a group or a reusable workflow cannot be told), ``pull_request_target`` (a
 stranger's pull request run with the repository's secrets), or a token that may write to the
 repository. Any of those holds the publish, in words; nothing here runs a workflow."""
 
@@ -11,6 +13,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import yaml
+
+from .. import runners
 
 WRITE = ("write", "write-all")
 
@@ -35,18 +39,6 @@ def _writes(perms) -> list[str]:
         return [perms] if perms in WRITE else []
     if isinstance(perms, dict):
         return [f"{k}: {v}" for k, v in perms.items() if str(v) in WRITE]
-    return []
-
-
-def _labels(runs_on) -> list[str]:
-    if isinstance(runs_on, str):
-        return [runs_on]
-    if isinstance(runs_on, list):
-        return [str(x) for x in runs_on]
-    if isinstance(runs_on, dict):
-        return [str(x) for x in (runs_on.get("labels") or [])] + (
-            [str(runs_on["group"])] if runs_on.get("group") else []
-        )
     return []
 
 
@@ -78,8 +70,9 @@ def scan(tree: Path, skip=()) -> list[str]:
         for name, job in (doc.get("jobs") or {}).items():
             if not isinstance(job, dict):
                 continue
-            if any("self-hosted" in x.lower() for x in _labels(job.get("runs-on"))):
-                out.append(f"{rel}: job {name} runs on a self-hosted runner")
+            why = runners.job(str(name), job)
+            if why:  # the same allow-list as maintenance's (runners.py)
+                out.append(f"{rel}: {why}")
             for w in _writes(job.get("permissions")):
                 out.append(f"{rel}: job {name} asks for a token that may write ({w})")
     return out

@@ -620,17 +620,35 @@ class Fix:
 
     def owners_go(self) -> str | None:
         """Why the issue is not the signed-in person's word (quiet only), or None: it must be
-        open and its ``go`` must have been put on by the login maintenance acts for (the
-        issue's events), never by anyone else."""
-        from ..loop.from_issue import labelled_by
+        open, its ``go`` must have been put on by the login maintenance acts for (the
+        issue's events), never by anyone else, and nobody else may have changed its title or
+        body since (``consent.why_not``)."""
+        from . import consent
         from .identity import login_of
         if self.item["state"] != "open" or "go" not in self.item["labels"]:
             return "the issue is no longer open and labelled go"
         me = {x for x in (login_of(self.loop.gh), getattr(self.gh, "login_name", None)) if x}
-        who = labelled_by(self.r.events(self.number), "go")
-        if not who or who not in me:
-            return (f"its go label was put on by {who or 'nobody now'}, not by you; "
-                    "only your own go starts a fix")
+        try:
+            return consent.why_not(self.r, self.item, me)
+        except GitHubError as e:
+            return f"the issue's events could not be read: {str(e)[:200]}"
+
+    def where_it_runs(self) -> str | None:
+        """Why the fix may not run or be pushed here (quiet only), read now: sessions would
+        sign in with Claude Code's own sign-in file (``signin.py``), or a workflow on main may
+        run off GitHub's own runners, where the fix's pull request would run its code
+        (``runners.py``); or None."""
+        from . import doctor, signin
+        held = signin.blocks(self.loop.cfg)
+        if held:
+            return held
+        try:
+            off = doctor.hosted_now(self.r)
+        except GitHubError as e:
+            return f"where main's workflows run could not be read: {str(e)[:200]}"
+        if off:
+            return ("a workflow on main may run off GitHub's own runners, where this fix's pull "
+                    "request would run its code: " + "; ".join(off)[:400])
         return None
 
     def skip(self, name: str, why: str) -> None:
@@ -706,11 +724,11 @@ class Fix:
             return {}
         return d if isinstance(d, dict) else {}
 
-    def remote(self, *args: str, check: bool = True) -> str:
-        """A git call that reaches GitHub, with maintenance's identity: through the token file
+    def git_auth(self) -> tuple[list[str], dict | None]:
+        """Maintenance's identity for a git call that reaches GitHub: through the token file
         when there is one (``Gh.git_auth``), through a token narrowed to pushing this one
-        repository when repo-factory acts as its own app (``identity.narrow``), else as git is set
-        up (the owner's login). The host does the push; no session ever holds the token."""
+        repository when repo-factory acts as its own app (``identity.narrow``), else as git is
+        set up (the owner's login). The host does the push; no session ever holds the token."""
         from . import identity
         g = identity.narrow(self.gh, "push")
         auth = g.git_auth()
@@ -721,6 +739,13 @@ class Fix:
             if not isinstance(e, AppError):
                 raise
             raise ReviseError(str(e)) from None
+        return auth, env
+
+    def remote(self, *args: str, check: bool = True) -> str:
+        """A git call that reaches GitHub from the workspace's clone (the earlier poll's
+        paths only; its remotes are pinned at the clone, ``gitcmd.pin``). Quiet maintenance
+        never runs one there: ``deliver_quiet`` pushes from the host's own clone."""
+        auth, env = self.git_auth()
         return git(*auth, *args, cwd=self.repo, check=check, env=env)
 
     def author(self) -> list[str]:
@@ -729,7 +754,10 @@ class Fix:
         from . import identity
         return identity.git_author(self.gh)
 
-    def changed(self, base: str = "origin/main") -> list[str]:
+    def changed(self, base: str | None = None) -> list[str]:
+        """What the workspace changes against the commit the fix started from (recorded at
+        the checkout, before any session: a ref a session moved changes nothing here)."""
+        base = base or getattr(self, "base", None) or "origin/main"
         out = git("diff", "--name-only", "--no-renames", base, cwd=self.repo).split()
         out += git("ls-files", "--others", "--exclude-standard", cwd=self.repo).split()
         return sorted({f for f in out if not f.startswith(".repo-factory/")})
@@ -740,7 +768,9 @@ class Fix:
             shutil.rmtree(self.work)
         self.work.mkdir(parents=True)
         self.gh("repo", "clone", self.full, str(self.repo), "--", "-q")
+        gitcmd.pin(self.repo)
         git("checkout", "-q", "-B", self.branch, "origin/main", cwd=self.repo)
+        self.base = git("rev-parse", "HEAD", cwd=self.repo).strip()
         excl = self.repo / ".git" / "info" / "exclude"
         excl.parent.mkdir(parents=True, exist_ok=True)
         with open(excl, "a") as f:
@@ -932,14 +962,12 @@ class Fix:
                 [*(f"scope: {b}" for b in bad), *(f"secret-shaped text in {h}" for h in hits),
                  *(f"build jargon in {w['file']}:{w['line']} ({w['kind']})" for w in words)])[:900],
                 partial=False)
+        if self.quiet:                   # nothing of the session's tree is pushed from
+            return self.deliver_quiet(changed)
         git("add", "-A", cwd=self.repo)
-        commit(self.repo, f"Fix #{self.number}: {self.item['title']}\n\n"
-               f"{triage.sanitize(self.fix.get('what') or 'The fix.', 900)}\n\n"
-               f"Fixes #{self.number}\n", author=self.author())
+        commit(self.repo, self.message(), author=self.author())
         if self.refresh:
             return self.deliver_refresh(changed)
-        if self.quiet:
-            return self.deliver_quiet(changed)
         self.remote("push", "-q", "-f", "-u", "origin", self.branch)
         for old in self.remote("ls-remote", "--heads", "origin", f"{self.branch}-attempt*",
                                check=False).split():
@@ -953,46 +981,74 @@ class Fix:
                   report=pr.get("url"), changed=True)
         return pr
 
+    def message(self) -> str:
+        return (f"Fix #{self.number}: {self.item['title']}\n\n"
+                f"{triage.sanitize(self.fix.get('what') or 'The fix.', 900)}\n\n"
+                f"Fixes #{self.number}\n")
+
+    @property
+    def outbox(self) -> Path:
+        """The host's own clone for the push: beside the workspace, never given to a
+        session."""
+        return self.work / "outbox"
+
     def deliver_quiet(self, changed: list[str]) -> dict:
         """Quiet maintenance's push: only while the fix is still wanted and the issue still
-        carries your ``go`` (both read again now), onto a ``repo-factory/`` branch that does not
-        exist yet (a later attempt takes the next free name: nothing is ever force-pushed or
-        overwritten), then the pull request. Nothing is written on the issue."""
+        carries your ``go`` (both read again now). The host clones the repository afresh into
+        its own folder at the commit the fix started from, carries the changed files over as
+        files (``carry.py``), checks the scope again on that tree, commits there and pushes to
+        the address it builds from the repository's name, onto a ``repo-factory/`` branch that
+        does not exist yet (a later attempt takes the next free name: nothing is ever
+        force-pushed or overwritten); then the pull request. No git that reaches GitHub ever
+        runs in the session's tree, and nothing is written on the issue."""
+        from . import carry
         why = self.still_wanted()
         if not why:
             try:
                 self.item = self.r.issue(self.number)
-                why = self.owners_go()
+                why = self.owners_go() or self.where_it_runs()
             except GitHubError as e:
                 why = f"the issue could not be read again: {e}"
         if why:
             raise Stop("deliver", why, outcome="skipped")
-        taken = set()
-        for ln in self.remote("ls-remote", "--heads", "origin", f"{self.branch}*",
-                              check=False).splitlines():
-            ref = ln.split()[-1] if ln.split() else ""
-            if ref.startswith("refs/heads/"):
-                taken.add(ref[len("refs/heads/"):])
+        auth, env = self.git_auth()
+        try:
+            dest = carry.clone(self.full, self.outbox, self.base, auth, env)
+            moved = carry.carry(self.repo, dest, changed)
+        except carry.CarryError as e:
+            raise Stop("deliver", str(e), partial=False) from None
+        bad = scope_violations(moved)
+        if bad:
+            raise Stop("deliver", "; ".join(f"scope: {b}" for b in bad)[:900], partial=False)
+        if not moved:
+            raise Stop("deliver", "the fix changed nothing once carried over", partial=False)
+        changed = moved
+        commit(dest, self.message(), author=self.author())
+        taken = carry.taken(dest, self.full, self.branch, auth, env)
         branch, k = self.branch, 1
         while branch in taken:
             k += 1
             branch = f"{self.branch}-{k}"
-        if not branch.startswith("repo-factory/"):
-            raise Stop("deliver", f"refusing to push to {branch}: not a repo-factory/ branch")
-        self.remote("push", "-q", "origin", f"HEAD:refs/heads/{branch}")
+        why = self.still_wanted()                 # the clone took a while: once more
+        if why:
+            raise Stop("deliver", why, outcome="skipped")
+        try:
+            head = carry.push(dest, self.full, branch, auth, env)
+        except carry.CarryError as e:
+            raise Stop("deliver", str(e)) from None
         self.branch = branch
-        head = git("rev-parse", "HEAD", cwd=self.repo).strip()
         pr = self.r.create_pr(f"Fix #{self.number}: {self.item['title']}", branch,
                               self.pr_body(changed))
         self.r.set_labels(pr["number"], ["repo-factory", self.kind], have=[])
-        self.emit("delivered", node=self.sessions, branch=branch, out=str(self.repo),
+        self.emit("delivered", node=self.sessions, branch=branch, out=str(dest),
                   report=pr.get("url"), changed=True)
         return {**pr, "head": head, "branch": branch}
 
-    def charter_problems(self, changed: list[str], base: str = "origin/main") -> list[str]:
+    def charter_problems(self, changed: list[str], base: str | None = None) -> list[str]:
         """The project's charter on this diff: a promise's sentence gone
         from the README, a dependency added where the charter says standard library only."""
         from ..projects.charter_check import for_fix
+        base = base or getattr(self, "base", None) or "origin/main"
 
         def at_base(f: str) -> str | None:
             try:
@@ -1080,7 +1136,7 @@ class Fix:
                         raise Stop("start", f"issue #{self.number} is closed",
                                    outcome="already")
                 elif self.quiet:
-                    why = self.still_wanted() or self.owners_go()
+                    why = self.still_wanted() or self.owners_go() or self.where_it_runs()
                     if why:
                         raise Stop("start", why, outcome="skipped")
                 elif self.item["state"] != "open" or "go" not in self.item["labels"]:

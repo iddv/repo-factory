@@ -8,8 +8,10 @@ becomes one row on Today, with its age, until it is fixed.
 CLAUDE.md, the policy, the label file and each workflow), lays them out in a scratch directory
 with every other path as an empty file, and runs ``agentsmd.check`` on it: commands in AGENTS.md
 the README lacks, architecture rows that point nowhere, modules the table does not name, a
-missing file, and **any workflow whose ``runs-on`` names a self-hosted runner** (product CI
-runs on GitHub-hosted runners only; the machine repo-factory runs on never serves a product repo).
+missing file, and **any workflow that may run anywhere but GitHub's own hosted runners**
+(``runners.py``: every ``runs-on`` label ``ubuntu-*``, ``windows-*`` or ``macos-*``; an
+expression, a group, any other label or a reusable workflow cannot be told). Such a workflow
+stops fixes, not only merging: a fix's pull request would run model-written code there.
 
 The result lives in the poll's disposable cache (``rec["doctor"]``); Today's rows and the build
 page's Maintenance box ("AGENTS.md current" or the list) read it from there."""
@@ -25,7 +27,25 @@ from .github import Repo
 
 READ = ("AGENTS.md", "README.md", "CLAUDE.md", ".github/repo-factory.yml", ".github/labels.yml")
 MAX_PATHS = 5000
-SELF_HOSTED = "self-hosted runner"
+SELF_HOSTED = "not a GitHub-hosted runner"  # in agentsmd.check's line for such a workflow
+
+
+def hosted_now(r: Repo, ref: str = "main") -> list[str]:
+    """The workflows on ``ref`` that may run off GitHub's own runners, read now (the tree and
+    each workflow file): what a fix's start and its push check, whatever the doctor's last
+    result says."""
+    from ..runners import not_hosted
+
+    out = []
+    for p in r.tree(ref):
+        path = p.get("path") or ""
+        if (
+            p.get("type") == "blob"
+            and path.startswith(".github/workflows/")
+            and path.endswith((".yml", ".yaml"))
+        ):
+            out += [f"{path}: {why}" for why in not_hosted(r.file(path, ref) or "")]
+    return out
 
 
 def check_repo(r: Repo, ref: str = "main") -> list[str]:

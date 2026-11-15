@@ -22,9 +22,12 @@
   const path = $derived(q("api/project", { id }));
   const got = $derived(read<Project>(path, 15000));
   const p = $derived(got.data);
-  const waiting = $derived((p?.rows || []).filter((x) => x.kind !== "fixing"));
+  const waiting = $derived((p?.rows || []).filter((x) => x.kind !== "fixing" && x.kind !== "signin" && x.kind !== "self_hosted"));
   const fixing = $derived((p?.rows || []).filter((x) => x.kind === "fixing"));
   const warnings = $derived((p?.rows || []).filter((x) => x.kind === "self_hosted"));
+  const SWITCH_ON = (repo: string, signin: string | null | undefined): string =>
+    `This opens one pull request on ${repo} (labels, the policy file, AGENTS.md and CI) and creates its labels. From the next poll, every 15 minutes, it fixes only issues you labelled go yourself, each as a pull request, under your monthly limit. It writes nothing on any issue.` +
+    (signin ? ` But no fix starts yet: run \`claude setup-token\` first and keep the token in Settings › Claude (Claude Code's own sign-in file would be copied into each fix session).` : "");
   const OUTCOME: Record<string, string> = {
     pr: "opened a pull request",
     failed: "stopped",
@@ -56,13 +59,14 @@
       <h2 id="maint-h">Maintenance</h2>
       <p id="maint-state"><strong>{standing(p)}</strong>{#if p.polled}<span class="muted small">{" · last looked " + when(p.polled)}</span>{/if}</p>
       {#each warnings as w, i (i)}<p class="err" role="alert" id="maint-self-hosted">{w.title}: {w.why}</p>{/each}
+      {#if p.signin}<p class="err" role="alert" id="maint-signin">No fix starts: run <code>claude setup-token</code> first and keep the token in <a href="#/settings/claude">Settings › Claude</a>. Claude Code's own sign-in file would be copied into each fix session, where the text of an issue steers a session with tools.</p>{/if}
       <div class="controls">
         {#if !p.switch.on}
           <Press
             label="Switch maintenance on"
             id="maint-on"
             primary
-            confirm={`This opens one pull request on ${p.repo} (labels, the policy file, AGENTS.md and CI) and creates its labels. From the next poll, every 15 minutes, it fixes only issues you labelled go yourself, each as a pull request, under your monthly limit. It writes nothing on any issue.`}
+            confirm={SWITCH_ON(p.repo, p.signin)}
             yes="Switch on"
             run={async () => {
               await switchOn(p.repo, true);
@@ -89,7 +93,7 @@
           Merge its own fixes when CI is green
         </label>
         {#if mergeError}<p class="err" role="alert">{mergeError}</p>{/if}
-        <p class="muted small">Off by default. Bugs and docs only, every check green, never a change under <code>.github/</code>, never a pull request anyone else pushed to, never while a workflow names a self-hosted runner; then a patch release, when the policy file allows one.</p>
+        <p class="muted small">Off by default. Bugs and docs only, every check green, never a change under <code>.github/</code>, never a pull request anyone else pushed to, never while a workflow may run off GitHub's own runners; then a patch release, when the policy file allows one.</p>
       {/if}
       {#if p.setup?.state === "failed"}<p class="err" role="alert" id="maint-setup-failed">The setup stopped: {p.setup.why}</p>{/if}
       {#if p.setup?.url}<p class="small">Setup pull request: <a href={p.setup.url} target="_blank" rel="noopener">#{p.setup.pr} ↗</a></p>{/if}

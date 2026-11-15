@@ -135,12 +135,16 @@ def write_files(
 
 
 def checkout(gh, repo: str, work: Path) -> None:
+    """A fresh clone each time: the setup's AGENTS.md check runs the product's commands in
+    this tree (sandboxed, but the tree is bound read-write), so a tree left from an earlier
+    run is never fetched or pushed from again; the remotes are pinned right after the clone
+    (``gitcmd.pin``)."""
     work = Path(work)
-    if not (work / ".git").exists():
-        work.parent.mkdir(parents=True, exist_ok=True)
-        gh("repo", "clone", repo, str(work), "--", "-q")
-    else:
-        git("fetch", "-q", "origin", cwd=work)
+    if work.exists():
+        shutil.rmtree(work)
+    work.parent.mkdir(parents=True, exist_ok=True)
+    gh("repo", "clone", repo, str(work), "--", "-q")
+    gitcmd.pin(work)
     base = (
         git("symbolic-ref", "--short", "refs/remotes/origin/HEAD", cwd=work, check=False).strip()
         or "origin/main"

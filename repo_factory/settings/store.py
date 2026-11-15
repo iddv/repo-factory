@@ -181,7 +181,8 @@ DEFAULTS: dict = {
     # token) that maintenance's gh uses instead of the login; null: the login. identity: auto
     # (repo-factory's own GitHub App once it is created and installed, else the token file,
     # else the login), app, token or login. Publishing always uses the login. doctor_days: how
-    # often each repo's AGENTS.md and workflows are checked for drift and self-hosted runners;
+    # often each repo's AGENTS.md and workflows are checked for drift and runners that are not
+    # GitHub's own (read at least once, and again when main moves: they stop fixes);
     # 0: never. triage_*, lesson_label, refresh_max and exam belong to the old poll and are
     # not read by this one (exam aside: a fix still reports the release's checks).
     "maintain": {
@@ -205,14 +206,17 @@ DEFAULTS: dict = {
         "proposals": True,
         "proposals_model": "claude-sonnet-5-5",
         "net": "allowlist",
+        # the Claude API and the Python package index only: a fix's task is an issue's text,
+        # and GitHub's hosts would let a session that brings its own token send what it reads
+        # there (add them yourself: docs/maintain.md says what that opens)
         "net_hosts": [
             "api.anthropic.com",
             "pypi.org",
             "files.pythonhosted.org",
-            "github.com",
-            "api.github.com",
-            "objects.githubusercontent.com",
         ],
+        # fixes start while sessions sign in with Claude Code's own sign-in file (copied into
+        # each session): false until you choose it (maintain/signin.py)
+        "allow_signin_file": False,
         "lesson_label": True,
         "doctor_days": 7,
         "revise_command": None,

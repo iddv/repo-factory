@@ -668,24 +668,28 @@ def documented(cmd: str, readme: str, root: Path) -> bool:
 
 
 def self_hosted(workflow: str) -> bool:
-    """Whether a workflow's ``runs-on`` names a self-hosted runner, in any of its forms (a
-    word, a list, a block list, ``{labels: …}``)."""
-    if re.search(r"runs-on:.*self-hosted", workflow):
-        return True
-    try:
-        import yaml
+    """Whether a workflow may run anywhere but GitHub's own hosted runners (``runners.py``:
+    every ``runs-on`` label ``ubuntu-*``, ``windows-*`` or ``macos-*``; anything else, an
+    expression, a group or a reusable workflow is "cannot tell" and counts as not hosted)."""
+    from ..runners import not_hosted
 
-        doc = yaml.safe_load(workflow)
-    except Exception:  # noqa: BLE001 - unparsable: the regex decided
-        return False
-    jobs = doc.get("jobs") if isinstance(doc, dict) else None
-    for job in jobs.values() if isinstance(jobs, dict) else []:
-        ro = job.get("runs-on") if isinstance(job, dict) else None
-        if isinstance(ro, dict):
-            ro = ro.get("labels")
-        if any("self-hosted" in str(x) for x in (ro if isinstance(ro, list) else [ro])):
-            return True
-    return False
+    return bool(not_hosted(workflow))
+
+
+def runner_problems(root: Path) -> list[str]:
+    """One line for each workflow job under ``root`` that may run off GitHub's own runners
+    (``runners.py``); looked at whether or not AGENTS.md is there."""
+    from ..runners import not_hosted
+
+    wf = Path(root) / ".github" / "workflows"
+    out = []
+    for f in sorted(wf.glob("*.y*ml")) if wf.is_dir() else []:
+        for why in not_hosted(_read(f)):
+            out.append(
+                f".github/workflows/{f.name}: {why}: it may run on a machine that is not a "
+                "GitHub-hosted runner, where a fix's pull request would run model-written code"
+            )
+    return out
 
 
 def check(root: Path) -> list[str]:
@@ -694,7 +698,7 @@ def check(root: Path) -> list[str]:
     root = Path(root)
     agents = _read(root / "AGENTS.md")
     if not agents:
-        return ["AGENTS.md is missing"]
+        return ["AGENTS.md is missing", *runner_problems(root)]
     readme = _read(root / "README.md")
     problems = []
     cmds = fence_commands(agents)
@@ -731,13 +735,7 @@ def check(root: Path) -> list[str]:
             problems.append(f"`{rel}` is not in AGENTS.md's architecture section")
     if "(describe this module)" in agents:
         problems.append("AGENTS.md's architecture section still has a module without a description")
-    wf = root / ".github" / "workflows"
-    for f in sorted(wf.glob("*.y*ml")) if wf.is_dir() else []:
-        if self_hosted(_read(f)):
-            problems.append(
-                f".github/workflows/{f.name} uses a self-hosted runner; product CI "
-                "runs on GitHub-hosted runners only"
-            )
+    problems += runner_problems(root)
     for name in ("CLAUDE.md", ".github/repo-factory.yml", ".github/labels.yml"):
         if not (root / name).exists():
             problems.append(f"{name} is missing")

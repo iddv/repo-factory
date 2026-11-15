@@ -279,6 +279,7 @@
   "application/json",
   [
    "last_poll",
+   "net_hosts",
    "paused",
    "repos",
    "rules",
@@ -634,12 +635,12 @@
  "POST /api/maintain/settings {}": [
   400,
   "application/json",
-  "error: send one or more of: poll_s, concurrency, max_usd, monthly_usd, proposals, proposals_model, net, doctor_days, identity"
+  "error: send one or more of: poll_s, concurrency, max_usd, monthly_usd, proposals, proposals_model, net, allow_signin_file, doctor_days, identity"
  ],
  "POST /api/maintain/settings {\"nope\": 1}": [
   400,
   "application/json",
-  "error: send one or more of: poll_s, concurrency, max_usd, monthly_usd, proposals, proposals_model, net, doctor_days, identity"
+  "error: send one or more of: poll_s, concurrency, max_usd, monthly_usd, proposals, proposals_model, net, allow_signin_file, doctor_days, identity"
  ],
  "POST /api/projects/settings {}": [
   400,

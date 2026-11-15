@@ -48,11 +48,26 @@ def test_what_holds_the_publish_is_said(tmp_path):
     assert got == [
         ".github/workflows/ci.yml: runs on pull_request_target (a stranger's change with secrets)",
         ".github/workflows/ci.yml: asks for a token that may write (write-all)",
-        ".github/workflows/ci.yml: job build runs on a self-hosted runner",
+        ".github/workflows/ci.yml: job build runs on 'self-hosted', which is not one of "
+        "GitHub's own runners",
         ".github/workflows/ci.yml: job build asks for a token that may write (contents: write)",
     ]
     # a file repo-factory staged itself is its own, not the build's
     assert workflows.scan(tmp_path, skip=[".github/workflows/ci.yml"]) == []
+
+
+def test_a_runner_that_cannot_be_told_holds_the_publish_too(tmp_path):
+    """RFREV2 M5: the publish hold uses maintenance's allow-list (runners.py)."""
+    for runs_on, word in (
+        ("${{ matrix.os }}", "expression"),
+        ("[linux, my-own-box]", "'linux'"),
+        ("\n      group: fleet", "runner group"),
+    ):
+        text = GOOD.replace("runs-on: ubuntu-latest", f"runs-on: {runs_on}")
+        got = workflows.scan(tree(tmp_path, text))
+        assert len(got) == 1 and word in got[0], got
+    reuse = "on: push\njobs:\n  ci:\n    uses: octo/shared/.github/workflows/ci.yml@main\n"
+    assert "reusable workflow" in workflows.scan(tree(tmp_path, reuse))[0]
 
 
 def test_publish_anyway_never_pushes_over_it():

@@ -941,11 +941,23 @@ def r_restart_revise(ctx, f, s):
 def r_cut_ticket(ctx, f, s):
     row = s.row or {}
     labels = list(f.get("labels") or [])
+    # RFREV2 S2: go starts a fix, as you: only your press on the page or the command line
+    # puts it on. An agent's token opens the issue without it, and says so.
+    agent = bool(AGENT_ORIGIN.fullmatch(str(ctx.origin or "")))
+    agent_go = agent and "go" in labels
+    if agent_go:
+        labels.remove("go")
     r = ctx.app.maintain_issue_create(
         {"repo": row["repo"], "title": f.get("issue"), "body": f.get("text"), "labels": labels}
     )
     said = f"Opened #{r['number']} on {row['repo']}: {r['url']}"
-    if r.get("dropped_go"):
+    if agent_go:
+        said += (
+            " (without go: an agent's token never puts go on an issue; label it go yourself on "
+            "GitHub if you want it fixed)"
+        )
+        r = {**r, "dropped_go": True, "dropped_go_why": "agent"}
+    elif r.get("dropped_go"):
         said += (
             " (without go: this repository's .github/repo-factory.yml does not let repo-factory fix "
             "issues)"

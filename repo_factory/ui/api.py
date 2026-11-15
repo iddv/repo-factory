@@ -1697,15 +1697,19 @@ class App:
             "rules": {
                 k: settings.rule_view(settings.RULES[f"maintain.{k}"]) for k in settings.MAINTAIN
             },
+            # set in loop.yaml by hand on purpose (never from a request): shown, not written
+            "net_hosts": [str(x) for x in m.get("net_hosts") or [] if isinstance(x, str)],
         }
 
     def maintenance_repo(self, t: dict) -> dict:
-        from ..maintain import backfill, proposals, watch
+        from ..maintain import backfill, proposals, signin, watch
 
-        home = self.loop().cfg.home
+        lp = self.loop()
+        home = lp.cfg.home
         st = backfill.job_state(home, t["repo"]) or None
         return {
             **watch.rows_of(home, t["repo"]),
+            "signin": signin.blocks(lp.cfg),
             "idea": t["idea"],
             "product": t["product"],
             "one_liner": t.get("one_liner") or "",

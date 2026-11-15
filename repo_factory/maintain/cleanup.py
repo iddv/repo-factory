@@ -463,6 +463,7 @@ def cleanup(
     if not (work / ".git").exists():
         work.parent.mkdir(parents=True, exist_ok=True)
         gh("repo", "clone", repo, str(work), "--", "-q")
+        gitcmd.pin(work)
     else:
         git("fetch", "-q", "origin", cwd=work)
         # repo-factory's own clone: a dry run's edits (staged, never committed) go before a re-run

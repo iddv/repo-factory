@@ -309,7 +309,9 @@ def test_doctor_on_github_is_current_then_flags_drift_and_a_self_hosted_runner()
     probs = doctor.check_repo(github.Repo(ghub(fake), "o/plots"))
     assert any("`plots/gone.py`, which does not exist" in p for p in probs)
     assert any("`plots/store.py` is not in AGENTS.md's architecture section" in p for p in probs)
-    assert any("ci.yml uses a self-hosted runner" in p for p in probs)
+    assert any(
+        "ci.yml: job t runs on 'self-hosted'" in p and doctor.SELF_HOSTED in p for p in probs
+    )
     assert not [c for c in fake.calls if c[0] != "GET"], "the doctor only reads"
     # the poll's step: due weekly, Today rows, the box's summary
     rec = {}
@@ -331,7 +333,15 @@ def test_doctor_on_github_is_current_then_flags_drift_and_a_self_hosted_runner()
         ("self-hosted", True),
         ("\n      - self-hosted", True),
         ("\n      labels: [self-hosted]", True),
-        ("${{ matrix.os }}", False),
+        # RFREV2 M5: an allow-list; what cannot be told counts as not hosted
+        ("${{ matrix.os }}", True),
+        ("${{ vars.RUNNER }}", True),
+        ("[linux, my-own-box]", True),
+        ("my-own-box", True),
+        ("\n      group: fleet", True),
+        ("[ubuntu-latest]", False),
+        ("windows-2022", False),
+        ("macos-14", False),
     ],
 )
 def test_self_hosted_in_every_form(runs_on, hosted):
@@ -724,4 +734,7 @@ def test_maintenance_uses_the_token_file_for_gh_and_for_a_fix_s_push(tmp_path):
     from repo_factory.maintain import revise
 
     src = Path(revise.__file__).read_text()
-    assert src.count('self.remote("push"') == 5 and 'git("push"' not in src
+    assert src.count('self.remote("push"') == 4 and 'git("push"' not in src
+    # quiet maintenance pushes from the host's own clone, with the same identity
+    assert "auth, env = self.git_auth()" in src
+    assert "carry.push(dest, self.full, branch, auth, env)" in src

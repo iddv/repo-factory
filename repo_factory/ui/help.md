@@ -92,15 +92,31 @@ stands. **Maintenance is off until you switch it on for a repository**, on its p
   else's issue, a `go` someone else put on, and anyone else's pull request are listed under
   **Waiting for you**, and nothing else happens: no model call, no label, no comment. An issue's
   text is data, quoted to the fix's sessions, never an instruction or a setting.
+- **An issue someone else opened and then edited after your `go`** waits too ("edited after you
+  labelled it: take go off and put it on again"): a fix reads the text as it is now, so your
+  `go` counts only for the text you read.
+- An agent you gave a token can open an issue (**Open issue**), but never with `go` on it: only
+  you put `go` on.
+- Someone else's pull request that says "Fixes #12" is listed as "a pull request by … says it
+  fixes #12"; it never stops repo-factory's own fix of #12.
+- **No fix starts while builds sign in with Claude Code's own sign-in file**, which would be
+  copied into each fix session: run `claude setup-token` first and keep the token in
+  Settings › Claude (the project's page says so).
+- **No fix starts, and nothing merges, while a workflow on the default branch may run anywhere
+  but GitHub's own runners** (any `runs-on` label that is not `ubuntu-…`, `windows-…` or
+  `macos-…`, an expression other than a written-out matrix of those, a runner group or a
+  reusable workflow): a fix's pull request runs
+  the fix's code in that CI at once. The page shows which workflow.
 - **A fix is a pull request** ("Fix #12: …") on a new `repo-factory/` branch, with what it
   reproduced and what it tested. It never pushes to your default branch, never force-pushes,
   never changes a workflow file, and writes nothing on the issue: what each fix did, and why one
   stopped, is on the project's page. After two failed attempts an issue waits for you; **Retry**
-  lets it try again.
+  lets it try again. repo-factory pushes it from a clone of its own, never from the folder the
+  fix's sessions worked in.
 - **Merge its own fixes when CI is green** is a second switch per repository, off by default:
   bugs and docs only, every check green, never a change under `.github/`, never a pull request
-  anyone else pushed to, never while a workflow names a self-hosted runner (the page warns about
-  one); then a patch release, when the policy file allows it.
+  anyone else pushed to, never while a workflow may run off GitHub's own runners (the page warns
+  about one); then a patch release, when the policy file allows it.
 - **Pause** stops the next poll from reading the repository at once, and stays paused after a
   restart. **Switch maintenance off** stops it altogether.
 - **This week's proposals**: once a week, one capped call reads the README and the open issues'
@@ -125,8 +141,12 @@ stands. **Maintenance is off until you switch it on for a repository**, on its p
   aside from the start, and **Ask for changes** spends from what the build's cap has left.
   **Maintenance** has its own line: what it spent this month, its monthly limit and a fix's cap.
 - **Maintenance**: which published repositories it is on for, how often it looks, how many
-  fixes run at once (they share the build slots), the weekly proposals, and where a fix's
-  session may connect (an allow-list by default).
+  fixes run at once (they share the build slots), the weekly proposals, where a fix's
+  session may connect (an allow-list: by default the Claude API and the Python package index;
+  you add hosts in `loop.yaml`, `maintain.net_hosts`; adding GitHub's hosts lets a session that
+  brings its own token post what it reads there), and
+  **Claude's sign-in** (whether fixes may run on Claude Code's own sign-in file: off by
+  default).
 - **Appearance**: light, dark, or your device's; kept in this browser.
 
 ## Where things are kept {#files}

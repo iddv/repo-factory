@@ -375,6 +375,18 @@ describe("Projects and maintenance", () => {
     expect(document.querySelector("#fixes")?.textContent).toContain("#12: opened a pull request");
   });
 
+  it("says run claude setup-token first while fixes would get the sign-in file", async () => {
+    const signin = "fixes wait: Claude Code's own sign-in file would be copied into each fix session";
+    routes["api/project"] = () => ({ body: { ...repo({ switch: { on: false, merge: false }, signin }), brief: { one_liner: "", who: "", brief: "" }, build: null, published: null, state: "published", month_usd: 0 } });
+    await open("#/projects/i1234abcd");
+    await until(() => !!document.querySelector("#maint-signin"));
+    expect(document.querySelector("#maint-signin")?.textContent).toContain("claude setup-token");
+    (document.querySelector("#maint-on") as HTMLButtonElement).click();
+    await settle();
+    expect(posts).toEqual([]);
+    expect(text()).toContain("no fix starts yet: run `claude setup-token` first");
+  });
+
   it("builds a proposal only on the press, and retries a fix that waits for you", async () => {
     routes["api/project"] = () => ({ body: { ...repo(), brief: { one_liner: "", who: "", brief: "" }, build: null, published: null, state: "published", month_usd: 0 } });
     routes["POST api/maintenance/proposal"] = () => ({ body: { ...MAINT_EMPTY, repos: [repo()] } });

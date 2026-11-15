@@ -102,7 +102,7 @@ def refresh(loop, p: dict, gh=None, git_fn=None) -> dict:
             from ..maintain.poll import gh_for
 
             gh = gh_for(loop)
-        if (d / ".git").is_dir():
+        if (d / ".git").is_dir() and gitcmd.pin_path(d).is_file():
             _fetch(d, branch, gh, run)
         else:
             _clone(d, full, gh)
@@ -129,6 +129,7 @@ def _clone(d: Path, full: str, gh) -> None:
         raise CloneError(f"gh repo clone {full}: {e}") from None
     if not (d / ".git").is_dir():
         raise CloneError(f"gh repo clone {full} made no clone")
+    gitcmd.pin(d)
 
 
 def _fetch(d: Path, branch: str, gh, run) -> None:

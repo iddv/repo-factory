@@ -264,6 +264,7 @@ RULES: dict[str, tuple] = {
     "maintain.proposals": ("bool",),
     "maintain.proposals_model": ("model",),
     "maintain.net": ("enum", ("allowlist", "public")),
+    "maintain.allow_signin_file": ("bool",),
     "maintain.lesson_label": ("bool",),
     "maintain.doctor_days": ("int", 0, 90),
     "maintain.identity": ("enum", ("auto", "app", "token", "login")),
@@ -294,6 +295,10 @@ SENSITIVE = {
     "builds, fixes and briefs log in with the API key in repo-factory's "
     "environment, at API prices. Off, a build is held until you sign "
     "in to your Claude plan.",
+    "maintain.allow_signin_file": "Fixes may start while builds sign in with Claude Code's own "
+    "sign-in file: that file is copied into each fix session, where the text of an issue steers "
+    "a session with tools that could read it. A login token (claude setup-token, kept in "
+    "Settings › Claude) is never a file in a session.",
     "maintain.token_env_file": "Maintenance stops using this token file and acts as the identity "
     "shown instead. The file itself stays where it is: delete it, and "
     "the token on GitHub, yourself.",
@@ -308,6 +313,7 @@ MAINTAIN = (
     "proposals",
     "proposals_model",
     "net",
+    "allow_signin_file",
     "doctor_days",
     "identity",
 )

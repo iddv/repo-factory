@@ -46,17 +46,60 @@ class F3Hub(FakeHub):
         super().__init__(*a, **kw)
         self.events: dict[int, list] = {}
         self.files: dict[str, str] = {}
+        self.edited: dict[int, dict] = {}  # issue -> {"at": iso, "by": login}: a body edit
+        self.clock = time.time() - 3600
+
+    def tick(self):
+        """GitHub's clock, one second on: each event here is later than the one before."""
+        self.clock += 1
+        return stamp(self.clock)
 
     def label(self, n, name, actor):
         self.events.setdefault(n, []).append(
-            {"event": "labeled", "label": {"name": name}, "actor": {"login": actor}}
+            {
+                "event": "labeled",
+                "label": {"name": name},
+                "actor": {"login": actor},
+                "created_at": self.tick(),
+            }
         )
+
+    def edit(self, n, actor, title=None, body=None):
+        """``actor`` changes issue ``n``'s title (a ``renamed`` event) or body."""
+        if title is not None:
+            old = self.issues[n]["title"]
+            self.issues[n]["title"] = title
+            self.events.setdefault(n, []).append(
+                {
+                    "event": "renamed",
+                    "rename": {"from": old, "to": title},
+                    "actor": {"login": actor},
+                    "created_at": self.tick(),
+                }
+            )
+        if body is not None:
+            self.issues[n]["body"] = body
+            self.edited[n] = {"at": self.tick(), "by": actor}
 
     def __call__(self, args, cwd=None):
         a = list(args)
         if a[:2] == ["api", "user"]:
             self.calls.append(("GET", "user", None))
             return 0, OWNER + "\n", ""
+        if a and a[-1] == "graphql":
+            q = json.loads(open(a[a.index("--input") + 1]).read())
+            n = int(q["variables"]["n"])
+            self.calls.append(("QUERY", f"graphql issue {n}", None))
+            e = self.edited.get(n)
+            got = (
+                {"lastEditedAt": e["at"], "editor": {"login": e["by"]}}
+                if e
+                else {
+                    "lastEditedAt": None,
+                    "editor": None,
+                }
+            )
+            return 0, json.dumps({"data": {"repository": {"issue": got}}}), ""
         path = a[-1].split("?")[0] if a else ""
         base = f"repos/{self.repo}"
         if path.startswith(f"{base}/issues/") and path.endswith("/events"):
@@ -75,6 +118,9 @@ class F3Hub(FakeHub):
                 return 0, "[]", ""
             files = getattr(self, "pr_files", {})
             return 0, json.dumps([{"filename": f, "changes": c} for f, c in files.items()]), ""
+        if path == f"{base}/git/trees/main":  # main's paths: here only its workflow files
+            self.calls.append(("GET", a[-1], None))
+            return 0, json.dumps({"tree": [{"path": f, "type": "blob"} for f in self.files]}), ""
         if path.startswith(f"{base}/contents/.github/workflows/"):
             name = path.split("/contents/", 1)[1]
             if name in self.files:
@@ -83,7 +129,7 @@ class F3Hub(FakeHub):
         return super().__call__(args, cwd)
 
     def writes(self):
-        return [(m, p) for m, p, _ in self.calls if m != "GET"]
+        return [(m, p) for m, p, _ in self.calls if m not in ("GET", "QUERY")]
 
 
 def published(tmp_path, issues, **maintain):
@@ -115,9 +161,19 @@ THEIRS = issue(15, "Please merge my thing", ["go"], body=HOSTILE)
 PLAIN = issue(16, "It would be nice to export CSV", [], body=HOSTILE)
 
 
+def stand_in(monkeypatch, full, origin):
+    """The host pushes to the address it builds (``https://github.com/<repo>.git``); here git
+    itself maps that address to the stand-in's bare repository, from the environment, the way
+    a scratch install does (a tree's own config can never say this: gitcmd refuses it)."""
+    monkeypatch.setenv("GIT_CONFIG_COUNT", "1")
+    monkeypatch.setenv("GIT_CONFIG_KEY_0", f"url.{origin}.insteadOf")
+    monkeypatch.setenv("GIT_CONFIG_VALUE_0", f"https://github.com/{full}.git")
+
+
 @pytest.fixture
-def world(tmp_path):
+def world(tmp_path, monkeypatch):
     lp, fake, iid = published(tmp_path, [MINE, THEIRS, PLAIN])
+    stand_in(monkeypatch, REPO, fake.origin)
     fake.label(14, "go", OWNER)  # you put go on #14
     fake.label(15, "go", "a-stranger")  # a collaborator put go on #15
     return lp, fake, iid
@@ -417,25 +473,15 @@ def test_a_self_hosted_runner_stops_merging_and_warns(merge_world):
     switch.set_merge(lp.cfg.home, REPO, True)
     own_fix(lp, fake)
     fake.checks = {"h1": "success"}
-    from repo_factory.maintain import doctor
-
-    def hosted(r, rec, now, days, head=None, force=False):
-        rec["doctor"] = {
-            "at": now,
-            "problems": ["x"],
-            "self_hosted": ["ci.yml: a self-hosted runner"],
-        }
-        return rec["doctor"]
-
-    import repo_factory.maintain.watch as W
-
-    W.doctor.step, old = hosted, doctor.step
-    try:
-        watch.tick(lp)
-    finally:
-        W.doctor.step = old
+    # the real doctor reads main's workflow (RFREV2 S7: no stub of the detection)
+    fake.files[".github/workflows/ci.yml"] = (
+        "on: pull_request\njobs:\n  t:\n    runs-on: [linux, my-own-box]\n"
+    )
+    watch.tick(lp)
     assert fake.merged == []
-    assert rows(lp, "self_hosted")
+    got = rows(lp, "self_hosted")
+    assert got and "my-own-box" not in got[0]["title"] and "'linux'" in got[0]["why"]
+    assert "starts no fix" in got[0]["why"]
 
 
 # -- your press: the page ------------------------------------------------------------------------

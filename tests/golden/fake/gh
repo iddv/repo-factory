@@ -209,7 +209,8 @@ def maint_api(argv: list[str], path: str, method: str, full: str, rest: list[str
                 "labels": [{"name": x} for x in b.get("labels") or []], "assignees": [],
                 "comments": 0, "created_at": now_iso(), "updated_at": now_iso(),
                 "html_url": f"https://github.com/{full}/issues/{n}"}
-        events = [{"event": "labeled", "label": {"name": x}, "actor": {"login": LOGIN}}
+        events = [{"event": "labeled", "label": {"name": x}, "actor": {"login": LOGIN},
+                   "created_at": now_iso()}
                   for x in b.get("labels") or []]
         write_item(full, item, events)
         out(item)
@@ -235,7 +236,8 @@ def maint_api(argv: list[str], path: str, method: str, full: str, rest: list[str
         have = [x["name"] for x in data["issue"]["labels"]]
         add = [x for x in payload(argv).get("labels") or [] if x not in have]
         data["issue"]["labels"] += [{"name": x} for x in add]
-        data["events"] += [{"event": "labeled", "label": {"name": x}, "actor": {"login": LOGIN}}
+        data["events"] += [{"event": "labeled", "label": {"name": x}, "actor": {"login": LOGIN},
+                            "created_at": now_iso()}
                            for x in add]
         f.write_text(json.dumps(data, indent=1))
         out(data["issue"]["labels"])
@@ -293,9 +295,51 @@ def maint_api(argv: list[str], path: str, method: str, full: str, rest: list[str
     return None
 
 
+def graphql(argv: list[str]) -> int:
+    """The one query maintenance makes: when an issue's body was last edited, and by whom
+    (``lastEditedAt``, ``editor``), from the issue file's ``edited`` (``issue edit`` writes it)."""
+    q = payload(argv)
+    v = q.get("variables") or {}
+    f = ROOT / "issues" / str(v.get("owner")) / str(v.get("name")) / f"{v.get('n')}.json"
+    if "lastEditedAt" not in str(q.get("query")) or not f.is_file():
+        print("gh: GraphQL: Could not resolve to an Issue", file=sys.stderr)
+        return 1
+    e = json.loads(f.read_text()).get("edited") or {}
+    got = {"lastEditedAt": e.get("at"), "editor": {"login": e["by"]} if e.get("by") else None}
+    out({"data": {"repository": {"issue": got}}})
+    return 0
+
+
+def issue_edit(argv: list[str]) -> int:
+    """``issue edit N --repo R [--title T] [--body B]``, as ``$FAKE_GH_AS`` (default the
+    login): a title change is a ``renamed`` event, a body change the issue's ``edited``."""
+    full, n = opt(argv, "--repo") or opt(argv, "-R"), argv[2]
+    f = issues_dir(full) / f"{n}.json"
+    if not f.is_file():
+        print("gh: Not Found (HTTP 404)", file=sys.stderr)
+        return 1
+    data = json.loads(f.read_text())
+    who = os.environ.get("FAKE_GH_AS") or LOGIN
+    title, body = opt(argv, "--title"), opt(argv, "--body")
+    if title is not None:
+        data.setdefault("events", []).append(
+            {"event": "renamed", "actor": {"login": who}, "created_at": now_iso(),
+             "rename": {"from": data["issue"].get("title", ""), "to": title}})
+        data["issue"]["title"] = title
+    if body is not None:
+        data["issue"]["body"] = body
+        data["edited"] = {"at": now_iso(), "by": who}
+    data["issue"]["updated_at"] = now_iso()
+    f.write_text(json.dumps(data, indent=1))
+    out(data["issue"]["html_url"] if data["issue"].get("html_url") else f"#{n}")
+    return 0
+
+
 def api(argv: list[str]) -> int:
     takes = {"-H", "-X", "--input", "-q", "--jq", "-F", "-f", "--method", "--header"}
     words = [a for i, a in enumerate(argv[1:], 1) if argv[i - 1] not in takes]
+    if "graphql" in words:
+        return graphql(argv)
     path = next((a for a in words if not a.startswith("-") and "/" in a or a == "user"), "")
     method = opt(argv, "-X", "GET")
     if path == "user":
@@ -417,6 +461,8 @@ def main() -> int:
             m["labels"].append(argv[2])
         save(full, m)
         code = 0
+    elif head == ["issue", "edit"]:
+        code = issue_edit(argv)
     elif argv[:1] == ["api"]:
         code = api(argv)
     log(argv, code == 0)

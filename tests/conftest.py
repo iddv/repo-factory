@@ -227,6 +227,7 @@ SANDBOX_FILES = {
     "test_exam_integrity.py",
     "test_exam_runner.py",
     "test_product_installs.py",
+    "test_fix_escape.py",
 }
 
 

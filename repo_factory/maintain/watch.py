@@ -10,10 +10,12 @@ open issues and pull requests:
    any other repository gets it from the setup pull request (``maintain setup``: labels, the
    policy file, AGENTS.md and CI). A file that cannot be read is a row on the page, never a
    comment.
-2. **Your word**: an open issue is fixed only when its ``go`` label was put on by you, the login
-   maintenance acts for, read from the issue's events. Anyone else's issue, a ``go`` someone
-   else put on, and anyone else's pull request are "Waiting for you" rows: no model call, no
-   label, no comment, nothing else.
+2. **Your word** (``consent.py``): an open issue is fixed only when its ``go`` label was put on
+   by you, the login maintenance acts for, read from the issue's events, and (when someone else
+   opened it) its title and body were not changed by anyone else after that ``go``. Anyone
+   else's issue, a ``go`` someone else put on, an issue edited after your ``go``, and anyone
+   else's pull request are "Waiting for you" rows: no model call, no label, no comment,
+   nothing else.
 3. **Fixes** (``revise.Fix``, quiet): when a slot is free, nothing of this repo is running,
    maintenance's money is not spent (``spend.py``) and the issue does not wait for you
    (``fixes.waits``), the oldest of your ``go`` issues without an open fix gets one, detached.
@@ -21,9 +23,11 @@ open issues and pull requests:
 4. **Merging** (``merge_step``), only with the repo's second switch on (off by default): one of
    repo-factory's own fix pull requests a poll, bugs and docs only, green CI, nothing under
    ``.github/``, only while its head is the commit the fix pushed and no workflow on ``main``
-   names a self-hosted runner; then a patch release when the policy file allows it.
-5. **The doctor** (reads only): AGENTS.md against the tree, and any workflow on a self-hosted
-   runner, which the page shows as a warning (and which stops merging).
+   may run off GitHub's own runners; then a patch release when the policy file allows it.
+5. **The doctor** (reads only): AGENTS.md against the tree, and any workflow that may run off
+   GitHub's own runners (``runners.py``), which the page shows and which stops fixes and
+   merging. While sessions would sign in with Claude Code's own sign-in file
+   (``signin.py``), no fix starts either.
 
 What the page shows is written to the poll's disposable cache (``github.Cache``)."""
 
@@ -31,7 +35,7 @@ from __future__ import annotations
 
 import time
 
-from . import automerge, doctor, fixes, pauses, release, revise, spend, switch
+from . import automerge, consent, doctor, fixes, pauses, release, revise, signin, spend, switch
 from . import policy as P
 from .github import BOTS, Cache, GitHubError, Repo
 from .poll import free_slots, gh_for, read_head, summary_of
@@ -153,23 +157,14 @@ def poll_repo(loop, gh, t: dict, cache: Cache, now: float, slots: list[int], sto
             continue
         go_reads += 1
         try:
-            from ..loop.from_issue import labelled_by
-
-            who = labelled_by(r.events(i["number"]), "go")
+            why = consent.why_not(r, i, me)
         except GitHubError as e:
             out["errors"].append(f"#{i['number']}: {e}")
             continue
-        if who and who in me:
+        if why is None:
             mine.append(i)
         else:
-            rows.append(
-                row(
-                    "waiting",
-                    i,
-                    i["title"],
-                    f"labelled go by {who or 'someone'}, not by you: only your own go starts a fix",
-                )
-            )
+            rows.append(row("waiting", i, i["title"], why))
     for p in [i for i in items if i["is_pr"]]:
         if p["number"] in own_prs:
             continue  # repo-factory's own fix: the fix rows below say it
@@ -187,15 +182,23 @@ def poll_repo(loop, gh, t: dict, cache: Cache, now: float, slots: list[int], sto
                 )
             continue
         who = "Dependabot" if p["author"] in BOTS else (p["author"] or "someone")
+        claims = sorted(revise.linked([p]))  # the issues its title or body says it fixes
+        says = (
+            f" says it fixes {', '.join(f'#{n}' for n in claims)}; it is not repo-factory's fix"
+            " and holds none of repo-factory's"
+            if claims
+            else ""
+        )
         rows.append(
             row(
                 "waiting",
                 p,
                 p["title"],
-                f"a pull request by {who}; repo-factory never checks it out, runs or merges it",
+                f"a pull request by {who}{says}; repo-factory never checks it out, runs or "
+                "merges it",
             )
         )
-    # the doctor: reads only; a self-hosted runner stops merging and is a warning
+    # the doctor: reads only; a workflow off GitHub's own runners stops fixes and merging
     try:
         doctor.step(
             r,
@@ -203,21 +206,28 @@ def poll_repo(loop, gh, t: dict, cache: Cache, now: float, slots: list[int], sto
             now,
             float((loop.cfg.get("maintain") or {}).get("doctor_days", 7) or 0),
             head=(rec.get("head") or {}).get("sha"),
+            force=not rec.get("doctor"),  # where the workflows run is read once at least
         )
     except (GitHubError, OSError) as e:
         out["errors"].append(f"doctor: {e}")
     hosted = (rec.get("doctor") or {}).get("self_hosted") or []
+    if not rec.get("doctor"):  # never read: where main's workflows run cannot be told yet
+        hosted = ["where main's workflows run has not been read yet"]
     if hosted:
         rows.append(
             row(
                 "self_hosted",
                 None,
-                "a workflow on main names a self-hosted runner",
+                "a workflow on main may run off GitHub's own runners",
                 "; ".join(hosted)[:400]
-                + ": repo-factory never merges here; read the workflow before you merge anything",
+                + ": repo-factory starts no fix here (its pull request would run the fix's code "
+                "on that machine) and never merges; read the workflow",
                 url=f"https://github.com/{full}/tree/main/.github/workflows",
             )
         )
+    held = signin.blocks(loop.cfg)
+    if held:
+        rows.append(row("signin", None, "fixes wait for a Claude login token", held))
     maintained = (
         pol is not None and pol["status"] == "maintained" and pol["revise"]["trigger"] != "off"
     )
@@ -249,8 +259,9 @@ def poll_repo(loop, gh, t: dict, cache: Cache, now: float, slots: list[int], sto
                 out["errors"].append(f"release: {e}")
     else:
         rec.pop("queue", None)
-    # fixes of your go issues
-    if pol is not None and maintained:
+    # fixes of your go issues: never while a workflow may run off GitHub's own runners, or
+    # while sessions would sign in with Claude Code's own sign-in file
+    if pol is not None and maintained and not hosted and not held:
         start_fix(loop, r, t, items, mine, pol, rec, now, slots, stop, out)
     rows += fix_rows(home, full, items, mine, pol, rec, own_prs)
     rec.update(
@@ -276,20 +287,17 @@ def ended(loop, r: Repo, rec: dict, items: list[dict], now: float, out: dict) ->
     from pathlib import Path
 
     revs = dict(rec.get("revises") or {})
-    prs_for = revise.linked(items)
     for n, x in list(revs.items()):
         if revise.alive(x.get("pid"), start=x.get("start")):
             continue
         res = revise.result(Path(x["task"]))
         if res is None or (res.get("finished") or 0) < (x.get("started") or 0) - 5:
-            if prs_for.get(int(n)):
-                res = {"outcome": "pr", "pr": prs_for[int(n)][0], "why": None}
-            else:
-                res = {
-                    "outcome": "failed",
-                    "stage": "process",
-                    "why": "the fix process stopped without finishing (a restart or a crash)",
-                }
+            # never anyone's "Fixes #N" taken for this fix's own pull request (RFREV2 S3)
+            res = {
+                "outcome": "failed",
+                "stage": "process",
+                "why": "the fix process stopped without finishing (a restart or a crash)",
+            }
             fixes.ended(loop.cfg.home, r.full, int(n), res, now)
         out["ended"].append({"number": int(n), **{k: res.get(k) for k in ("outcome", "pr", "why")}})
         del revs[n]
@@ -302,11 +310,15 @@ def start_fix(loop, r, t, items, mine, pol, rec, now, slots, stop, out) -> None:
         return
     if rec.get("revises") or slots[0] <= 0:
         return
-    home, linked = loop.cfg.home, revise.linked(items)
+    home = loop.cfg.home
+    # only a pull request this install's fix opened is "the fix of N" (RFREV2 S3): anyone
+    # else's "Fixes #N" is a row and never holds the fix
+    open_prs = {i["number"] for i in items if i["is_pr"]}
+    ours = {f["issue"] for pr, f in fixes.opened(home, r.full).items() if pr in open_prs}
     max_att = int(pol["revise"]["max_attempts"])
     for item in sorted(mine, key=lambda i: (i.get("created") or 0, i["number"])):
         n = item["number"]
-        if linked.get(n) or item["assignees"] or fixes.waits(fixes.get(home, r.full, n), max_att):
+        if n in ours or item["assignees"] or fixes.waits(fixes.get(home, r.full, n), max_att):
             continue
         fresh = r.issue(n)  # the list lags a merge by seconds: read it once more
         if fresh["state"] != "open" or "go" not in fresh["labels"]:
@@ -354,14 +366,16 @@ def merge_step(loop, r, items, pol, rec, now, own_prs, hosted) -> dict:
     one, through ``automerge.judge`` (draft, ``hold``, kinds, size, ``.github/``, licence and
     lock files, changes requested, behind or conflicting, CI not green: each refuses or
     waits), with three more rules: only a pull request this install's fix opened, only while
-    its head is the commit that fix pushed, and never while a workflow on ``main`` names a
-    self-hosted runner. Bugs and docs only, whatever the policy file says."""
+    its head is the commit that fix pushed, and never while a workflow on ``main`` may run off
+    GitHub's own runners. Bugs and docs only, whatever the policy file says."""
     m = dict(pol["merge"])
     kinds = [k for k in (m.get("kinds") or []) if k in MERGE_KINDS]
     judged = {**pol, "merge": {**m, "kinds": kinds}}
     out: dict = {"on": True, "kinds": kinds, "items": [], "merged": None, "at": now}
     if hosted:
-        out["why"] = "a workflow on main names a self-hosted runner: repo-factory never merges here"
+        out["why"] = (
+            "a workflow on main may run off GitHub's own runners: repo-factory never merges here"
+        )
         return out
     if not kinds:
         out["why"] = "the policy file's merge.kinds leaves neither bug nor docs"

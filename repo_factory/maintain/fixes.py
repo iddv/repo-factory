@@ -137,12 +137,22 @@ def retry(home, repo: str, number: int, by: str = "ui", now: float | None = None
 
 
 def opened(home, repo: str) -> dict[int, dict]:
-    """The pull requests repo-factory's fixes opened on ``repo``: ``{pr: record}``. The merge
-    step takes only these (and only while their head is the commit the fix pushed)."""
+    """The pull requests repo-factory's fixes opened on ``repo``: ``{pr: record}``, each with
+    the commit the fix pushed and its ``repo-factory/`` branch (a line without them is not one
+    this install pushed, whatever else says so). The poll counts only these as "the fix of N",
+    and the merge step takes only these (only while their head is the commit pushed)."""
     out = {}
     for n, rec in of_repo(home, repo).items():
         for h in rec.get("history") or []:
-            if h.get("outcome") == "pr" and isinstance(h.get("pr"), int):
+            if not isinstance(h, dict):
+                continue
+            if (
+                h.get("outcome") == "pr"
+                and isinstance(h.get("pr"), int)
+                and isinstance(h.get("head"), str)
+                and h["head"]
+                and str(h.get("branch") or "").startswith("repo-factory/")
+            ):
                 out[h["pr"]] = {**h, "issue": n}
     return out
 

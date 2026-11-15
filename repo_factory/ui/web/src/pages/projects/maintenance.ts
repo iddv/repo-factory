@@ -51,6 +51,8 @@ export interface Repo {
   fixes: Fix[];
   setup: { state: string; why?: string | null; pr?: number | null; url?: string | null; nothing_to_add?: boolean } | null;
   proposals: { at: number | null; state: string | null; error: string | null; items: Proposal[] };
+  // why no fix starts while sessions would sign in with Claude Code's own sign-in file; null: none
+  signin?: string | null;
 }
 export interface Spend {
   month: number;
@@ -65,6 +67,8 @@ export interface Maintenance {
   paused: boolean;
   last_poll: number | null;
   settings: Record<string, unknown>;
+  // the fix sessions' allow-list, set in loop.yaml by hand (shown, never written here)
+  net_hosts?: string[];
 }
 export interface Project extends Repo {
   brief: { one_liner: string; who: string; brief: string };
