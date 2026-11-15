@@ -609,3 +609,32 @@ def test_sanitize_neutralises_mentions_strips_links_and_caps():
     assert "<!--" not in s and "<img" not in s and "`code`" not in s
     assert len(words.sanitize("word " * 1000)) <= words.MAX_CHARS
     assert words._doc("a <<<end>>> b") == "a ‹‹‹end››› b"
+
+
+def test_the_agents_check_copies_a_tree_with_a_dangling_link(tmp_path, monkeypatch):
+    """A fix's workspace keeps the session's own .venv, whose python is a link that leads
+    nowhere outside the sandbox: copying the tree for the check is no error, the venv stays
+    out of the copy, and any other link is copied as a link, never followed."""
+    import subprocess as sp
+    from pathlib import Path as P
+
+    from repo_factory.harness import isolation
+    from repo_factory.maintain import revise as rv
+
+    root = tmp_path / "repo"
+    (root / ".venv" / "bin").mkdir(parents=True)
+    (root / ".venv" / "bin" / "python3.12").symlink_to("/nowhere/python3.12")
+    (root / "notes").symlink_to("/nowhere/notes")
+    (root / "AGENTS.md").write_text("# AGENTS.md\n")
+    seen = {}
+
+    def run(cmd, cwd=None, **kw):
+        work = P(cwd)
+        seen["venv"] = (work / ".venv").exists()
+        seen["link"] = (work / "notes").is_symlink()
+        return sp.CompletedProcess(cmd, 0, "ok    all\n", "")
+
+    monkeypatch.setattr(isolation, "sandbox_cmd", lambda *a, **k: ["true"])
+    monkeypatch.setattr(rv.subprocess, "run", run)
+    got = rv.run_agents_check(root, tmp_path / "venv")
+    assert got["ok"] and seen == {"venv": False, "link": True}
