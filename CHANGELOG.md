@@ -21,10 +21,12 @@ All notable changes to this project are written here. Versions follow
   (`maintain.monthly_usd`, $20) and a cap per fix (`maintain.max_usd`, $5).
 - Settings › Maintenance; **Learn from held builds** (lessons on or off) on Settings › Building.
 - **Lessons from your own builds:** a build the checks hold writes at most one lesson (one
-  no-tools call on its holds; none for a hold the builder could not have avoided), and the next
-  briefs carry the lessons that are on. A new **Lessons** page lists each, where it came from,
-  and switches it on or off; `repo-factory loop lessons [on|off ID]`; `lessons.enabled`,
-  `lessons.max_in_brief` and the Lessons model in Settings › Building.
+  no-tools call on its holds, capped at $0.25 by `lessons.max_usd`; none for a hold the builder
+  could not have avoided). A new lesson waits for your press: no brief carries it until you
+  switch it on. A lesson that names a package, a host or an address, or a command-line flag is
+  not kept. The next briefs carry the lessons that are on. A new **Lessons** page lists each,
+  where it came from, and switches it on or off; `repo-factory loop lessons [on|off ID]`;
+  `lessons.enabled`, `lessons.max_in_brief` and the Lessons model in Settings › Building.
 - **A task from your own issue:** `repo-factory loop add --from-issue owner/repo#12` and **Build
   from an issue** on New task. Only an issue you opened, or labelled `build` yourself, is taken;
   anyone else's is refused in words. The issue's text is quoted in the brief as data.

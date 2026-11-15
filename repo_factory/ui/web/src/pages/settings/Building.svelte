@@ -44,7 +44,7 @@
     <input type="checkbox" checked={lessons} onchange={(e) => void save(`lessons ${e.currentTarget.checked ? "on" : "off"}`, () => setRule("lessons.enabled", e.currentTarget.checked))} />
     Learn from held builds
   </label>
-  <p class="muted small">When the checks hold a build, one short call writes what went wrong as one line, and later briefs carry the lessons that are on (<a href="#/lessons">Lessons</a>). Off: no lesson is written or carried.</p>
+  <p class="muted small">When the checks hold a build, one short call writes what went wrong as one line. A new lesson waits for you: later briefs carry only the lessons you switched on (<a href="#/lessons">Lessons</a>). Off: no lesson is written or carried.</p>
 </section>
 <section class="sec">
   <h3>The models</h3>

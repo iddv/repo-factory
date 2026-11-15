@@ -1,10 +1,12 @@
 <script lang="ts">
   // Lessons: what held earlier builds, one line each, where it came from, and on or off. A lesson
-  // that is on goes into the brief of every build from the next one on; off keeps it out. Nothing
-  // here is deleted. The last post-mortems say what each held build taught, or why nothing.
+  // that is on goes into the brief of every build from the next one on; off keeps it out. A new
+  // lesson waits for the person's press: it is in no brief until they switch it on. Nothing here
+  // is deleted. The last post-mortems say what each held build taught, or why nothing.
   import { post } from "../../api/client";
   import type { Lessons } from "../../api/types.gen";
   import { load, read, stale } from "../../lib/reads.svelte";
+  import Press from "../../ui/Press.svelte";
 
   const PATH = "api/lessons";
   interface Lesson {
@@ -12,6 +14,7 @@
     text: string;
     why?: string;
     on: boolean;
+    waiting?: unknown;
     packed?: number;
     from?: { idea?: string | null; product?: string | null; round?: number | null; holds?: string[]; date?: string | null };
   }
@@ -20,6 +23,12 @@
   let busy = $state("");
   let said = $state("");
   let error = $state("");
+
+  /** a lesson waits for the person only when the server says exactly true (missing, null or
+   *  anything else: it does not) */
+  function waits(x: Lesson): boolean {
+    return x.waiting === true;
+  }
 
   /** where a lesson came from, in one line: why, the build, how often it was carried */
   function origin(x: Lesson): string {
@@ -31,13 +40,24 @@
     return parts.join(" ");
   }
 
+  /** the press on a waiting lesson: on, so new briefs carry it, from the next one */
+  async function switchOn(x: Lesson): Promise<void> {
+    said = "";
+    error = "";
+    await post(PATH, { id: x.id, on: true });
+    said = `${x.id} is on: from the next brief.`; // said under the list: the press goes away
+    stale(PATH);
+    await load(PATH);
+  }
+
   async function flip(x: Lesson): Promise<void> {
     busy = x.id;
     said = "";
     error = "";
     try {
-      await post(PATH, { id: x.id, on: !x.on });
-      said = `${x.id} is ${x.on ? "off" : "on"}: from the next brief.`;
+      const on = x.on !== true;
+      await post(PATH, { id: x.id, on });
+      said = `${x.id} is ${on ? "on" : "off"}: from the next brief.`;
       stale(PATH);
       await load(PATH);
     } catch (e) {
@@ -50,7 +70,7 @@
 
 <section class="page lessons" aria-labelledby="lessons-h">
   <h1 id="lessons-h">Lessons</h1>
-  <p class="muted lead">When the checks hold a build, repo-factory writes down what went wrong, in one line, and the next builds' briefs carry it. Switch off a lesson you do not want carried.</p>
+  <p class="muted lead">When the checks hold a build, repo-factory writes down what went wrong, in one line, A new lesson waits for you: no brief carries it until you switch it on. A lesson that names a package, a host or an address, or a command-line flag is not kept. Switch off a lesson you do not want carried.</p>
   {#if got.data && !got.data.enabled}<p class="muted" id="lessons-off">Lessons are off (<code>lessons.enabled: false</code> in loop.yaml): no lesson is written or carried.</p>{/if}
   {#if got.error && !got.data}
     <p class="err" role="alert">The lessons could not be read: {got.error}</p>
@@ -65,15 +85,20 @@
   {:else}
     <ul class="lesson-list" id="lessons">
       {#each list as x (x.id)}
-        <li class={"lesson" + (x.on ? "" : " off")} id={"lesson-" + x.id}>
+        <li class={"lesson" + (waits(x) ? " waiting off" : x.on === true ? "" : " off")} id={"lesson-" + x.id}>
           <div class="lesson-main">
             <p class="lesson-text"><span class="muted lesson-id">{x.id}</span> {x.text}</p>
             <p class="muted small">{origin(x)}</p>
+            {#if waits(x)}<p class="small lesson-waiting" id={"lesson-waiting-" + x.id}>Waiting for you: switch it on to use it in new briefs.</p>{/if}
           </div>
-          <label class="switch">
-            <input type="checkbox" checked={x.on} disabled={busy === x.id} onchange={() => void flip(x)} aria-describedby={"lesson-" + x.id} />
-            {x.on ? "On" : "Off"}
-          </label>
+          {#if waits(x)}
+            <Press label="Switch on" id={"lesson-on-" + x.id} primary run={() => switchOn(x)} />
+          {:else}
+            <label class="switch">
+              <input type="checkbox" checked={x.on === true} disabled={busy === x.id} onchange={() => void flip(x)} aria-describedby={"lesson-" + x.id} />
+              {x.on === true ? "On" : "Off"}
+            </label>
+          {/if}
         </li>
       {/each}
     </ul>

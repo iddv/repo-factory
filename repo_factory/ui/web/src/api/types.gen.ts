@@ -235,9 +235,10 @@ export interface Postmortem {
   usd: number | null;
 }
 
-/** ``api/lessons``: every lesson (``lessons/home.py``: id, text, why, on, from, packed), newest first, and the last post-mortems. */
+/** ``api/lessons``: every lesson (``lessons/home.py``: id, text, why, on, waiting, from, packed; ``on`` and ``waiting`` read as booleans), newest first, how many wait for the person's press, and the last post-mortems. */
 export interface Lessons {
   lessons: (Record<string, unknown>)[];
+  waiting: number;
   postmortems: Postmortem[];
   error: string | null;
   enabled: boolean;

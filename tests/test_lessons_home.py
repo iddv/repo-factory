@@ -1,5 +1,6 @@
-"""Lessons from your own builds: a held build writes at most one lesson, the next brief
-carries the ones that are on, and a lesson switched off is not packed."""
+"""Lessons from your own builds: a held build writes at most one lesson, which waits for the
+person's press; the next brief carries the ones switched on, and a lesson switched off is not
+packed."""
 
 import json
 import subprocess
@@ -62,6 +63,7 @@ def test_entries_of_the_wrong_shape_are_left_out_never_a_crash(tmp_path):
     assert [x["id"] for x in data["lessons"]] == ["L2"]
     x = data["lessons"][0]
     assert x["on"] is True and x["packed"] == 0 and x["from"] == {} and x["why"] == ""
+    assert x["waiting"] is False
     assert data["postmortems"] == [{"idea": "i1"}]
 
 
@@ -162,22 +164,24 @@ def test_pack_takes_the_newest_lessons_that_are_on_and_counts_them(tmp_path):
 
 
 # -- the loop: a held build writes a lesson, the next brief carries it ----------------------------
-def test_a_held_build_writes_one_lesson_and_the_next_brief_carries_it(tmp_path):
+def test_a_held_build_writes_one_lesson_and_the_next_brief_carries_it_once_switched_on(tmp_path):
     lp, iid, task = built(tmp_path, HELD)
     out = lp.gate(iid)
     assert out["state"] == "held"
     data = lessons.load(lp.cfg.home)
     (x,) = data["lessons"]
-    assert x["id"] == "L1" and x["on"] and x["text"].startswith("Run the whole test suite")
+    assert x["id"] == "L1" and x["text"].startswith("Run the whole test suite")
+    assert x["on"] is False and x["waiting"] is True  # it waits for the person's press
     assert x["from"]["idea"] == iid and x["from"]["holds"] == ["tests"]
     assert x["from"]["product"] == "Clinicbook"
-    assert data["postmortems"][-1]["result"] == "lesson L1"
+    assert data["postmortems"][-1]["result"] == "lesson L1, waiting for you to switch it on"
     assert lp.ledger.own_spend(0, None, "lessons") == pytest.approx(0.02)
     # the gate run again on the same round looks at it once
     lp.gate(iid, repair=False)
     assert len(lp._lessons.prompts) == 1
 
-    # the next task's brief carries it, word for word, and its record says so
+    # switched on, the next task's brief carries it, word for word, and its record says so
+    lessons.switch(lp.cfg.home, "L1", True)
     nxt, _ = lp.add("a command-line habit tracker that shows streaks")
     out = lp.pitch([nxt["id"]])[0]
     spec = (Path(out["task_dir"]) / "spec.md").read_text()
@@ -242,6 +246,12 @@ def test_the_command_line_lists_and_switches(tmp_path, capsys):
     lp.gate(iid)
     home = str(lp.cfg.home)
     main(["loop", "--home", home, "lessons"])
+    out = capsys.readouterr().out
+    assert "L1  waiting  Run the whole test suite" in out
+    assert "repo-factory loop lessons on L1" in out
+    main(["loop", "--home", home, "lessons", "on", "L1"])
+    assert capsys.readouterr().out.startswith("L1 is on:")
+    main(["loop", "--home", home, "lessons"])
     assert "L1  on   Run the whole test suite" in capsys.readouterr().out
     main(["loop", "--home", home, "lessons", "off", "L1"])
     assert capsys.readouterr().out.startswith("L1 is off:")
@@ -257,7 +267,12 @@ def test_the_page_reads_and_switches_a_lesson(tmp_path):
     app = api.App(lp.cfg.tasks_dir, "fake", lp.cfg.home)
     got = app.lessons()
     assert got["enabled"] and got["lessons"][0]["id"] == "L1" and got["error"] is None
-    assert app.lesson_switch({"id": "L1", "on": False}) == {"id": "L1", "on": False}
+    assert got["lessons"][0]["waiting"] is True and got["waiting"] == 1
+    assert app.lesson_switch({"id": "L1", "on": False}) == {
+        "id": "L1",
+        "on": False,
+        "waiting": False,
+    }
     with pytest.raises(api.HttpError):
         app.lesson_switch({"id": "L1", "on": "no"})
 

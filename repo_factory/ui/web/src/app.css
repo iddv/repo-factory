@@ -111,6 +111,7 @@ pre.cmd, pre.task-text { font-family: var(--mono); font-size: 12px; background: 
 .lesson-list { border-top: 1px solid var(--border-2); }
 .lesson { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border-2); }
 .lesson.off .lesson-text { color: var(--muted); }
+.lesson-waiting { font-weight: 600; margin-top: 2px; }
 .lesson-main { min-width: 0; }
 .lesson-text { line-height: 1.5; overflow-wrap: anywhere; }
 .lesson-id { font-family: var(--mono); font-size: 12px; }

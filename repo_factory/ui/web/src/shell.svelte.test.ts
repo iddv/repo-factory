@@ -269,6 +269,38 @@ describe("the shell", () => {
     expect(document.querySelector("#lesson-L1")?.className).toContain("off");
   });
 
+  it("shows a new lesson as waiting for you, and switches it on with a press", async () => {
+    let waiting: unknown = true;
+    let on = false;
+    routes["api/lessons"] = () => ({ body: { enabled: true, error: null, at: 1, waiting: waiting === true ? 1 : 0,
+      lessons: [
+        { id: "L2", text: "Write a test for each command the README names.", why: "w", on, waiting, packed: 0, from: {} },
+        { id: "L1", text: "Say in the README which Python version the tool needs.", on: true, waiting: "yes", packed: 1, from: {} },
+        { id: "L0", text: "Keep each module small.", on: true, waiting: null, packed: 1, from: {} },
+      ],
+      postmortems: [] } });
+    routes["POST api/lessons"] = (b) => {
+      on = (b as { on: boolean }).on;
+      waiting = false;
+      return { body: { id: "L2", on, waiting: false } };
+    };
+    await open("#/lessons");
+    await until(() => !!document.querySelector("#lesson-L2"));
+    expect(document.querySelector("#lesson-L2")?.textContent).toContain("Waiting for you: switch it on to use it in new briefs.");
+    expect(document.querySelector("#lesson-L2 input")).toBeNull();
+    // only exactly true waits: "yes" and null are a lesson as before, with its switch
+    for (const id of ["L1", "L0"]) {
+      expect(document.querySelector(`#lesson-waiting-${id}`)).toBeNull();
+      expect((document.querySelector(`#lesson-${id} input`) as HTMLInputElement).checked).toBe(true);
+    }
+    (document.querySelector("#lesson-on-L2") as HTMLButtonElement).click();
+    await until(() => posts.length === 1);
+    expect(posts[0]).toEqual(["api/lessons", { id: "L2", on: true }]);
+    await until(() => !document.querySelector("#lesson-waiting-L2"));
+    expect((document.querySelector("#lesson-L2 input") as HTMLInputElement).checked).toBe(true);
+    expect(text()).toContain("L2 is on: from the next brief.");
+  });
+
   it("says when there are no lessons yet", async () => {
     routes["api/lessons"] = () => ({ body: { enabled: true, error: null, at: 1, lessons: [], postmortems: [] } });
     await open("#/lessons");

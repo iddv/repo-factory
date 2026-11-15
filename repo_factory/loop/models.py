@@ -52,11 +52,20 @@ def spend_kw(tokens: dict | None) -> dict:
     return {"in_tokens": tokens["in"], "out_tokens": tokens["out"]} if tokens else {}
 
 
-def claude(model: str | None = None, purpose: str = "pitch", timeout_s: int = 600) -> Model:
+def claude(
+    model: str | None = None,
+    purpose: str = "pitch",
+    timeout_s: int = 600,
+    max_usd: float | None = None,
+) -> Model:
+    """``claude -p`` without tools; ``max_usd``: each call's own cap (None: none of its own)."""
+
     def call(prompt: str) -> Costed:
         from ..costs.ledger import call_claude, usage_of
 
-        text, data = call_claude(prompt, model, timeout_s, caller="loop", purpose=purpose)
+        text, data = call_claude(
+            prompt, model, timeout_s, caller="loop", purpose=purpose, max_usd=max_usd
+        )
         use = usage_of(data) if data.get("usage") else {}
         tokens = {"in": use["in_tokens"], "out": use["out_tokens"]} if use else None
         return Costed(text, float(data.get("total_cost_usd") or 0.0), tokens)

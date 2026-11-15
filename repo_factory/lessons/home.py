@@ -15,21 +15,26 @@ The lessons live in the home, ``<home>/lessons.yaml``::
       text: "Install the tool in the README's quick start before its first use."
       why: "The README ran the command before installing it."
       "on": true
+      waiting: false       # true: new, not in any brief until the person switches it on
       from: {idea: i0123abcd, product: Foldpage, round: 1, holds: [safe_defaults], date: ...}
       packed: 2            # briefs it went into
     postmortems:           # one line per held round looked at (the newest 200)
-    - {idea: i0123abcd, round: 1, date: ..., result: "lesson L1", usd: 0.02}
+    - {idea: i0123abcd, round: 1, date: ..., result: "lesson L1, waiting for you to switch it on", usd: 0.02}
 
 ``pack`` writes the lessons that are on, newest first and at most ``lessons.max_in_brief``,
 into a new task's ``spec.md`` (the brief every later stage reads: the scope, the build, the
 claims, the verifier) as a block of its own, so the brief carries them word for word. Switching
-a lesson off (the Lessons page, ``repo-factory lessons off L1``) keeps it out of every brief
-from then on; nothing is ever deleted.
+a lesson off (the Lessons page, ``repo-factory loop lessons off L1``) keeps it out of every
+brief from then on; nothing is ever deleted.
 
 A lesson is the model's words about a build's holds, and the holds quote what the build wrote:
-so the text is checked before it is kept (one sentence, at most ``MAX_TEXT`` characters, no
-address, no line breaks, no product name) and every lesson is on the page, where it can be
-switched off.
+so the brief and the holds are quoted with their markers taken out, the text is checked before
+it is kept (one sentence, at most ``MAX_TEXT`` characters, no address, host name, IP address,
+command-line flag or package, no line breaks, no product name), and **a new lesson waits for
+the person**: it is kept with ``on: false`` and ``waiting: true`` and goes into no brief until
+they switch it on (the Lessons page, ``repo-factory loop lessons on L1``). A lesson stored
+before this (no ``waiting``) reads as it did: anything but ``waiting: true`` is not waiting.
+The post-mortem call has its own cap (``lessons.max_usd``, $0.25 by default).
 
 ``lessons.enabled: false`` in ``loop.yaml`` turns the post-mortem and the packing off (a
 measurement that must not learn as it goes)."""
@@ -69,7 +74,140 @@ NO_BUILD_WORDS = (
     "You've hit your",
     "the build process died",
 )
+MAX_USD = 0.25  # the post-mortem call's own cap (``lessons.max_usd``)
 ADDRESS = re.compile(r"(?i)\b(?:https?://|www\.)|[\w.+-]+@[\w-]+\.[\w.]+")
+# a host or an address: a dotted name ending in letters (example.com, api.example.org), an IP
+# address (0.0.0.0, 127.0.0.1, ::1), localhost. A version (3.12), "e.g." or a file name with
+# one of FILE_ENDINGS (README.md, pyproject.toml) is not one.
+HOST = re.compile(
+    r"(?i)(?<![\w.-])(?:[a-z0-9-]+\.)+([a-z][a-z0-9-]*[a-z])(?![\w-])(?!\.\w)"
+    r"|(?<![\w.])\d{1,3}(?:\.\d{1,3}){3}(?![\w.]\d)"
+    r"|(?<![\w:])::1\b|\blocalhost\b"
+)
+FILE_ENDINGS = set(
+    [
+        "md",
+        "txt",
+        "rst",
+        "py",
+        "pyi",
+        "toml",
+        "json",
+        "yaml",
+        "yml",
+        "cfg",
+        "ini",
+        "lock",
+        "js",
+        "mjs",
+        "cjs",
+        "ts",
+        "tsx",
+        "jsx",
+        "svelte",
+        "vue",
+        "html",
+        "css",
+        "sh",
+        "go",
+        "rs",
+        "rb",
+        "java",
+        "kt",
+        "c",
+        "h",
+        "cpp",
+        "hpp",
+        "cs",
+        "php",
+        "sql",
+        "csv",
+        "xml",
+        "log",
+        "env",
+        "gitignore",
+        "dockerfile",
+    ]
+)
+# a command-line flag: --name, or a short -x standing alone (not a hyphen inside a word)
+FLAG = re.compile(r"(?i)(?<![\w-])--[a-z0-9][\w-]*|(?<![\w-])-[a-z](?![\w-])")
+# a package: installed by a package manager, named as one ("the package X", "a dependency on
+# X", "a library called X"), added to the dependencies, or imported ("import X")
+INSTALL = re.compile(
+    r"(?i)\b(?:pip3?|pipx|uv|npm|npx|pnpm|yarn|poetry|conda|cargo|gem|go|brew|apt|apt-get)\s+"
+    r"(?:install|add|get)\b"
+)
+NAMED = re.compile(
+    r"(?i)\b(?:the|a|an)\s+(?:python\s+|npm\s+|node\s+|third-party\s+)?"
+    r"(?:package|dependency|library)\s+(?:on\s+|called\s+|named\s+)?[`'\"]?([a-z][\w.-]*)"
+    r"|\b(?:package|dependency|library|module)\s+(?:called|named)\s+[`'\"]?([a-z][\w.-]*)"
+    r"|\bimport\s+[`'\"]?([a-z_][\w.]*)"
+)
+ADD_DEP = re.compile(
+    r"(?i)\badd\s+(?:\S+\s+){1,3}to\s+(?:(?:the|its|their|every|each|any|a)\s+)?"
+    r"(?:\S+'s\s+)?(?:\w+\s+)?(?:dependencies|requirements)\b"
+)
+# words after "the package", "import" and the like in an ordinary lesson: they name no package
+NOT_A_NAME = set(
+    [
+        "a",
+        "an",
+        "the",
+        "its",
+        "it",
+        "them",
+        "this",
+        "that",
+        "these",
+        "those",
+        "each",
+        "every",
+        "any",
+        "all",
+        "one",
+        "name",
+        "names",
+        "version",
+        "versions",
+        "metadata",
+        "manager",
+        "managers",
+        "is",
+        "are",
+        "was",
+        "be",
+        "and",
+        "or",
+        "but",
+        "in",
+        "on",
+        "of",
+        "to",
+        "with",
+        "for",
+        "from",
+        "at",
+        "by",
+        "as",
+        "so",
+        "first",
+        "last",
+        "itself",
+        "needs",
+        "list",
+        "file",
+        "files",
+        "lock",
+        "order",
+        "path",
+        "paths",
+        "statement",
+        "statements",
+        "error",
+        "errors",
+        "time",
+    ]
+)
 
 
 class LessonsError(Exception):
@@ -84,9 +222,22 @@ def empty() -> dict:
     return {"version": VERSION, "lessons": [], "postmortems": []}
 
 
+def is_waiting(x) -> bool:
+    """A lesson waits for the person only when its ``waiting`` is exactly ``True``."""
+    return isinstance(x, dict) and x.get("waiting") is True
+
+
+def in_briefs(x) -> bool:
+    """A lesson goes into briefs only when it is on (exactly ``True`` once read) and not
+    waiting."""
+    return isinstance(x, dict) and x.get("on") is True and not is_waiting(x)
+
+
 def _lesson(x) -> dict | None:
-    """One stored lesson made safe to read: a mapping with ``id`` and ``text``; ``on`` true
-    unless stored false; ``packed`` a count; anything else as stored. None when unusable."""
+    """One stored lesson made safe to read: a mapping with ``id`` and ``text``; ``waiting``
+    true only when stored exactly true (missing, null or anything else: not waiting); ``on``
+    true unless stored false or waiting; ``packed`` a count; anything else as stored. None when
+    unusable."""
     if not isinstance(x, dict):
         return None
     lid, text = x.get("id"), x.get("text")
@@ -94,12 +245,14 @@ def _lesson(x) -> dict | None:
         return None
     packed = x.get("packed")
     frm = x.get("from") if isinstance(x.get("from"), dict) else {}
+    waiting = is_waiting(x)
     return {
         **x,
         "id": lid,
         "text": text.strip(),
         "why": x.get("why") if isinstance(x.get("why"), str) else "",
-        "on": x.get("on") is not False,
+        "on": x.get("on") is not False and not waiting,
+        "waiting": waiting,
         "from": frm,
         "packed": packed if isinstance(packed, int) and not isinstance(packed, bool) else 0,
     }
@@ -178,6 +331,14 @@ def spawn(cfg, idea_id: str) -> int:
     return p.pid
 
 
+def cap_of(value) -> float:
+    """The post-mortem call's own cap from ``lessons.max_usd``: a number above 0, else
+    ``MAX_USD`` (null or a wrong value never means no cap)."""
+    if isinstance(value, bool) or not isinstance(value, int | float) or not value > 0:
+        return MAX_USD
+    return round(float(value), 2)
+
+
 def next_id(data: dict) -> str:
     n = 0
     for x in data.get("lessons") or []:
@@ -192,13 +353,15 @@ def get(data: dict, lid: str) -> dict | None:
 
 
 def switch(home: Path, lid: str, on: bool) -> dict:
-    """Turn one lesson on or off; returns it. ``KeyError`` for an unknown id."""
+    """Turn one lesson on or off; returns it. ``KeyError`` for an unknown id. Either press is
+    the person's answer, so a lesson that waited waits no more."""
     with locked(home):
         data = load(home)
         x = get(data, lid)
         if x is None:
             raise KeyError(lid)
         x["on"] = bool(on)
+        x["waiting"] = False
         x["switched"] = _today()
         save(home, data)
     return x
@@ -256,6 +419,8 @@ Rules for the lesson:
 - one sentence in the imperative, at most {max_text} characters, plain words;
 - general: it must help any product, so no product name, no file or command that only this
   product has;
+- no package or library name, no host name or address, no command-line flag (a lesson that
+  names one is not kept);
 - about the builder's own work (code, tests, README, defaults). When the hold says the check
   itself could not run something, or it is about money or the machine, there is no lesson.
 
@@ -264,13 +429,32 @@ Reply with one JSON object and nothing else:
  "same_as": "the id of a lesson already kept that says it" or null}}"""
 
 
+MARKERS = (
+    ("<<<brief", "<<< brief"),
+    ("brief>>>", "brief >>>"),
+    ("<<<holds", "<<< holds"),
+    ("holds>>>", "holds >>>"),
+)
+
+
+def _defang(text: str) -> str:
+    """Quoted text with the prompt's markers taken out, so it cannot close (or open) a quote
+    of its own (as ``loop/from_issue.py`` does for an issue). A replacement never makes a
+    marker: each one puts a space inside it."""
+    for marker, safe in MARKERS:
+        text = text.replace(marker, safe)
+    return text
+
+
 def prompt(brief: str, reasons: list[str], lessons: list[dict]) -> str:
-    existing = "".join(f"- {x['id']}: {x['text']}\n" for x in lessons) or "(none yet)\n"
+    existing = (
+        "".join(f"- {x['id']}: {_defang(str(x['text']))}\n" for x in lessons) or "(none yet)\n"
+    )
     holds = "\n".join(f"- {r}" for r in reasons)
     return PROMPT.format(
         tag=TAG,
-        brief=(brief or "").strip()[:4000],
-        holds=holds[:6000],
+        brief=_defang((brief or "").strip()[:4000]),
+        holds=_defang(holds[:6000]),
         existing=existing.rstrip("\n"),
         max_text=MAX_TEXT,
     )
@@ -290,6 +474,27 @@ def parse(text: str) -> dict | None:
     return got if isinstance(got, dict) else None
 
 
+def _host(t: str) -> bool:
+    """A host name, an IP address or localhost in ``t`` (a file name is not one)."""
+    for m in HOST.finditer(t):
+        end = m.group(1)
+        if end is None or end.lower() not in FILE_ENDINGS:
+            return True
+    return False
+
+
+def _package(t: str) -> bool:
+    """A package in ``t``: an install command, one added to the dependencies, or a name after
+    "the package", "a dependency on", "a library called", "import" (not an ordinary word)."""
+    if INSTALL.search(t) or ADD_DEP.search(t):
+        return True
+    for m in NAMED.finditer(t):
+        name = next((g for g in m.groups() if g), "")
+        if name.strip(".").lower() not in NOT_A_NAME:
+            return True
+    return False
+
+
 def check_text(text: str, product: str | None = None) -> list[str]:
     """Why a lesson's text may not be kept (empty: it may)."""
     out = []
@@ -304,6 +509,12 @@ def check_text(text: str, product: str | None = None) -> list[str]:
         out.append("the lesson is more than one sentence")
     if ADDRESS.search(t):
         out.append("the lesson holds an address")
+    if _host(t):
+        out.append("the lesson names a host or an address")
+    if FLAG.search(t):
+        out.append("the lesson names a command-line flag")
+    if _package(t):
+        out.append("the lesson names a package")
     p = (product or "").strip()
     if len(p) >= 3 and re.search(rf"(?i)\b{re.escape(p)}\b", t):
         out.append("the lesson names this product")
@@ -317,7 +528,8 @@ def postmortem(model, *, brief: str, reasons: list[str], product: str | None, da
     that is not JSON is asked again once."""
     from ..loop.models import add, split
 
-    live = [x for x in data.get("lessons") or [] if x.get("on")]
+    # the lessons in briefs and the ones waiting for the person: neither is written twice
+    live = [x for x in data.get("lessons") or [] if in_briefs(x) or is_waiting(x)]
     body = prompt(brief, reasons, live)
     usd, tokens, got = 0.0, None, None
     for attempt in range(2):
@@ -377,7 +589,9 @@ def record(
     result: str | None = None,
 ) -> dict | None:
     """Keep what one post-mortem found: a new lesson when ``got`` has text, and one
-    ``postmortems`` line either way. Returns the new lesson, or None."""
+    ``postmortems`` line either way. Returns the new lesson, or None. A new lesson waits for
+    the person (``on: false``, ``waiting: true``): no brief carries it until they switch it
+    on."""
     with locked(home):
         data = load(home)
         new = None
@@ -386,7 +600,8 @@ def record(
                 "id": next_id(data),
                 "text": got["text"],
                 "why": got.get("why") or "",
-                "on": True,
+                "on": False,
+                "waiting": True,
                 "from": {
                     "idea": idea,
                     "product": product,
@@ -399,7 +614,7 @@ def record(
             data["lessons"].append(new)
         if result is None:
             if new:
-                result = f"lesson {new['id']}"
+                result = f"lesson {new['id']}, waiting for you to switch it on"
             elif got and got.get("same_as"):
                 result = f"already said by {got['same_as']}"
             elif got and got.get("problems"):
@@ -424,10 +639,11 @@ def record(
 # -- into the next brief ------------------------------------------------------------------------
 def pack(home: Path, limit: int = MAX_IN_BRIEF) -> tuple[str, list[dict]]:
     """The block a new task's ``spec.md`` carries, and the lessons in it (newest first, on
-    only, at most ``limit``); counts each one's ``packed``. ``("", [])`` with none."""
+    and not waiting only, at most ``limit``); counts each one's ``packed``. ``("", [])`` with
+    none."""
     with locked(home):
         data = load(home)
-        on = [x for x in data["lessons"] if x.get("on")]
+        on = [x for x in data["lessons"] if in_briefs(x)]
         chosen = list(reversed(on))[: max(0, int(limit))]
         if not chosen:
             return "", []
@@ -445,14 +661,22 @@ def pack(home: Path, limit: int = MAX_IN_BRIEF) -> tuple[str, list[dict]]:
 
 
 def summary(home: Path) -> dict:
-    """The Lessons page's read: every lesson, newest first, with where it came from, and the
+    """The Lessons page's read: every lesson, newest first, with where it came from (each with
+    ``on`` and ``waiting`` as booleans, see ``_lesson``), how many wait for the person, and the
     last post-mortems. ``error`` instead when the file could not be read."""
     try:
         data = load(home)
     except LessonsError as e:
-        return {"lessons": [], "postmortems": [], "error": str(e), "at": time.time()}
+        return {
+            "lessons": [],
+            "waiting": 0,
+            "postmortems": [],
+            "error": str(e),
+            "at": time.time(),
+        }
     return {
         "lessons": list(reversed(data["lessons"])),
+        "waiting": sum(1 for x in data["lessons"] if is_waiting(x)),
         "postmortems": list(reversed(data["postmortems"][-20:])),
         "error": None,
         "at": time.time(),

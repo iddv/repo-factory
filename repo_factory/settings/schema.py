@@ -44,6 +44,8 @@ USD_CAPS = {
     "maintain.max_usd",
     "maintain.monthly_usd",
     "projects.budget.monthly_usd",
+    # the lesson post-mortem's cap per call: null is its default, $0.25, never no cap
+    "lessons.max_usd",
 }
 BUILD_CRITICAL = (
     ("build", "models"),
@@ -62,6 +64,7 @@ POSITIVE_CAPS = {
     "revise.max_usd",
     "maintain.max_usd",
     "maintain.monthly_usd",
+    "lessons.max_usd",
 }
 NOT_A_CAP = "0 or less is not a cap: write a number of dollars above 0, or null for no cap"
 # keys an older version read and this one retired with what they set: not a typo, so not an

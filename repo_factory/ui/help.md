@@ -69,13 +69,18 @@ checks; but when fewer than half of the flows could be measured, completeness ho
 ## Lessons {#lessons}
 
 When the checks hold a build for something its builder could have done better, repo-factory
-writes down what went wrong, in one line (one short call to a model, a few cents; nothing for a
-hold the builder could not have avoided, such as the spend cap). **Lessons** in the side nav
+writes down what went wrong, in one line (one short call to a model, capped at $0.25 a call by
+`lessons.max_usd`; nothing for a hold the builder could not have avoided, such as the spend
+cap). The brief and the holds are quoted to that call as data. A lesson that names a package, a
+host or an address, or a command-line flag is not kept, nor one that names the product.
+**A new lesson waits for you**: **Lessons** in the side nav shows it as "waiting for you: switch
+it on to use it in new briefs", and no brief carries it until you press **Switch on**. The page
 lists each lesson, where it came from, and how many briefs carried it. A lesson that is on goes
 into the brief of every build from the next one on, word for word; switch it off to keep it out.
-A build's page says which lessons its brief carries. Nothing is ever deleted. **Learn from held builds** in
-Settings › Building (or `lessons.enabled: false` in loop.yaml) turns lessons off; `repo-factory loop lessons` lists them, and `repo-factory
-loop lessons off L1` switches one off.
+A build's page says which lessons its brief carries. Nothing is ever deleted. **Learn from held
+builds** in Settings › Building (or `lessons.enabled: false` in loop.yaml) turns lessons off;
+`repo-factory loop lessons` lists them (a new one as `waiting`), `repo-factory loop lessons on
+L1` switches one on, and `repo-factory loop lessons off L1` switches one off.
 
 ## Projects and maintenance {#projects}
 

@@ -161,12 +161,14 @@ DEFAULTS: dict = {
     "api": {"require_token": True},
     # Lessons from your own builds (lessons/home.py): after a build the gate holds, one
     # no-tools call (model; null: the Claude Code CLI's default) writes at most one lesson
-    # into <home>/lessons.yaml; the next briefs carry the lessons that are on, newest first,
-    # at most max_in_brief. false: no post-mortem and nothing packed.
+    # into <home>/lessons.yaml, capped at max_usd per call. A new lesson waits for your press
+    # (the Lessons page); the next briefs carry the lessons you switched on, newest first, at
+    # most max_in_brief. false: no post-mortem and nothing packed.
     "lessons": {
         "enabled": True,
         "model": "claude-sonnet-5-5",
         "max_in_brief": 8,
+        "max_usd": 0.25,
     },
     # Maintaining the published repos through GitHub. Off until you switch it on for a
     # repository, on its project's page (``<home>/maintain/repos.json``); ``enabled`` is not

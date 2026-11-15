@@ -3039,8 +3039,9 @@ class App:
 
     # ---- lessons from your own builds (lessons/home.py) --------------------------------------
     def lessons(self) -> dict:
-        """``GET api/lessons``: every lesson, newest first, where it came from, on or off;
-        and the last post-mortems."""
+        """``GET api/lessons``: every lesson, newest first, where it came from, on or off, and
+        whether it waits for the person's press (``waiting``: a boolean, true only when stored
+        exactly true; ``lessons/home.py``); and the last post-mortems."""
         from ..lessons import home as lessons
 
         lp = self.loop()
@@ -3049,7 +3050,8 @@ class App:
         return got
 
     def lesson_switch(self, data: dict) -> dict:
-        """``POST api/lessons {id, on}``: one lesson on or off, from the next brief."""
+        """``POST api/lessons {id, on}``: one lesson on or off, from the next brief; either
+        press ends a new lesson's wait."""
         from ..lessons import home as lessons
 
         lid, on = (data or {}).get("id"), (data or {}).get("on")
@@ -3061,7 +3063,7 @@ class App:
             raise HttpError(404, f"no lesson {lid}")
         except lessons.LessonsError as e:
             raise HttpError(400, str(e))
-        return {"id": x["id"], "on": x["on"]}
+        return {"id": x["id"], "on": x["on"], "waiting": lessons.is_waiting(x)}
 
     def new_from_issue(self, ref: str) -> dict:
         """``POST api/new {issue: "owner/repo#12"}``: a task from an issue you opened or

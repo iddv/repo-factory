@@ -1270,10 +1270,12 @@ class Loop:
     @property
     def lessons_model(self):
         if self._lessons is None:
+            from ..lessons.home import cap_of
             from .models import claude
 
+            les = self.cfg.get("lessons") or {}
             self._lessons = claude(
-                (self.cfg.get("lessons") or {}).get("model"), "lessons", timeout_s=300
+                les.get("model"), "lessons", timeout_s=300, max_usd=cap_of(les.get("max_usd"))
             )
         return self._lessons
 
@@ -1356,7 +1358,10 @@ class Loop:
                 got=got,
             )
             if new:
-                self.ledger.note(idea["id"], f"lesson {new['id']} kept: {new['text']}")
+                self.ledger.note(
+                    idea["id"],
+                    f"lesson {new['id']} kept, waiting for you to switch it on: {new['text']}",
+                )
             return new
         except Exception as e:  # noqa: BLE001 - kept as the round's line
             msg = f"{type(e).__name__}: {e}"[:300]

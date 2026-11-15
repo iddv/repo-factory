@@ -704,7 +704,7 @@ def cmd_lessons(args):
             sys.exit(f"repo-factory loop lessons: no lesson {args.id}")
         except lessons.LessonsError as e:
             sys.exit(f"repo-factory loop lessons: {e}")
-        state = "on" if x["on"] else "off"
+        state = "on" if x["on"] is True else "off"
         print(f"{x['id']} is {state}: {x['text']}")
         return
     got = lessons.summary(lp.cfg.home)
@@ -716,14 +716,28 @@ def cmd_lessons(args):
     if not got["lessons"]:
         print("No lessons yet: a build the gate holds writes one, when there is one to learn.")
         return
+    waiting = []
     for x in got["lessons"]:
         frm = x.get("from") or {}
-        state = "on " if x["on"] else "off"
+        if lessons.is_waiting(x):  # only exactly true waits (summary reads it as a boolean)
+            state = "waiting"
+            waiting.append(x["id"])
+        else:
+            state = "on " if x.get("on") is True else "off"
         where = f"  (from {frm.get('product')}, {frm.get('date')})" if frm.get("product") else ""
         print(f"{x['id']}  {state}  {x['text']}{where}")
+    if waiting:
+        print(
+            f"\n{', '.join(waiting)} wait for you: no brief carries a new lesson until you "
+            f"switch it on (repo-factory loop lessons on {waiting[0]})."
+        )
 
 
 def cmd_lesson(args):
     """The post-mortem of a held build (started by the gate in a process of its own)."""
     new = _loop(args).lesson_now(args.id)
-    print(f"lesson {new['id']} kept: {new['text']}" if new else "no lesson kept")
+    print(
+        f"lesson {new['id']} kept, waiting for you to switch it on: {new['text']}"
+        if new
+        else "no lesson kept"
+    )
