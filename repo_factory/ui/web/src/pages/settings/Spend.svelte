@@ -90,6 +90,7 @@
     <label for="cap-fix">A fix at most</label>
     <input id="cap-fix" inputmode="decimal" bind:value={perFix} placeholder="none" />
     <p class="muted small">Fixes and the weekly proposals count here, and against the daily cap. At the limit maintenance starts nothing more this month, and says so.</p>
+    <p class="muted small" id="cap-fix-none">"none" for a fix (with no <code>revise.max_usd</code> in the product's policy file either) leaves a fix with no cap of its own: only the month's and the day's limits hold it.</p>
     <div class="actions"><button type="submit" class="btn primary" id="maint-caps-save" disabled={!ms}>Save</button></div>
   </form>
   {#if mSaid}<p class="said" role="status">{mSaid}</p>{/if}

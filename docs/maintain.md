@@ -55,12 +55,24 @@ paused, and a repository that is switched off or paused is not read at all. Per 
    `<home>/maintain/fixes.json`; after `revise.max_attempts` failed attempts the issue waits
    for your **Retry**.
 4. **Merging** (`watch.merge_step`), only with the repository's merge switch on (off by
-   default): at most one of the pull requests this install's fixes opened, a poll, through
-   `automerge.judge` (kind `bug` or `docs`, not a draft, no `hold`, under `merge.max_lines`,
-   nothing under `.github/`, no licence or lock file, no changes requested, up to date, every
-   check green), only while its head is the commit the fix pushed, and never while a workflow
-   on `main` may run off GitHub's own runners. Then `release.step` cuts a patch release when
-   the policy's `release.on_merge` allows it.
+   default; the page asks before it turns on and says what will merge). **Merging judges the
+   diff, not the label** (`watch.diff_refuses`): at most one of the pull requests this
+   install's fixes opened, a poll, only while its head is the commit the fix pushed; its issue
+   must carry exactly one kind label, `bug` or `docs` (none: no merge; a `feature` or `task`
+   never); a `docs` fix only when every changed file is a document (`*.md`, `*.rst`, `*.txt`,
+   `docs/`); a `bug` fix only with its reproducing test in the diff; no fix that changes a file
+   that runs somewhere (package manifests and lock files, build and test settings,
+   `conftest.py`, `Makefile`, `Dockerfile`, `.github/` whole, `AGENTS.md`, `CLAUDE.md`,
+   `.claude/`, `.vscode/`, `.devcontainer/`, `.pre-commit-config.yaml`, `.gitattributes`,
+   `.gitmodules`, `.envrc`: `automerge.runs_somewhere`) or a link or submodule; then
+   `automerge.judge` (not a draft, no `hold`, under `merge.max_lines`, no licence, no changes
+   requested, up to date, every check green, on every page of check runs); never while a
+   workflow on the default branch may run off GitHub's own runners. A fix's own scope check
+   refuses `.github/` whole and the agent and editor files too: a fix that needs one is a row
+   for you. **A release after a merge is a third switch** (off by default, whatever the policy
+   file says; it asks first): with it on, `release.step` cuts a patch release when the policy's
+   `release.on_merge` allows it. The tag runs any workflow of the product on tags or releases,
+   with its secrets.
 5. **The drift doctor** (reads only): AGENTS.md against the tree, and any workflow that may run
    anywhere but GitHub's own hosted runners (`repo_factory/runners.py`): a job is hosted only
    when every `runs-on` label is `ubuntu-*`, `windows-*` or `macos-*`; an expression
@@ -73,17 +85,22 @@ paused, and a repository that is switched off or paused is not read at all. Per 
 6. **This week's proposals** (`maintain/proposals.py`), with `maintain.proposals` on: once a week
    a detached `repo-factory maintain propose REPO` makes one no-tools call ($0.50 at most) on
    the README and the open issues' titles. Nothing is built from a proposal until you press
-   **Build this proposal**, which opens an issue labelled `go` by you.
+   **Build this proposal**, which opens an issue labelled `go` by you and with the proposal's
+   kind (a `feature` or `task` is fixed as one and never merged). A proposal's title and reason
+   are sanitised (links out, mentions as code) before they are kept, so the page shows exactly
+   what would be posted. A fix copies an issue's title into its commit and pull request with
+   every issue reference broken (`#9` becomes `# 9`), so a title closes nothing. Every read and
+   write means the repository's default branch, read once a poll.
 
 ### Everything maintenance writes to GitHub
 
 | What | When | Its switch | Default |
 |---|---|---|---|
-| The setup pull request (`repo-factory/maintenance`) and the repository's labels | You press **Switch maintenance on** | the repository's maintenance switch | off |
+| The setup pull request (`repo-factory/maintenance`) and the labels the repository does not have yet (one it has keeps its colour and description) | You press **Switch maintenance on** | the repository's maintenance switch | off |
 | A fix's branch (`repo-factory/N-…`, never overwritten) and its pull request, with two labels on that pull request | One of your own `go` issues, at a poll | the repository's maintenance switch, and the policy file's `status: maintained` | off |
 | A merge of one of its own fix pull requests | A poll, all the rules above | the repository's merge switch | off |
-| A tag and a GitHub release | Right after such a merge | the merge switch and `release.on_merge` | off |
-| An issue labelled `go` | You press **Build this proposal** | the repository's maintenance switch | off |
+| A tag and a GitHub release | Right after such a merge | the repository's release switch (third), and `release.on_merge` | off |
+| An issue labelled `go` and the proposal's kind | You press **Build this proposal** | the repository's maintenance switch | off |
 
 Nothing else: no comment and no label on any issue, no push to the default branch, no
 repository setting. The App, when you make one (Settings › GitHub), can write issues, pull
@@ -118,7 +135,12 @@ Fixes (`revise`) and proposals (`evolve`) are spend kinds the daily cap counts, 
 `maintain.monthly_usd` ($20) limits what they spend in a calendar month; `maintain.max_usd`
 ($5) caps one fix. Every session of a fix runs under the smaller of what is left of both. At
 the limit nothing new starts and the page says so; a fix already running stops before its next
-session.
+session. `maintain.max_usd: null` together with the policy file's `revise.max_usd: null` leaves a
+fix with no cap of its own: only the month's and the day's limits then hold it.
+
+"You", for every rule above, is each identity this install acts as: the signed-in `gh` login,
+your GitHub App's bot when you made one, and the user of `maintain.token_env_file` when you set
+one (read once a poll).
 
 ### Files
 

@@ -113,8 +113,9 @@ Claude line says which way builds sign in.
 A task can also come from a GitHub issue **you** opened, or labelled `build` yourself:
 `repo-factory loop add --from-issue owner/repo#12`, or **Build from an issue** on the page. Its
 text goes into the brief as quoted data; anyone else's issue is refused. When the checks hold a
-build, it writes one lesson about what went wrong, and the next briefs carry it (the page's
-**Lessons** switches each on or off).
+build, it writes one lesson about what went wrong; the lesson waits for you, and the next briefs
+carry it once you switch it on (the page's **Lessons**). A lesson that names a package, a host
+or a command-line flag is not kept.
 
 With a release, it will be three commands: `uv tool install <the wheel's address on the
 Releases page>`, `repo-factory doctor`, `repo-factory ui`. Then read

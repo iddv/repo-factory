@@ -668,6 +668,11 @@
   "application/json",
   "error: not a maintained repository"
  ],
+ "POST /api/maintenance/release {}": [
+  404,
+  "application/json",
+  "error: not a maintained repository"
+ ],
  "POST /api/maintenance/pause {}": [
   404,
   "application/json",

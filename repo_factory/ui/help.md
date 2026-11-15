@@ -118,10 +118,20 @@ stands. **Maintenance is off until you switch it on for a repository**, on its p
   stopped, is on the project's page. After two failed attempts an issue waits for you; **Retry**
   lets it try again. repo-factory pushes it from a clone of its own, never from the folder the
   fix's sessions worked in.
-- **Merge its own fixes when CI is green** is a second switch per repository, off by default:
-  bugs and docs only, every check green, never a change under `.github/`, never a pull request
-  anyone else pushed to, never while a workflow may run off GitHub's own runners (the page warns
-  about one); then a patch release, when the policy file allows it.
+- **Merge its own fixes** is a second switch per repository, off by default, and it asks first.
+  It judges the diff, not the label: only a fix whose issue is labelled exactly `bug` or `docs`
+  (no kind label: no merge; a feature or task never); a docs fix changes documents only; a bug
+  fix carries its reproducing test; never a change to a package manifest or lock file, build or
+  test settings, anything under `.github/`, an agent's or editor's file (`AGENTS.md`,
+  `CLAUDE.md`, `.claude/`, `.vscode/`, `.devcontainer/`) or a link; every check green; never a
+  pull request anyone else pushed to; never while a workflow may run off GitHub's own runners
+  (the page warns about one). A fix never changes `.github/` or those agent and editor files
+  either: one that would needs you.
+- **Release after each merge** is a third switch, off by default whatever the policy file says,
+  and it asks first: a release's tag runs any workflow of the product on tags or releases, with
+  its secrets.
+- **Build this proposal** opens the issue with the proposal's kind; a feature or task is never
+  merged. Switching maintenance on creates only the labels the repository does not have yet.
 - **Pause** stops the next poll from reading the repository at once, and stays paused after a
   restart. **Switch maintenance off** stops it altogether.
 - **This week's proposals**: once a week, one capped call reads the README and the open issues'
