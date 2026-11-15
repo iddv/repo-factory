@@ -1,4 +1,4 @@
-"""repo_factory/proc.py (CR-PLAN S-9): one way to start a background job, tell whether it still
+"""repo_factory/proc.py: one way to start a background job, tell whether it still
 runs, stop it, and remember it across a restart. Real processes (sleep), loopback-free."""
 
 import os
@@ -134,7 +134,7 @@ def test_running_is_the_same_process_not_just_the_same_pid(tmp_path):
     assert not proc.running(p.pid, s)
 
 
-# -- S-9 step 3: every background job of the product on proc ----------------------------------
+# -- every background job of the product on proc ----------------------------------------------
 def test_a_finished_job_is_reaped_without_anyone_asking(tmp_path):
     p = proc.spawn_detached([sys.executable, "-c", "pass"], log=tmp_path / "l")
     end = time.time() + 10

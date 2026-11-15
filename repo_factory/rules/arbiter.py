@@ -15,7 +15,7 @@ Verdicts are recorded on the rule (``Rule.verdicts``, ``caught``) and in the sto
 history. A rule is arbitrated once per version: a later failure of a rule already judged
 ``code_wrong`` reuses that verdict.
 
-Build v3 §4 (``controller.design_flaw``, only with the controller on): a fourth verdict,
+Build v3 (``controller.design_flaw``, only with the controller on): a fourth verdict,
 
 - ``design_flaw``: the spec requires what the rule asserts, but no local fix is consistent
   with the spec under the current interface, state model or ADR. The verdict names the
@@ -117,7 +117,7 @@ def arbitrate(
     adr: str | None = None,
 ) -> dict:
     """Rule id -> {"verdict", "reason", "question"?, "repair"?}. One call for all.
-    ``design_flaw`` (build v3 §4): offer the fourth verdict, validated by ``validate_flaw``
+    ``design_flaw`` (build v3): offer the fourth verdict, validated by ``validate_flaw``
     against the interface and ``adr``; an entry that fails validation is ``code_wrong``."""
     if not rules:
         return {}

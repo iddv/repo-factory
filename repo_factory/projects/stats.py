@@ -1,4 +1,4 @@
-"""A project's numbers and its drift, refreshed by the maintenance tick (PJ-PLAN §2.4, §4.2).
+"""A project's numbers and its drift, refreshed by the maintenance tick.
 
 ``refresh`` writes ``projects.stats`` from reads that already happen: one ``repos/<r>`` call
 through the maintenance ``gh`` (``github``), the poll's cache (counts, Needs-you rows,
@@ -219,7 +219,7 @@ def refresh(
     st = dict(old)
     errors = []
     if gh is None:
-        from ..maintain.poll import gh_for
+        from ..maintain.watch import gh_for
 
         gh = gh_for(loop)
     try:

@@ -8,7 +8,8 @@ export const PAGES: [string, string, string][] = [
   ["github", "GitHub", "The account a build publishes under"],
   ["building", "Building", "The flow and the models"],
   ["publishing", "Publishing", "When it publishes, and where"],
-  ["spend", "Spend", "The caps on a build and a day"],
+  ["maintenance", "Maintenance", "What it does on your published repositories"],
+  ["spend", "Spend", "The caps on a build, a day, and maintenance"],
   ["appearance", "Appearance", "Light or dark"],
 ];
 

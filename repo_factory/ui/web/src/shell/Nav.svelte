@@ -1,5 +1,5 @@
 <script lang="ts">
-  // The side nav: the product's name, Builds and Settings, and Help. One level only: a page's own
+  // The side nav: the product's name, Builds, Projects, Lessons and Settings, and Help. One level only: a page's own
   // parts are on the page, never tabs inside tabs.
   import { PRODUCT } from "../lib/product";
   import type { Section } from "../lib/router.svelte";
@@ -7,6 +7,8 @@
   let { section }: { section: Section } = $props();
   const ITEMS: [Section, string, string][] = [
     ["builds", "Builds", "#/builds"],
+    ["projects", "Projects", "#/projects"],
+    ["lessons", "Lessons", "#/lessons"],
     ["settings", "Settings", "#/settings"],
   ];
 </script>

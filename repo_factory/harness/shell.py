@@ -27,17 +27,12 @@ KINDS = {
 
 def install(dest: Path | None = None) -> Path:
     """An executable copy of the script (0755): ``dest``, else one named by its content under
-    ``~/.cache/repo_factory/shell/``. Rewritten only when missing or different."""
+    ``<home>/cache/shell/`` (``paths.cache``). Rewritten only when missing or different."""
     data = SCRIPT.read_bytes()
     if dest is None:
-        home = Path(os.environ.get("HOME") or Path.home())
-        dest = (
-            home
-            / ".cache"
-            / "repo_factory"
-            / "shell"
-            / f"factory-shell-{hashlib.sha256(data).hexdigest()[:12]}"
-        )
+        from .. import paths
+
+        dest = paths.cache() / "shell" / f"factory-shell-{hashlib.sha256(data).hexdigest()[:12]}"
     dest = Path(dest)
     try:
         if dest.read_bytes() == data and os.access(dest, os.X_OK):

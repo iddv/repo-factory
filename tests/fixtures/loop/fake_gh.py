@@ -147,13 +147,8 @@ def main(a):
         if full not in repos:
             return 1
         for i, x in enumerate(a):
-            if x == "-f" and a[i + 1].startswith("visibility="):
+            if x in ("-f", "--raw-field") and a[i + 1].startswith("visibility="):
                 repos[full]["visibility"] = a[i + 1].split("=", 1)[1]
-            if x == "-F" and a[i + 1] == "delete_branch_on_merge=true":
-                repos[full]["delete_branch_on_merge"] = True
-                save(repos)
-                print("true")
-                return 0
         save(repos)
         print(json.dumps({"full_name": full, "visibility": repos[full]["visibility"]}))
         return 0

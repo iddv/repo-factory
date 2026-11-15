@@ -1,4 +1,4 @@
-"""repo-factory's own connection to the person's GitHub account (WZ-DESIGN §3, the owner's D3 and D7).
+"""repo-factory's own connection to the person's GitHub account.
 
 One OAuth App the owner registers once ("repo-factory", device flow ticked; its client id is public
 and there is no secret) lets each install sign in with GitHub's **device flow**: repo-factory shows a
@@ -60,7 +60,7 @@ SCOPES = ("repo", "workflow", "read:org")
 PENDING_TTL_S = 600
 SECRET_FIELDS = (*github_app.SECRET_FIELDS, "access_token", "device_code", "refresh_token")
 REVOKE_URL = "https://github.com/settings/applications"
-INSTALL_LOGIN = "install-login.env"  # what install.sh's device flow leaves for repo-factory setup
+INSTALL_LOGIN = "install-login.env"  # what a device-flow sign-in leaves for repo-factory setup
 REFRESH_WITHIN_S = 1800  # an expiring token is renewed in its last half hour
 AGAIN = "click Connect again (Settings › Publishing › GitHub)"
 
@@ -514,7 +514,7 @@ def wait(
 
 
 def import_login(path: Path, client: str = "", store: Store | None = None) -> dict:
-    """Keep the login install.sh's device flow left (``GH_TOKEN=…`` at 0600) as this repo-factory's
+    """Keep the login a device-flow sign-in left (``GH_TOKEN=…`` at 0600) as this repo-factory's
     connection, so the person signs in once; the file is removed whatever happens. Its
     ``GH_REFRESH_TOKEN``, ``GH_TOKEN_EXPIRES_IN`` and ``GH_REFRESH_EXPIRES_IN`` lines, when
     GitHub gave them, are kept for ``refresh``."""
@@ -544,7 +544,7 @@ def import_login(path: Path, client: str = "", store: Store | None = None) -> di
     return keep(token, client or client_id(), store, grant=grant)
 
 
-keep_handoff = import_login  # what repo-factory setup calls with install.sh's file
+keep_handoff = import_login  # what repo-factory setup calls with that file
 
 
 def status(store: Store | None = None, *, check: bool = False) -> dict:
@@ -633,7 +633,7 @@ def stale(gh) -> bool:
 
 
 def connection(cfg) -> Gh:
-    """The ``Gh`` that acts as the person (WZ-DESIGN §3.6): this connection (its token file,
+    """The ``Gh`` that acts as the person: this connection (its token file,
     read into each gh subprocess) when there is one, else the person's ``gh`` login, exactly
     as before. Publishing, adopting, the repository list and the loop's own ``gh`` use it;
     maintenance asks ``identity.resolve`` first, which prefers repo-factory's GitHub App. An expiring

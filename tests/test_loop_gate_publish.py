@@ -156,7 +156,7 @@ def test_publish_private_then_approve_public(tmp_path, fake_gh):
     assert pub["release_url"].endswith("/releases/tag/v0.1.0")
     r = repos(fake_gh)["owner/clinicbook"]
     assert r["visibility"] == "private" and r["releases"][0]["tag"] == "v0.1.0"
-    # two assets: the source and the checks that ran before the release (EX-PLAN §4.4)
+    # two assets: the source and the checks that ran before the release
     assert [Path(a).name for a in r["releases"][0]["assets"]] == [
         "clinicbook-0.1.0.tar.gz",
         "clinicbook-0.1.0-checks.tar.gz",
@@ -178,7 +178,7 @@ def test_publish_private_then_approve_public(tmp_path, fake_gh):
     ]
     assert not visibility()
     # what was pushed: the product as delivered, LICENSE and NOTICE; no REPORT.md, nothing
-    # inserted into its README (EX-PLAN §4)
+    # inserted into its README
     ls = subprocess.run(
         ["git", "ls-tree", "-r", "--name-only", "main"],
         cwd=r["bare"],
@@ -210,7 +210,7 @@ def test_publish_private_then_approve_public(tmp_path, fake_gh):
     assert out["state"] == "public" and repos(fake_gh)["owner/clinicbook"]["visibility"] == "public"
     # through the REST API, which every gh version supports (2.45's ``repo edit`` lacks
     # --accept-visibility-change-consequences, which newer releases require)
-    assert visibility()[0][3:] == ["repos/owner/clinicbook", "-f", "visibility=public"]
+    assert visibility()[0][3:] == ["repos/owner/clinicbook", "--raw-field", "visibility=public"]
     assert not any(c[:2] == ["repo", "edit"] for c in gh_calls(fake_gh))
 
 
@@ -281,7 +281,7 @@ def test_jargon_never_holds_the_push(tmp_path, fake_gh):
 
 
 def test_the_provenance_scan_holds_only_ids_this_build_minted(tmp_path, fake_gh):
-    """EX-PLAN §4.6: the product's own ids (Repo Recall's "item s9") are its words; an id this
+    """The product's own ids (Repo Recall's "item s9") are its words; an id this
     build minted, next to its kind word, is repo-factory's process in the product's prose."""
     fs = [{"ref": "s1", "id": "S1", "severity": "low", "status": "open", "title": "t"}]
     lp, iid, _ = built(
@@ -433,7 +433,7 @@ def test_notice_lists_only_the_used_evidence_as_showing_the_problem():
     assert "https://example.org/e2" in rest and "describe the problem" not in text
 
 
-# -- publish anyway (AR-PLAN.md §4) ---------------------------------------------------------------
+# -- publish anyway -------------------------------------------------------------------------------
 def held(tmp_path, fake, **over):
     lp, iid, task = built(tmp_path, fake, publish={"enabled": True}, **over)
     out = lp.gate(iid)
@@ -531,20 +531,22 @@ def test_publish_anyway_never_overrides_security_or_exposure(tmp_path, fake_gh, 
     assert not created(fake_gh) and lp.ledger.get(iid)["state"] == "held"
 
 
-def test_a_review_that_did_not_run_is_a_gap_not_a_hold(tmp_path, fake_gh):
-    # AU1 #1: Sidedoor r1-r2 carried "the security review did not run", never overridable;
-    # it is repo-factory's own gap: the tests hold may be overridden, and the release notes say it
-    lp, iid = held(tmp_path, {"readiness": {"security": {"ran": False}, **RED_TESTS["readiness"]}})
-    g = lp.ledger.get(iid)["gate"]
-    assert [r.split(":")[0] for r in g["reasons"]] == ["tests"]
-    assert g["gaps"] == ["security: the security review did not run"]
-    out = lp.publish_anyway(iid, "the four failures are flaky clock tests", yes=True)
-    assert out["state"] == "published"
-    rel = [c for c in gh_calls(fake_gh) if c[:2] == ["release", "create"]][0]
-    assert any(
-        "Not every check could run before this release: the security review did not run." in x
-        for x in rel
+def test_a_review_that_did_not_run_holds_and_publish_anyway_refuses_it(tmp_path, fake_gh):
+    # The operator's decision: no security review, no publish, whatever may_override says
+    why = "the build's cap: $11.79 spent of $12.00, the stage needs $0.30 to start"
+    lp, iid = held(
+        tmp_path, {"readiness": {"security": {"ran": False, "why": why}, **RED_TESTS["readiness"]}}
     )
+    g = lp.ledger.get(iid)["gate"]
+    assert [r.split(":")[0] for r in g["reasons"]] == ["security", "tests"]
+    assert g["reasons"][0] == (
+        f"security: the security review did not run ({why}); raise the cap in Settings › "
+        "Spend, then Retry"
+    )
+    assert g["gaps"] == []
+    with pytest.raises(LoopError, match="the security review did not run"):
+        lp.publish_anyway(iid, "the four failures are flaky clock tests", yes=True)
+    assert not created(fake_gh) and lp.ledger.get(iid)["state"] == "held"
 
 
 def test_a_failing_quick_start_may_be_overridden(tmp_path, fake_gh):

@@ -55,12 +55,6 @@ GROUP = {
     "closed": DONE,
 }
 SPAWN_GRACE_S = 3.0
-# Settings › Publishing › Maintenance's identity before GitHub has answered once
-WAITING_ID = {
-    "status": "warn",
-    "pending": True,
-    "line": "still asking GitHub who this is; open the page again in a moment",
-}
 # The policy the page offers: v5, the product pipeline (`repo-factory build`'s default).
 REPO = Path(__file__).resolve().parents[2]
 POLICIES = ("v5",)
@@ -117,6 +111,20 @@ def undo_view(u: dict | None) -> dict | None:
 # Reject's reason chips for a build: a closed vocabulary, so a chip is never read as one of
 # `repo-factory loop reject`'s options.
 REJECT_CHIPS = ("wrong idea", "wrong scope", "bugs", "install or README", "security", "not for me")
+
+
+def issue_view(idea: dict | None) -> dict | None:
+    """The issue a task came from, as the page shows it: ``{ref, url, author, why}``."""
+    from ..loop.from_issue import of
+
+    got = of(idea or {})
+    return {k: got.get(k) for k in ("ref", "url", "author", "why")} if got else None
+
+
+def build_record(rows: list[dict]) -> dict:
+    from .record import of
+
+    return of(rows)
 
 
 def idea_title(i: dict) -> str:
@@ -1117,7 +1125,7 @@ class App:
         return None
 
     def spend_breakdown(self, now: float | None = None, builds: int = 30, days: int = 14) -> dict:
-        """Settings › Spend's breakdown (UI-v4.md 2.5) over the loop's ledger and the task
+        """Settings › Spend's breakdown over the loop's ledger and the task
         folders, read the way ``spend_summary`` (the header and Today) reads them, so every
         column sums to its total. By build: each loop idea with spend, its build's model calls
         (the task's ``.den/ledger.jsonl``) and the loop's own calls for it (pitch, checks,
@@ -1271,13 +1279,13 @@ class App:
                 )
         return sorted(out, key=lambda r: -r["all_usd"])
 
-    # ---- maintenance (MAINTAIN.md §8): read from GitHub, kept maintain.cache_s, never stored --
+    # ---- maintenance: read from GitHub, kept maintain.cache_s, never stored ------------------
     def maint_reader(self):
         """The page's GitHub reads (``maintain.github.Reader``), made once per ``gh`` command
         and cache time, kept in ``<home>/maintain/reads.json`` for that identity."""
         from ..github_user import stale
         from ..maintain.github import Reader
-        from ..maintain.poll import gh_for
+        from ..maintain.watch import gh_for
 
         lp = self.loop()
         if getattr(lp, "_gh", None) is not None and stale(lp._gh):
@@ -1305,9 +1313,9 @@ class App:
     def maint_target(self, repo: str | None = None, idea: str | None = None) -> dict:
         """A repo maintenance looks at, by name or by the idea that published it; anything
         else is a 404, so no request names an arbitrary repository."""
-        from ..maintain.poll import targets
+        from ..maintain.watch import published
 
-        for t in targets(self.loop()):
+        for t in published(self.loop()):
             if (repo and t["repo"] == repo) or (idea and t["idea"] == idea):
                 return t
         raise HttpError(404, "not a maintained repository")
@@ -1316,336 +1324,6 @@ class App:
     def month_start(now: float | None = None) -> float:
         t = time.localtime(now or time.time())
         return time.mktime((t.tm_year, t.tm_mon, 1, 0, 0, 0, 0, 0, -1))
-
-    def maint_spend(self, idea: str | None, since: float) -> dict:
-        from ..loop.ledger import MAINTAIN_KINDS
-
-        # tokens: {"in", "out"} over the rows that carry them; None when no row does (rows
-        # from before tokens were recorded have NULL token columns)
-        q = (
-            f"SELECT kind, COUNT(*), COALESCE(SUM(usd), 0), "
-            f"SUM(CASE WHEN in_tokens IS NOT NULL OR out_tokens IS NOT NULL THEN 1 ELSE 0 END),"
-            f" COALESCE(SUM(in_tokens), 0), COALESCE(SUM(out_tokens), 0) FROM spend "
-            f"WHERE ts >= ? AND kind IN ({','.join('?' * len(MAINTAIN_KINDS))})"
-        )
-        args: list = [since, *MAINTAIN_KINDS]
-        if idea:
-            q += " AND idea = ?"
-            args.append(idea)
-        with self.loop().ledger.db() as c:
-            rows = c.execute(q + " GROUP BY kind", args).fetchall()
-        by = {
-            k: {
-                "calls": n,
-                "usd": round(float(u), 4),
-                "tokens": {"in": int(ti), "out": int(to)} if nt else None,
-            }
-            for k, n, u, nt, ti, to in rows
-        }
-        tokens = None
-        for x in by.values():
-            if x["tokens"] is not None:
-                tokens = {
-                    "in": (tokens or {}).get("in", 0) + x["tokens"]["in"],
-                    "out": (tokens or {}).get("out", 0) + x["tokens"]["out"],
-                }
-        return {
-            "usd": round(sum(x["usd"] for x in by.values()), 4),
-            "tokens": tokens,
-            "by_kind": by,
-        }
-
-    def maintain_box(self, idea_id: str) -> dict:
-        """The build page's Maintenance box: the policy, the latest release, CI on main, the
-        open issues by label and the pull requests waiting, each with the GitHub search it
-        came from, and this month's maintenance spend for the build."""
-        from ..maintain import policy as P
-        from ..maintain.github import BOTS, PENDING, GitHubError, Repo
-        from ..maintain.poll import counts
-
-        t = self.maint_target(idea=idea_id)
-        full, rd = t["repo"], self.maint_reader()
-        repo = Repo(rd.gh, full)
-        out: dict = {"repo": full, "url": f"https://github.com/{full}", "errors": []}
-        fns = {
-            "policy": lambda: P.load(rd.gh, full),
-            "open": lambda: repo.issues(state="open"),
-            "release": repo.latest_release,
-            "ci": lambda: repo.ci_status("main"),
-        }
-        rd.ask({(full, k): fn for k, fn in fns.items()})  # all four at once
-
-        def read(what, default=None):
-            try:
-                v = rd.cached((full, what), fns[what], default=PENDING, wait=0)
-            except (GitHubError, P.PolicyError) as e:
-                out["errors"].append(f"{what}: {e}")
-                return default
-            if v is PENDING:
-                out["errors"].append(f"{what}: still asking GitHub")
-                return default
-            return v
-
-        pol = read("policy")
-        items = read("open", []) or []
-        out["release"] = read("release")
-        out["ci"] = read("ci")
-        out["policy"] = pol and {
-            "status": pol["status"],
-            "trigger": pol["revise"]["trigger"],
-            "auto_go": pol["revise"]["auto_go"],
-            "factory_patch": pol["merge"]["factory_patch"],
-            "dependabot": pol["merge"]["dependabot"],
-            "on_merge": pol["release"]["on_merge"],
-            "note": pol["spend"]["note"],
-        }
-        out["counts"] = counts(items)
-        prs = [i for i in items if i["is_pr"]]
-        keep = ("number", "title", "url", "labels", "draft")
-        out["factory_prs"] = [{k: p[k] for k in keep} for p in prs if "repo-factory" in p["labels"]]
-        out["dependabot"] = [{k: p[k] for k in keep} for p in prs if p["author"] in BOTS]
-        out["claimed"] = [
-            {
-                "number": i["number"],
-                "title": i["title"],
-                "url": i["url"],
-                "by": "repo-factory"
-                if "claim:repo-factory" in i["labels"]
-                else "an agent"
-                if "claim:agent" in i["labels"]
-                else ", ".join(i["assignees"]),
-            }
-            for i in items
-            if not i["is_pr"]
-            and (i["assignees"] or any(x.startswith("claim:") for x in i["labels"]))
-        ]
-        out["spend"] = self.maint_spend(idea_id, self.month_start())
-        from ..maintain import doctor
-        from ..maintain.github import Cache
-
-        rec = Cache(self.loop().cfg.home).repo(full)
-        out["polled"] = rec.get("last_poll")
-        out["doctor"] = doctor.summary(rec)
-        return out
-
-    def maintain_summary(self) -> dict:
-        """Settings › Publishing › Maintenance: the ``maintain:`` settings, the identity in use, every
-        maintained repo with its policy (from GitHub, cached) and what the last poll saw, and
-        this month's maintenance spend."""
-        from ..maintain import current, doctor, mergepolicy, pauses, recheck
-        from ..maintain import policy as P
-        from ..maintain.github import PENDING, Cache, GitHubError
-        from ..maintain.poll import gh_for, targets
-        from ..maintain.rows import overlay
-
-        lp = self.loop()
-        m = lp.cfg["maintain"]
-        ts = targets(lp)
-        rd = self.maint_reader() if ts else None
-        cache = Cache(lp.cfg.home)
-        repos = []
-        mine = ts
-        # every repo's policy asked for at once, in the background; known ones come back now
-        pols = {t["repo"]: (lambda r=t["repo"]: P.load(rd.gh, r)) for t in mine}
-        if rd is not None:
-            rd.ask(
-                {
-                    **{(r, "policy"): fn for r, fn in pols.items()},
-                    ("", "identity"): self.maint_identity_read,
-                }
-            )
-        for t in mine:
-            rec = cache.repo(t["repo"])
-            err = None
-            try:
-                pol = rd.cached((t["repo"], "policy"), pols[t["repo"]], default=PENDING, wait=0)
-                if pol is PENDING:  # not read yet: the poll's last reading
-                    raise P.PolicyError("still reading the policy from GitHub")
-                policy = {
-                    "status": pol["status"],
-                    "trigger": pol["revise"]["trigger"],
-                    "factory_patch": pol["merge"]["factory_patch"],
-                    "merge_kinds": list(pol["merge"].get("kinds") or []),
-                    "max_lines": pol["merge"].get("max_lines"),
-                    "dependabot": pol["merge"]["dependabot"],
-                    "on_merge": pol["release"]["on_merge"],
-                    "note": pol["spend"]["note"],
-                }
-            except (GitHubError, P.PolicyError) as e:
-                policy, err = rec.get("policy"), str(e)
-            held = [x for x in rec.get("rows") or [] if x.get("kind") == "agents_md"]
-            repos.append(
-                {
-                    "repo": t["repo"],
-                    "idea": t["idea"],
-                    "product": t["product"],
-                    "policy": policy,
-                    "error": err or rec.get("error"),
-                    "agents_md": overlay(lp.cfg.home, [{**held[0], "repo": t["repo"]}])[0]
-                    if held
-                    else None,
-                    "doctor": doctor.summary(rec),
-                    "recheck": recheck.job_state(lp.cfg.home, t["repo"]),
-                    "queue": rec.get("queue"),
-                    "prs": current.summary(rec),
-                    "merge_policy": mergepolicy.job_state(lp.cfg.home, t["repo"]),
-                    "last_poll": rec.get("last_poll"),
-                    "counts": rec.get("counts"),
-                    # maintenance paused on its project, in repo-factory (maintain/pauses.py)
-                    "paused": pauses.words(t.get("paused")),
-                    "edit_url": f"https://github.com/{t['repo']}/blob/main/.github/repo-factory.yml",
-                }
-            )
-        cmd = m.get("gh_command")
-        identity = (
-            {"kind": "command", "command": cmd if isinstance(cmd, str) else " ".join(cmd)}
-            if cmd
-            else {
-                "kind": "owner",
-                "command": " ".join(lp.cfg["publish"].get("gh_command") or ["gh"]),
-            }
-        )
-        from ..maintain.identity import token_refused, token_skipped
-
-        identity["token_file"] = m.get("token_env_file")
-        # GitHub refused it (expired or revoked): the page offers Remove this token setting
-        identity["refused_token"] = token_refused(lp.cfg)
-        identity["token_skipped"] = bool(token_skipped(lp.cfg))
-        if identity["refused_token"]:  # what the house dialog says before it goes
-            from ..settings.write import SENSITIVE
-
-            identity["remove_confirm"] = SENSITIVE["maintain.token_env_file"]
-        if identity["token_file"] and not identity["token_skipped"]:
-            identity["kind"] = "token"
-        elif identity["kind"] == "owner" and (g_conn := getattr(lp.gh, "connected_as", None)):
-            identity.update(kind="connection", login=g_conn)
-        g = rd.gh if rd is not None else gh_for(lp)
-        if g.credential == "app":
-            identity["kind"] = "app"
-            identity["bot_login"] = g.login_name
-        identity["mode"] = m.get("identity") or "auto"
-        identity["github"] = self.maint_identity()
-        return {
-            "settings": {
-                k: m.get(k)
-                for k in (
-                    "enabled",
-                    "poll_s",
-                    "cache_s",
-                    "triage_model",
-                    "triage_max_per_poll",
-                    "repos",
-                    "gh_command",
-                    "token_env_file",
-                    "identity",
-                    "concurrency",
-                    "max_usd",
-                    "net",
-                    "net_hosts",
-                    "lesson_label",
-                    "doctor_days",
-                    "refresh_max",
-                    "identity_fallback_to_login",
-                )
-            },
-            "identity": identity,
-            "repos": repos,
-            "last_poll": lp.ledger.meta("maintain_last_poll"),
-            "spend": self.maint_spend(None, self.month_start()),
-            "file": str(lp.cfg.layout.settings),
-        }
-
-    def maintain_lessons(self) -> dict:
-        """Lessons from user reports: the closed issues
-        labelled ``lesson`` on the maintained repos (one search, kept ``maintain.cache_s``) by
-        kind and how many were read, and the lessons they produced in the candidate file, a
-        probation one "waiting for the bench"."""
-        from ..lessons import postmortem, store
-        from ..maintain import identity
-        from ..maintain.github import PENDING
-        from ..maintain.poll import targets
-
-        lp = self.loop()
-        repos = [t["repo"] for t in targets(lp)]
-        out: dict = {
-            "repos": len(repos),
-            "issues": None,
-            "by_kind": {},
-            "lessons": [],
-            "errors": [],
-            "file": str(store.candidate_path()),
-        }
-        if repos:
-            rd = self.maint_reader()
-            try:
-                items = rd.cached(
-                    ("", "lesson-issues"),
-                    lambda: postmortem.lesson_issues(rd.gh, repos),
-                    default=PENDING,
-                )
-                if items is PENDING:  # not back yet: the next open has them
-                    out["errors"].append("still asking GitHub for the lesson issues")
-                    items = []
-                else:
-                    out["issues"] = len(items)
-                for i in items:
-                    k = "security" if "security" in i["labels"] else "bug"
-                    out["by_kind"][k] = out["by_kind"].get(k, 0) + 1
-            except Exception as e:  # noqa: BLE001 - the page shows the rest
-                out["errors"].append(identity.clean(str(e)))
-        try:
-            data = store.load(store.candidate_path())
-        except Exception as e:  # noqa: BLE001
-            data = store.empty()
-            out["errors"].append(f"the candidate lessons file: {e}")
-        word = {"probation": "waiting for the bench", "active": "in use", "retired": "retired"}
-
-        def lesson(x: dict) -> dict:
-            ref = str(x["born"].get("issue"))
-            full, _, n = ref.partition("#")
-            return {
-                "id": x["id"],
-                "text": x["text"],
-                "applies_to": x["applies_to"],
-                "status": x["status"],
-                "state": word.get(x["status"], x["status"]),
-                "issue": ref,
-                "url": f"https://github.com/{full}/issues/{n}",
-                "kind": x["born"].get("kind"),
-                "miss": x["born"].get("miss"),
-                "date": x["born"].get("date"),
-            }
-
-        # one lesson that cannot be read is listed as such
-        out["lessons"] = rowsafe.each(postmortem.issue_lessons(data), lesson, "lesson")
-        out["version"] = data["version"]
-        return out
-
-    def maint_identity(self) -> dict | None:
-        """Who maintenance is on GitHub (``identity.describe``: the kind, login, scopes or
-        fine-grained, expiry, maintained repos reached), kept ``maintain.cache_s``. Nothing
-        here reads the token: ``gh`` does. Never asked yet and not back in a moment: says
-        so, and the next open has it."""
-        from ..maintain import identity
-
-        rd = self.maint_reader()
-        try:
-            return rd.cached(("", "identity"), self.maint_identity_read, default=WAITING_ID)
-        except Exception as e:  # noqa: BLE001 - the page still shows the rest
-            return {"status": "warn", "line": f"could not ask GitHub: {identity.clean(str(e))}"}
-
-    def maint_identity_read(self) -> dict:
-        from ..maintain import identity
-        from ..maintain.poll import targets
-
-        lp = self.loop()
-        return identity.describe(
-            self.maint_reader().gh,
-            owner_gh=lp.gh,
-            owner_login=lp.cfg["publish"].get("owner"),
-            repos=[t["repo"] for t in targets(lp)],
-            home=lp.cfg.home,
-        )
 
     def set_maintain(self, body: dict) -> dict:
         from ..settings import write as settings
@@ -1661,44 +1339,195 @@ class App:
         for k, v in values.items():
             settings.write(paths.Layout(home).settings, ("maintain", k), v)
         self._maint = None
-        return self.maintain_summary()
+        return self.maintenance()
 
-    def maintain_act(self, body: dict) -> dict:
-        """Today's buttons on a maintenance row: ``retry`` removes ``needs-you`` (repo-factory may try
-        again), ``close`` closes the issue as not planned. Through the host's ``gh``."""
-        from ..maintain.github import Cache, GitHubError, Repo
+    # ---- maintenance per repository, and Projects (maintain/watch.py): never a GitHub call ----
+    def maintenance(self) -> dict:
+        """Settings › Maintenance and the Projects list: every published repository with its
+        switches, pause, what waits for you, its fixes and its proposals, from the poll's
+        cache and the local files (never a GitHub call), and maintenance's spend."""
+        from ..maintain import spend
+        from ..maintain.watch import published
+        from ..settings import write as settings
 
-        t = self.maint_target(repo=str(body.get("repo") or ""))
+        lp = self.loop()
+        m = lp.cfg.get("maintain") or {}
+        return {
+            "repos": [self.maintenance_repo(t) for t in published(lp)],
+            "spend": spend.summary(lp),
+            "paused": bool(lp.cfg.paused()),
+            "last_poll": lp.ledger.meta("maintain_last_poll"),
+            "settings": {k: m.get(k) for k in settings.MAINTAIN},
+            "rules": {
+                k: settings.rule_view(settings.RULES[f"maintain.{k}"]) for k in settings.MAINTAIN
+            },
+            # set in loop.yaml by hand on purpose (never from a request): shown, not written
+            "net_hosts": [str(x) for x in m.get("net_hosts") or [] if isinstance(x, str)],
+        }
+
+    def maintenance_repo(self, t: dict) -> dict:
+        from ..maintain import backfill, proposals, signin, watch
+
+        lp = self.loop()
+        home = lp.cfg.home
+        st = backfill.job_state(home, t["repo"]) or None
+        return {
+            **watch.rows_of(home, t["repo"]),
+            "signin": signin.blocks(lp.cfg),
+            "idea": t["idea"],
+            "product": t["product"],
+            "one_liner": t.get("one_liner") or "",
+            "setup": {k: v for k, v in st.items() if k not in ("pid", "start", "log")}
+            if st
+            else None,
+            "proposals": proposals.of(home, t["repo"]),
+        }
+
+    def projects(self) -> dict:
+        """Projects: one row a published product (its repository, maintenance on or off,
+        what waits for you), from ``maintenance``."""
+        out = self.maintenance()
+        return {"projects": out["repos"], "spend": out["spend"], "paused": out["paused"]}
+
+    def project(self, iid: str) -> dict:
+        """A product's page: what its brief promised, its build, and its maintenance."""
+        from ..maintain.spend import month_start
+        from ..maintain.watch import published
+
+        if not IDEA_ID.fullmatch(iid or ""):
+            raise HttpError(404, "no such project")
+        lp = self.loop()
+        t = next((x for x in published(lp) if x["idea"] == iid), None)
+        if t is None:
+            raise HttpError(404, "no such project: only a published build is a project")
+        idea = lp.ledger.get(iid) or {}
+        p = idea.get("pitch") or {}
+        with lp.ledger.db() as c:
+            month = float(
+                c.execute(
+                    "SELECT COALESCE(SUM(usd), 0) FROM spend WHERE idea = ? AND ts >= ?",
+                    (iid, month_start()),
+                ).fetchone()[0]
+            )
+        return {
+            **self.maintenance_repo(t),
+            "brief": {
+                "one_liner": p.get("one_liner") or "",
+                "who": p.get("who") or "",
+                "brief": p.get("brief") or "",
+            },
+            "build": self.key(Path(idea["task_dir"])) if idea.get("task_dir") else None,
+            "published": (idea.get("publish") or {}).get("url"),
+            "state": idea.get("state"),
+            "month_usd": round(month, 4),
+        }
+
+    def _published(self, body: dict) -> str:
+        repo = str(body.get("repo") or "")
+        return self.maint_target(repo=repo)["repo"]
+
+    def maintenance_switch(self, body: dict) -> dict:
+        """Maintenance on or off for one published repository (your press). On starts the
+        setup pull request in the background (labels, the policy file, AGENTS.md and CI);
+        off stops the next poll from reading it at all."""
+        from ..maintain import backfill, switch
+
+        repo, on = self._published(body), body.get("on")
+        if not isinstance(on, bool):
+            raise HttpError(400, "on must be true or false")
+        lp = self.loop()
+        switch.set_on(lp.cfg.home, repo, on, by="ui")
+        if on:
+            st = backfill.job_state(lp.cfg.home, repo) or {}
+            if st.get("state") != "running":
+                try:
+                    backfill.start(lp.cfg, repo, by="ui")
+                except backfill.BackfillError as e:
+                    raise HttpError(409, str(e))
+        return self.maintenance()
+
+    def maintenance_merge(self, body: dict) -> dict:
+        """Merging repo-factory's own bug and docs fixes when CI is green, for one repository
+        (your press; off by default; only while maintenance is on for it)."""
+        from ..maintain import switch
+
+        repo, on = self._published(body), body.get("on")
+        if not isinstance(on, bool):
+            raise HttpError(400, "on must be true or false")
         try:
-            n = int(body.get("number"))
-        except (TypeError, ValueError):
+            switch.set_merge(self.loop().cfg.home, repo, on, by="ui")
+        except ValueError as e:
+            raise HttpError(409, str(e))
+        return self.maintenance()
+
+    def maintenance_release(self, body: dict) -> dict:
+        """A patch release after each of its own merges, for one repository (your press; off
+        by default, whatever the policy file says; only while merging is on for it)."""
+        from ..maintain import switch
+
+        repo, on = self._published(body), body.get("on")
+        if not isinstance(on, bool):
+            raise HttpError(400, "on must be true or false")
+        try:
+            switch.set_release(self.loop().cfg.home, repo, on, by="ui")
+        except ValueError as e:
+            raise HttpError(409, str(e))
+        return self.maintenance()
+
+    def maintenance_pause(self, body: dict) -> dict:
+        """Pause or resume maintenance on one repository: the next poll skips it at once,
+        and the pause is a file, so it survives a restart."""
+        from ..maintain import pauses
+
+        repo, paused = self._published(body), body.get("paused")
+        if not isinstance(paused, bool):
+            raise HttpError(400, "paused must be true or false")
+        home = self.loop().cfg.home
+        if paused:
+            pauses.pause(home, repo, by="ui")
+        else:
+            pauses.resume(home, repo)
+        return self.maintenance()
+
+    def maintenance_retry(self, body: dict) -> dict:
+        """Retry: the failed attempts on one of your go issues are forgotten, so the next poll
+        may try again (nothing is written on GitHub)."""
+        from ..maintain import fixes
+
+        repo = self._published(body)
+        raw = body.get("number")
+        n = raw if isinstance(raw, int) and not isinstance(raw, bool) else 0
+        if n <= 0:
             raise HttpError(400, "number must be an issue number")
-        what = body.get("what")
-        rd = self.maint_reader()
-        repo = Repo(rd.gh, t["repo"])
+        fixes.retry(self.loop().cfg.home, repo, n, by="ui")
+        return self.maintenance()
+
+    def maintenance_build_proposal(self, body: dict) -> dict:
+        """Build this proposal (your press): it becomes an issue on the repository with the
+        go label, put on by you, so the next poll fixes it as a pull request. Nothing is built
+        from a proposal without this press."""
+        from ..maintain import proposals, switch
+        from ..maintain.github import GitHubError
+
+        repo = self._published(body)
+        lp = self.loop()
+        if not switch.is_on(lp.cfg.home, repo):
+            raise HttpError(409, f"maintenance is off for {repo}: switch it on first")
         try:
-            if what == "retry":
-                repo.set_labels(n, remove=["needs-you"])
-                Cache(self.loop().cfg.home).drop_row(t["repo"], "needs_you", n)
-            elif what == "close":
-                repo.close(n, "not_planned")
-                for k in ("needs_you", "untriaged"):
-                    Cache(self.loop().cfg.home).drop_row(t["repo"], k, n)
-            else:
-                raise HttpError(400, "what must be retry or close")
-        except GitHubError as e:
+            got = proposals.build(lp, repo, str(body.get("id") or ""))
+        except LookupError as e:
+            raise HttpError(404, str(e))
+        except (GitHubError, ValueError) as e:
             raise HttpError(502, str(e))
-        rd.forget(t["repo"])
-        return {"ok": True, "repo": t["repo"], "number": n, "what": what}
+        return {**self.maintenance(), "issue": got}
 
     def maintain_issue_create(self, body: dict) -> dict:
         """Cut a ticket: one issue on a maintained repo, with labels
         from the scheme; ``go`` only when the repo's policy lets repo-factory fix issues (else it is
-        dropped, and said). The body carries repo-factory's ticket marker, so a fix of it is never
-        counted as a user-found lesson."""
+        dropped, and said). The body carries repo-factory's ticket marker (an issue it opened)."""
         from ..maintain import policy as P
         from ..maintain.github import GitHubError, Repo
-        from ..maintain.revise import TICKET
+        from ..maintain.words import TICKET
 
         t = self.maint_target(repo=str(body.get("repo") or ""))
         title = " ".join(str(body.get("title") or "").split())[:120]
@@ -1738,30 +1567,6 @@ class App:
             (t["repo"], "open"), lambda: Repo(rd.gh, t["repo"]).issues(state="open"), default=[]
         )
 
-    def maintain_merge_policy(self, repo: str, on: bool, kinds: list, origin: str = "ui") -> dict:
-        """The owner's switch (registry ``maintain_merge_policy``): one pull request on the
-        product's ``.github/repo-factory.yml`` turning ``merge.factory_patch`` on (``ci-green``, for
-        ``kinds``) or off, opened in the background; the owner merges it."""
-        from ..maintain import mergepolicy
-
-        full = self.maint_target(repo=" ".join(str(repo or "").split()))["repo"]
-        try:
-            mergepolicy.start(self.loop(), full, bool(on), kinds or ["bug", "docs"], by=origin)
-        except mergepolicy.PolicyPRError as e:
-            raise HttpError(409, str(e))
-        return {
-            "repo": full,
-            "say": (
-                f"Opening the policy pull request for {full} in the background: "
-                + (
-                    "repo-factory merges its own fixes when CI is green"
-                    if on
-                    else "repo-factory stops merging its own fixes"
-                )
-                + " once you merge it on GitHub. repo-factory never merges it itself."
-            ),
-        }
-
     def maintain_recheck(self, repo: str, origin: str = "ui") -> dict:
         """Re-check (registry ``maintain_recheck``): main's head, the drift doctor and the
         project's drift of one maintained repo, read again in the background (reads only); its
@@ -1800,7 +1605,7 @@ class App:
         """A fix row's status and reason: ``running``; ``fixed`` (its pull request waits for
         the owner on GitHub); ``closed`` once a later poll no longer sees that pull request
         open (merged or closed: GitHub says which); ``tried`` (an attempt ended without one:
-        the issue's comments say why, and repo-factory tries again or labels it ``needs-you``). From
+        the project's page says why, and the next poll tries again or waits for you). From
         the fix's result and the poll's cache: never a GitHub call."""
         from ..maintain.github import Cache
         from ..maintain.revise import result
@@ -1813,7 +1618,7 @@ class App:
             open_prs = {
                 r.get("number")
                 for r in rec.get("rows") or []
-                if r["kind"] in ("factory_pr", "factory_pr_draft", "pr_ci")
+                if r["kind"] in ("fix_pr", "factory_pr", "factory_pr_draft", "pr_ci")
             }
             if (rec.get("last_poll") or 0) > (res.get("finished") or 0) + 1 and res.get(
                 "pr"
@@ -1844,7 +1649,7 @@ class App:
 
     def maintain_today(self, keys: dict | None = None) -> dict:
         """Today's maintenance rows, from the poll's cache (no GitHub call here)."""
-        from ..maintain.poll import today
+        from ..maintain.watch import today
 
         try:
             d = today(self.loop().cfg.home)
@@ -2664,6 +2469,19 @@ class App:
             # origin None is repo-factory itself (the brief accepted it, or a retry it made)
             "started_by": started_by(idea),
             "round": ((idea or {}).get("build") or {}).get("round"),
+            # the flow its last round ran (v5, or lean: unproven); None before a build
+            "flow": ((idea or {}).get("build") or {}).get("flow"),
+            # who the published repository will name, said in Publish's confirm (a build that
+            # waits at "Ready: publish?" only): {name, email}
+            "publish_as": self.publish_as() if (idea or {}).get("state") == "ready" else None,
+            # the GitHub issue it came from ({ref, url, author, why}), None for a typed task
+            "issue": issue_view(idea),
+            # the lessons from earlier builds its brief carries ([{id, text}])
+            "lessons": [
+                {"id": x.get("id"), "text": x.get("text")}
+                for x in (((idea or {}).get("pitch") or {}).get("lessons") or [])
+                if isinstance(x, dict) and x.get("text")
+            ],
             # the flash's Undo after Stop round or Cancel: {of, until}
             "undo": undo_view((idea or {}).get("undo")),
             # the pre-push checks of a held or ready build, run when it stopped:
@@ -2672,7 +2490,27 @@ class App:
             # Claims: how the task's claims are read, repo-factory's release text,
             # and the text check's state; None for a build with no pitch (a hand build)
             "claims": self.claims_of(idea),
+            # Ask for changes spends from what the build's cap has left (None: no cap, or
+            # revise.max_usd of its own)
+            "revise_left": self.revise_left(idea),
         }
+
+    def revise_left(self, idea: dict | None) -> float | None:
+        """What a revise round of this build may spend: the build's cap less what the build
+        and its revise rounds spent (``v5.change.build_left``); None without a cap, or with
+        ``revise.max_usd`` set (the round's own cap)."""
+        task = (idea or {}).get("task_dir")
+        rnd = ((idea or {}).get("gate") or {}).get("round")
+        if not task or not rnd:
+            return None
+        try:
+            if (self.loop_cfg().get("revise") or {}).get("max_usd") is not None:
+                return None
+            from ..v5.change import build_left
+
+            return build_left(Path(task) / ".den", int(rnd))
+        except Exception:  # noqa: BLE001 - a number on the page, never an error
+            return None
 
     def idea_row(self, i: dict, tasks: dict) -> dict:
         """A task in the ledger (an "idea" row): ``state`` ``new`` and no ``build`` is the
@@ -2792,16 +2630,86 @@ class App:
             "history": hist,
             "maintain": maint,
             "project_asks": self.project_asks(lp),
+            # Builds' head: your own record, from the builds' ledgers
+            "record": build_record(rows),
+        }
+
+    def publish_as(self) -> dict | None:
+        """``publish.identity`` for Publish's confirm, read once a minute (two git calls)."""
+        hit = getattr(self, "_publish_as", None)
+        if hit and time.time() - hit[0] < 60:
+            return hit[1]
+        try:
+            from ..loop.publish import identity
+
+            got = identity(self.loop().cfg)
+        except Exception:  # noqa: BLE001 - the confirm then says nothing of it
+            got = None
+        self._publish_as = (time.time(), got)
+        return got
+
+    # ---- lessons from your own builds (lessons/home.py) --------------------------------------
+    def lessons(self) -> dict:
+        """``GET api/lessons``: every lesson, newest first, where it came from, on or off, and
+        whether it waits for the person's press (``waiting``: a boolean, true only when stored
+        exactly true; ``lessons/home.py``); and the last post-mortems."""
+        from ..lessons import home as lessons
+
+        lp = self.loop()
+        got = lessons.summary(lp.cfg.home)
+        got["enabled"] = (lp.cfg.get("lessons") or {}).get("enabled") is not False
+        return got
+
+    def lesson_switch(self, data: dict) -> dict:
+        """``POST api/lessons {id, on}``: one lesson on or off, from the next brief; either
+        press ends a new lesson's wait."""
+        from ..lessons import home as lessons
+
+        lid, on = (data or {}).get("id"), (data or {}).get("on")
+        if not isinstance(lid, str) or not isinstance(on, bool):
+            raise HttpError(400, "say which lesson (id) and on: true or false")
+        try:
+            x = lessons.switch(self.loop().cfg.home, lid, on)
+        except KeyError:
+            raise HttpError(404, f"no lesson {lid}")
+        except lessons.LessonsError as e:
+            raise HttpError(400, str(e))
+        return {"id": x["id"], "on": x["on"], "waiting": lessons.is_waiting(x)}
+
+    def new_from_issue(self, ref: str) -> dict:
+        """``POST api/new {issue: "owner/repo#12"}``: a task from an issue you opened or
+        labelled ``build``; refused in words otherwise (``from_issue``). ``{"id",
+        "created", "state", "issue"}``."""
+        from ..loop.from_issue import IssueRefused
+
+        if not isinstance(ref, str) or not ref.strip():
+            raise HttpError(400, "write the issue as owner/repo#12")
+        lp = self.loop()
+        from ..registry import current_origin
+
+        lp.ledger.origin = current_origin() or "ui"
+        try:
+            idea, created = lp.add_issue(ref.strip())
+        except IssueRefused as e:
+            raise HttpError(400, f"Refused: {e}")
+        if not created and idea["state"] in ("rejected", "error", "skipped", "closed"):
+            idea = lp.send(idea["id"])
+        self._ideas = ((), {})
+        return {
+            "id": idea["id"],
+            "created": created,
+            "state": idea["state"],
+            "issue": issue_view(idea),
         }
 
     # ---- projects (repo_factory/projects/; off and unlisted): the ledger and the poll's cache --
-    def projects(self) -> dict:
+    def projects_record(self) -> dict:
         """Desk › Projects: one row per project, by health (``record.listing``)."""
         from ..projects import record
 
         return record.listing(self.loop())
 
-    def project(self, pid: str) -> dict:
+    def project_record(self, pid: str) -> dict:
         """A project's page (``record.page``), with its build's key for the link."""
         from ..projects import record
 
@@ -2814,11 +2722,6 @@ class App:
         i = out.get("idea")
         if i and i.get("task_dir"):
             i["build"] = self.key(Path(i["task_dir"]))
-        from ..maintain import mergepolicy  # the switch's policy PR, while it opens
-
-        for r in out.get("repos") or []:
-            if r.get("merge") is not None:
-                r["merge"]["job"] = mergepolicy.job_state(self.loop().cfg.home, r["repo"])
         from ..projects import jobs
 
         led = self.loop().ledger
@@ -2963,184 +2866,6 @@ class App:
             "diff": C.diff(C.to_text(prev["charter"]), text) if prev else None,
         }
 
-    def charter_edit(self, pid: str, text: str, note: str = "", origin: str = "ui") -> dict:
-        from ..projects import charter as C
-
-        self._project(pid)
-        lp = self.loop()
-        lp.ledger.origin = origin
-        try:
-            return C.edit(lp, pid, text, note)
-        except C.CharterError as e:
-            raise HttpError(400, str(e))
-
-    def charter_restore(self, pid: str, v: int, origin: str = "ui") -> dict:
-        from ..projects import charter as C
-        from ..projects.record import Projects
-
-        self._project(pid)
-        lp = self.loop()
-        lp.ledger.origin = origin
-        try:
-            return C.restore(Projects(lp.ledger), pid, v)
-        except C.CharterError as e:
-            raise HttpError(404, str(e))
-
-    def project_state(self, pid: str, state: str, origin: str = "ui") -> dict:
-        """Pause, resume or archive a project (no model; nothing on GitHub)."""
-        from ..projects.record import STATES, Projects
-
-        p, lp = self._project(pid), self.loop()
-        if state not in STATES:
-            raise HttpError(400, "state is active, paused or archived")
-        if p["state"] == state:
-            raise HttpError(409, f"it is already {state}")
-        lp.ledger.origin = origin
-        ps = Projects(lp.ledger)
-        p = ps.update(pid, state=state)
-        ps.event(
-            pid,
-            "state",
-            {"active": "resumed", "paused": "paused", "archived": "archived"}[state]
-            + f" ({origin})",
-            state=state,
-        )
-        return p
-
-    def maintenance_state(self, pid: str, paused: bool, origin: str = "ui") -> dict:
-        """Pause or resume maintenance on a project's repositories, in repo-factory, at once (the
-        owner, 2026-10-29; ``maintain/pauses.py``): no pull request, the repo's
-        ``.github/repo-factory.yml`` untouched. An adopted repo's profile is paused too (as Pause on
-        Build › Repos), and restored on resume only when this paused it."""
-        from ..maintain import pauses
-        from ..maintain import profile as Pf
-        from ..maintain.github import Cache
-
-        p, lp = self._project(pid), self.loop()
-        repos = [r["repo"] for r in p.get("repos") or [] if r.get("repo")]
-        if not repos:
-            raise HttpError(409, f"{p['name']} has no repository in maintenance")
-        home = lp.cfg.home
-        held = pauses.read(home)
-        if paused and all(r in held for r in repos):
-            raise HttpError(409, f"maintenance is already paused on {p['name']}")
-        if not paused and not any(r in held for r in repos):
-            raise HttpError(409, f"maintenance is not paused on {p['name']}")
-        running: list[int] = []
-        for full in repos:
-            prof = Pf.load(home, full)
-            if paused:
-                if full in held:
-                    continue
-                mine = prof is not None and prof.get("status") not in ("paused", "detached")
-                if mine:
-
-                    def fn(x):
-                        x.setdefault("added", {})["before_pause"] = x["status"]
-                        x["status"] = "paused"
-
-                    Pf.update(home, full, fn)
-                pauses.pause(home, full, by=origin, project=pid, profile=mine)
-                rec = Cache(home).repo(full)
-                running += [int(n) for n in (rec.get("revises") or {})]
-                if rec:
-                    rec["rows"] = []  # nothing to do while paused
-                    Cache(home).write_repo(full, rec)
-            else:
-                was = pauses.resume(home, full)
-                if (
-                    was
-                    and was.get("profile")
-                    and prof is not None
-                    and prof.get("status") == "paused"
-                ):
-
-                    def back(x):
-                        x["status"] = (x.get("added") or {}).pop("before_pause", None) or "watch"
-
-                    Pf.update(home, full, back)
-        lp.ledger.origin = origin
-        from ..projects.record import Projects
-
-        Projects(lp.ledger).event(
-            pid,
-            "maintenance",
-            "maintenance " + ("paused" if paused else "resumed") + f" ({origin})",
-        )
-        self._maint = None
-        return {
-            "id": p["id"],
-            "name": p["name"],
-            "repos": repos,
-            "paused": paused,
-            "running": running[0] if running else None,
-            "words": pauses.words(pauses.get(home, repos[0])) if paused else None,
-        }
-
-    def evolve_now(self, pid: str, origin: str = "ui") -> dict:
-        """Check for ideas now: ``repo-factory projects evolve ID`` detached; returns at once."""
-        from ..projects import jobs
-
-        p, lp = self._project(pid), self.loop()
-        if not p.get("charter"):
-            raise HttpError(409, "it has no charter yet: repo-factory drafts it first")
-        try:
-            jobs.spawn(lp.cfg, lp.ledger, "evolve", pid, by=origin)
-        except LoopError as e:
-            raise HttpError(409, str(e))
-        return p
-
-    def _change(self, cid: str):
-        from ..projects import changes as X
-
-        if not re.fullmatch(r"c[0-9a-f]{8}", str(cid or "")):
-            raise HttpError(404, "no such change idea")
-        lp = self.loop()
-        ch = X.get(lp.ledger, cid)
-        if ch is None:
-            raise HttpError(404, f"no change idea {cid}")
-        return lp, ch
-
-    def change_accept(self, cid: str, origin: str = "ui") -> dict:
-        from ..projects import changes as X
-
-        lp, _ = self._change(cid)
-        lp.ledger.origin = origin
-        try:
-            return X.accept(lp, cid, origin)
-        except LoopError as e:
-            raise HttpError(409, str(e))
-
-    def change_undo(self, cid: str, origin: str = "ui") -> dict:
-        from ..projects import filing
-
-        lp, _ = self._change(cid)
-        lp.ledger.origin = origin
-        try:
-            return filing.undo(lp, cid, origin=origin)
-        except LoopError as e:
-            raise HttpError(409, str(e))
-
-    def change_decline(self, cid: str, how: str, why: str = "", origin: str = "ui") -> dict:
-        from ..projects import changes as X
-
-        lp, _ = self._change(cid)
-        lp.ledger.origin = origin
-        try:
-            return X.decline(lp, cid, how, why, origin)
-        except LoopError as e:
-            raise HttpError(409, str(e))
-
-    def change_charter(self, cid: str, accept: bool, why: str = "", origin: str = "ui") -> dict:
-        from ..projects import changes as X
-
-        lp, _ = self._change(cid)
-        lp.ledger.origin = origin
-        try:
-            return X.charter_change(lp, cid, accept, why, origin)
-        except LoopError as e:
-            raise HttpError(409, str(e))
-
     def projects_settings(self) -> dict:
         """Settings › Publishing › Projects: the values, each key's check, and the autonomy now."""
         from ..projects import changes as X
@@ -3186,7 +2911,7 @@ class App:
             else:
                 over[key] = value
             Projects(self.loop().ledger).update(p["id"], settings=over)
-            return self.project(p["id"])
+            return self.project_record(p["id"])
         path = ("projects", *key.split("."))
         settings.write(
             self.loop_cfg().layout.settings,
@@ -3259,9 +2984,9 @@ class App:
 
     def project_asks(self, lp) -> list[dict]:
         """What the projects ask: a minor ask (Build it) or a scope ask (the
-        charter diff), never a model call. Needs you folds them into one row per project
-        (GRD-DESIGN §7.3); ``stale``: a minor or patch ask older than ``projects.ask_days`` (14)
-        leaves that row's count and stays on the project's page; a scope ask never ages."""
+        charter diff), never a model call. Needs you folds them into one row per project;
+        ``stale``: a minor or patch ask older than ``projects.ask_days`` (14) leaves that row's
+        count and stays on the project's page; a scope ask never ages."""
         from ..projects import changes as X
         from ..projects.charter import diff, to_text
         from ..projects.record import Projects
@@ -3314,17 +3039,6 @@ class App:
                     }
                 )
         return out
-
-    def charter_redraft(self, pid: str, origin: str = "ui") -> dict:
-        """Starts ``repo-factory projects charter ID`` detached and returns at once (no model here)."""
-        from ..projects import jobs
-
-        p, lp = self._project(pid), self.loop()
-        try:
-            jobs.spawn(lp.cfg, lp.ledger, "charter", pid, by=origin)
-        except LoopError as e:
-            raise HttpError(409, str(e))
-        return p
 
     @staticmethod
     def project_links(lp, rows: list[dict], maint: list[dict] | None = None) -> None:

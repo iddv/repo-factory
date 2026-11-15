@@ -1,10 +1,12 @@
 <script lang="ts">
-  // The shell: a side nav (Builds, Settings), the notice once, and the page the address names.
+  // The shell: a side nav (Builds, Projects, Lessons, Settings), the notice once, and the page the address names.
   // On a phone the nav is a bar across the top. Light and dark come from Appearance.
   import { onMount } from "svelte";
   import Nav from "./shell/Nav.svelte";
   import Notice from "./shell/Notice.svelte";
   import Builds from "./pages/builds/Builds.svelte";
+  import Lessons from "./pages/lessons/Lessons.svelte";
+  import Projects from "./pages/projects/Projects.svelte";
   import Settings from "./pages/settings/Settings.svelte";
   import { startLive } from "./lib/live";
   import { PRODUCT } from "./lib/product";
@@ -23,7 +25,7 @@
   });
   const r = $derived(here.r);
   $effect(() => {
-    const name = r.section === "builds" ? "Builds" : r.section === "settings" ? "Settings" : "Not found";
+    const name = r.section === "builds" ? "Builds" : r.section === "projects" ? "Projects" : r.section === "lessons" ? "Lessons" : r.section === "settings" ? "Settings" : "Not found";
     document.title = `${name} · ${PRODUCT}`;
   });
   function skip(e: MouseEvent): void {
@@ -39,6 +41,10 @@
     <Notice />
     {#if r.section === "builds"}
       <Builds {r} />
+    {:else if r.section === "projects"}
+      <Projects {r} />
+    {:else if r.section === "lessons"}
+      <Lessons />
     {:else if r.section === "settings"}
       <Settings {r} />
     {:else}

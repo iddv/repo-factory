@@ -1,4 +1,4 @@
-"""A project's record (PJ-PLAN.md §2): a repo that keeps evolving from the idea it came from.
+"""A project's record: a repo that keeps evolving from the idea it came from.
 
 A project joins what is scattered elsewhere: the idea that started it (a ledger idea; none for
 an adopted repo), the repo it produced or the repo that was adopted (``repos``: the primary,
@@ -36,8 +36,8 @@ CONTRACTS = {
     "stats": stored_projects.Stats,
 }
 EVENTS = ("created", "charter", "topic", "evolve", "change", "maintenance", "stats", "state")
-# Today's maintenance rows that wait for the owner (maintain.poll.rows, adopted_rows, doctor);
-# an AGENTS.md row is advice since FX3 (it holds no fix): attention, never needs-you
+# Today's maintenance rows that wait for the owner (maintain.watch, doctor); an AGENTS.md row
+# is advice (it holds no fix): attention, never needs-you
 NEEDS_YOU_ROWS = (
     "needs_you",
     "factory_pr",
@@ -284,7 +284,7 @@ def candidates(loop) -> list[dict]:
 
 
 def backfill(loop, dry_run: bool = False) -> list[dict]:
-    """Make the projects that should exist and do not (PJ-PLAN.md §2.5), idempotently:
+    """Make the projects that should exist and do not, idempotently:
     ``[{"id", "name", "kind", "repo", "created"}]`` (``created`` False: it was there already;
     with ``dry_run``: would be created, nothing written)."""
     ps = Projects(loop.ledger)
@@ -341,7 +341,7 @@ def health(
     now: float | None = None,
     paused: dict | None = None,
 ) -> tuple[str, str]:
-    """``(word, why)``: one word, never a score (PJ-PLAN.md §2.4). ``needs_you`` when a
+    """``(word, why)``: one word, never a score. ``needs_you`` when a
     Needs-you row or an ask belongs to the project; ``attention`` when CI is red, a Dependabot
     update waits past ``health.stale_pr_days``, the repo's last poll failed, AGENTS.md has
     advice or a drift finding is open; ``paused`` when the project is paused or archived;
@@ -437,7 +437,7 @@ def row(
     new_ideas: int = 0,
     held: dict | None = None,
 ) -> dict:
-    """One row of Desk › Projects (PJ-PLAN.md §6.2). ``held``: ``maintain.pauses.read``."""
+    """One row of Desk › Projects.``held``: ``maintain.pauses.read``."""
     paused = next(
         (held[r["repo"]] for r in p.get("repos") or [] if held and r.get("repo") in held), None
     )
@@ -489,7 +489,7 @@ def listing(loop) -> dict:
     held = paused_repos(loop.cfg.home)
     rows: list[dict] = []
     for p in ps.all(("active", "paused")):
-        # one project that cannot be read is listed as such (RCA A3)
+        # one project that cannot be read is listed as such
         with rowsafe.row(rows, "project", p.get("id"), name=p.get("name"), health=None, last=None):
             idea = ideas.get(p.get("idea")) or (
                 loop.ledger.get(p["idea"]) if p.get("idea") else None
@@ -528,7 +528,7 @@ def _preset(cfg: dict, p: dict) -> str:
 
 
 def page(loop, pid: str) -> dict:
-    """A project's page (PJ-PLAN.md §6.3): the row, the charter and its versions, the repos,
+    """A project's page: the row, the charter and its versions, the repos,
     the maintenance rows of its repos, the stats, the topic and the timeline."""
     from ..maintain.github import Cache
     from ..maintain.rows import overlay
@@ -543,8 +543,6 @@ def page(loop, pid: str) -> dict:
         nver = c.execute(
             "SELECT COUNT(*) FROM charter_versions WHERE project = ?", (pid,)
         ).fetchone()[0]
-    from ..maintain import current
-
     repos = []
     for r, (_, rec) in zip(p["repos"], recs):
         pol = rec.get("policy") or {}
@@ -557,14 +555,14 @@ def page(loop, pid: str) -> dict:
                 "last_poll": rec.get("last_poll"),
                 "ci": rec.get("ci"),
                 "error": rec.get("error"),
-                # repo-factory's own fix PRs (MQ): the merge policy, the queue, each one's state
+                # repo-factory's own fix PRs: the merge policy and the merge queue
                 "merge": {
                     "factory_patch": pol.get("factory_patch"),
                     "kinds": pol.get("merge_kinds"),
                     "max_lines": pol.get("max_lines"),
                     "product": p.get("kind") == "built",
                     "queue": rec.get("queue"),
-                    "prs": current.summary(rec),
+                    "prs": {},
                 },
             }
         )

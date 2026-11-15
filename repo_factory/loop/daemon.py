@@ -10,8 +10,8 @@ One tick, in order:
    ``publish.when: ready`` publishes it privately on its own (``publish.approval: auto``, set
    by hand only, also makes it public);
 3. unless paused (``PAUSE``) or over the optional ``daily_usd``: **maintain** the published
-   repos when maintenance is on (every ``maintain.poll_s``: triage, fixes of ``go`` issues and
-   releases on GitHub, ``repo_factory/maintain/poll.py``), write the **brief** of up to
+   repositories maintenance is switched on for (every ``maintain.poll_s``: fixes of the
+   issues you labelled ``go``, ``repo_factory/maintain/watch.py``), write the **brief** of up to
    ``pitch_per_tick`` new tasks (``pitch.py``), and **start** queued builds up to
    ``concurrency`` (running fixes take build slots too).
 
@@ -71,15 +71,15 @@ def anyway_hist(override: dict, outcome: str) -> dict:
 def _maintained(got: dict) -> tuple[str | None, bool]:
     """What a maintenance poll did, in words, and whether it did anything (a run then)."""
     repos = got.get("repos") or []
-    triaged = sum(len(r.get("triaged") or []) for r in repos)
-    fixing = sum(len((r.get("revise") or {}).get("started") or []) for r in repos)
+    fixing = sum(len(r.get("started") or []) for r in repos)
+    ended = sum(len(r.get("ended") or []) for r in repos)
     released = sum(1 for r in repos if (r.get("release") or {}).get("tag"))
     merged = sum(len(r.get("merged") or []) for r in repos)
     parts = [
         f"{n} {w}"
         for n, w in (
-            (triaged, "triaged"),
             (fixing, "fixes started"),
+            (ended, "fixes ended"),
             (merged, "merged"),
             (released, "released"),
         )
@@ -123,13 +123,14 @@ class Loop:
         summary_model=None,
         honesty_model=None,
         gh=None,
-        triage_model=None,
         charter_model=None,
+        lessons_model=None,
     ):
         self.cfg = (cfg or Config()).ensure()
+        self._lessons = lessons_model
         self.ledger = Ledger(self.cfg.db)
         self._model, self._summary, self._honesty = model, summary_model, honesty_model
-        self._triage, self._charter = triage_model, charter_model
+        self._charter = charter_model
         self._gh = gh
         self._stop_flag = False
         self._spawned: dict[str, int] = {}  # pre-push checks this loop started: idea -> pid
@@ -158,16 +159,6 @@ class Loop:
 
             self._honesty = claude(self.cfg["publish"].get("honesty_model"), "honesty")
         return self._honesty
-
-    @property
-    def triage_model(self):
-        if self._triage is None:
-            from .models import claude
-
-            self._triage = claude(
-                (self.cfg.get("maintain") or {}).get("triage_model"), "triage", timeout_s=300
-            )
-        return self._triage
 
     @property
     def charter_model(self):
@@ -199,6 +190,22 @@ class Loop:
         if not text:
             raise ValueError("say what to build")
         return self.ledger.add(text, source)
+
+    def add_issue(self, ref: str) -> tuple[dict, bool]:
+        """A task from a GitHub issue you opened or labelled ``build`` (``from_issue.read``;
+        ``IssueRefused`` otherwise, with its words): a new ledger row whose card keeps the
+        issue, or the row already made from that issue."""
+        from . import from_issue
+
+        issue = from_issue.read(self.gh, ref)
+        return self.ledger.add(
+            from_issue.task_text(issue),
+            from_issue.SOURCE,
+            title=issue["title"] or None,
+            source_ref=issue["source_ref"],
+            card=from_issue.card(issue),
+            fp_text=f"{issue['source_ref']}\n{issue['title']}\n{issue['body']}",
+        )
 
     def pitch(self, ids: list[str] | None = None, limit: int | None = None) -> list[dict]:
         if ids:
@@ -294,7 +301,8 @@ class Loop:
             )
         brief = (p.get("brief") or "").strip() or (idea.get("text") or "").strip()
         p.update(brief=brief, overridden=True, by=self.by())
-        task = pitch_mod.make_task(idea, p, self.cfg.tasks_dir)
+        task = pitch_mod.make_task(idea, p, self.cfg.tasks_dir, self.cfg.home, self.cfg)
+        p.update(lessons=pitch_mod.carried(task))
         return self.ledger.update(
             idea["id"],
             state="queued",
@@ -594,17 +602,19 @@ class Loop:
         return spend_summary(self.ledger)
 
     def over_cap(self) -> bool:
+        """Today's spend has reached ``daily_usd``. None: no cap; 0 or less (refused by the
+        schema, so no build starts) counts as reached, never as no cap."""
         cap = self.cfg.get("daily_usd")
-        return bool(cap) and self.spend()["today"]["total"] >= float(
-            cap
-        )  # stored-shape: bool(cap) first
+        if cap is None or isinstance(cap, bool) or not isinstance(cap, (int, float)):
+            return False
+        return float(cap) <= 0 or self.spend()["today"]["total"] >= float(cap)
 
     # -- builds --------------------------------------------------------------------------------
     def building(self) -> list[dict]:
         return self.ledger.all("building")
 
     def revising(self) -> list[dict]:
-        """The maintenance fixes running now (MAINTAIN.md §5.2): they share the build slots."""
+        """The maintenance fixes running now: they share the build slots."""
         from ..maintain.github import Cache
         from ..maintain.revise import running
 
@@ -887,7 +897,7 @@ class Loop:
             history={"failure": True},
         )
 
-    # -- Ask for changes (AR-PLAN.md §2): a revise round of a held or ready build -----------
+    # -- Ask for changes: a revise round of a held or ready build ---------------------------
     def revise(
         self,
         idea_id: str,
@@ -963,7 +973,7 @@ class Loop:
             _json.dumps({"reasons": reasons, "issues": issues, "failing": failing}, indent=1)
         )
         self._snapshot(idea, rec)
-        # reasons: the gate's holds the round starts from, to compare its outcome with (AU1 #2)
+        # reasons: the gate's holds the round starts from, to compare its outcome with
         rec.update(
             change={
                 "k": k,
@@ -1008,14 +1018,14 @@ class Loop:
         return r or "; ".join((idea.get("gate") or {}).get("reasons") or [])
 
     def _auto_repair(self, idea: dict, g: dict) -> dict | None:
-        """AU1 #2: a build the gate holds gets an automatic code revise round (origin
-        ``auto``) with the hold as its brief, as the owner's Ask for changes would; at most
+        """A build the gate holds gets an automatic code revise round (origin ``auto``) with
+        the hold as its brief, as the owner's Ask for changes would; at most
         ``build.auto_repair`` (default 1; 0: off) per build, counted when each starts, and
         ``revise.max_per_build``. Only queued: the loop's pause decides when it runs. Returns
         the idea (queued), or None: it stays held."""
         n = max(0, int(_setting(self.cfg["build"], "auto_repair", 1)))
         if (idea.get("build") or {}).get("flow") in ("simple", "lean"):
-            return None  # the flow's own fix rounds were its repair (BF D7; lean:
+            return None  # the flow's own fix rounds were its repair (lean:
             #                         one fix session, then it holds)
         reasons = list(g.get("reasons") or [])
         if (
@@ -1027,12 +1037,19 @@ class Loop:
         ):
             return None  # a cut-off build: a new build helps, not a fix
         why = gate_mod.cant_revise(g, idea.get("task_dir"), g)
-        if why:  # ASKF: repo-factory's own sandbox; no round changes it
+        if why:  # repo-factory's own sandbox; no round changes it
             log(f"{idea['id']} {idea['title']}: no automatic repair: {why}")
             return None
         rec = dict(idea.get("build") or {})
         used = int(rec.get("auto_repairs") or 0)
         if used >= n:
+            return None
+        left = self._build_left(idea, g)
+        if left is not None and left < 0.01:
+            log(
+                f"{idea['id']} {idea['title']}: no automatic repair: the build's cap is spent "
+                "(raise it in Settings › Spend, or set revise.max_usd)"
+            )
             return None
         text = "\n".join(
             [
@@ -1056,6 +1073,21 @@ class Loop:
             log(f"{idea['id']} {idea['title']}: no automatic repair: {e}")
             return None
 
+    def _build_left(self, idea: dict, g: dict) -> float | None:
+        """What the build's cap has left for a revise round (None: no cap, or a
+        ``revise.max_usd`` of its own, which the round spends from instead)."""
+        if (self.cfg.get("revise") or {}).get("max_usd") is not None:
+            return None
+        task, rnd = idea.get("task_dir"), g.get("round")
+        if not task or not rnd:
+            return None
+        from ..v5.change import build_left
+
+        try:
+            return build_left(Path(task) / ".den", int(rnd))
+        except (OSError, ValueError, TypeError):
+            return None
+
     @staticmethod
     def _not_moved(changes: list[dict], reasons: list[str]) -> int:
         """How many rounds ended on this same hold: the latest revise rounds that started
@@ -1068,7 +1100,7 @@ class Loop:
         return k + 1 if k else 0
 
     def _refuse_identical(self, idea: dict, text: str, hold: str) -> None:
-        """Never a third identical round (NG-PLAN §6): refused when ``revise.max_identical``
+        """Never a third identical round: refused when ``revise.max_identical``
         rounds (default 2; stopped and failed ones count: each request is a history row) were
         already asked against this same hold, which is still here unchanged, with the same
         instructions or the hold's own words. Different instructions are a material change and
@@ -1132,7 +1164,7 @@ class Loop:
             )
             log(f"{idea['id']} {idea['title']}: {said}")
             return out
-        # AU1 #2: the outcome, not the instructions: a round that left the hold exactly as it
+        # The outcome, not the instructions: a round that left the hold exactly as it
         # found it stops the automatic rounds, with one line
         n = (
             self._not_moved(rec["changes"], g["reasons"])
@@ -1218,9 +1250,124 @@ class Loop:
                 idea_id, state="held", build=rec, gate=g, reason="; ".join(g["reasons"]), note=note
             )
         log(f"{idea_id} {idea['title']}: {note}")
+        if g["verdict"] != "ready":
+            self._lesson(out, g)
         if repair and g["verdict"] != "ready":  # the hold is the round's brief
             return self._auto_repair(out, g) or out
         return out
+
+    @property
+    def lessons_model(self):
+        if self._lessons is None:
+            from ..lessons.home import cap_of
+            from .models import claude
+
+            les = self.cfg.get("lessons") or {}
+            self._lessons = claude(
+                les.get("model"), "lessons", timeout_s=300, max_usd=cap_of(les.get("max_usd"))
+            )
+        return self._lessons
+
+    def _lesson(self, idea: dict, g: dict) -> dict | None:
+        """After a round the gate held: what needs no model is decided here (lessons off, the
+        round already looked at, nothing the builder could have avoided, today's cap); the
+        post-mortem call itself runs in a process of its own (``repo-factory loop lesson ID``,
+        as the pre-push checks do), so the tick never waits on a model. Never fails the gate."""
+        from ..lessons import home as lessons
+
+        if (self.cfg.get("lessons") or {}).get("enabled") is False:
+            return None
+        rnd = g.get("round") or (idea.get("build") or {}).get("round")
+        product = (idea.get("pitch") or {}).get("product") or idea.get("title")
+        try:
+            if lessons.looked_at(lessons.load(self.cfg.home), idea["id"], rnd):
+                return None
+            if not lessons.learnable(list(g.get("reasons") or [])):
+                return lessons.record(
+                    self.cfg.home,
+                    idea=idea["id"],
+                    rnd=rnd,
+                    product=product,
+                    reasons=[],
+                    got=None,
+                    result="no lesson: nothing in the holds the builder could have avoided",
+                )
+            if os.environ.get(lessons.INLINE_ENV) == "1":
+                return self.lesson_now(idea["id"])
+            if os.environ.get(lessons.SPAWN_ENV) == "0":
+                return None
+            lessons.spawn(self.cfg, idea["id"])
+        except Exception as e:  # noqa: BLE001 - the gate's verdict stands without a lesson
+            log(f"{idea['id']}: no lesson: {type(e).__name__}: {e}"[:300])
+        return None
+
+    def lesson_now(self, idea_id: str) -> dict | None:
+        """The post-mortem of a task's last held round: at most one lesson, once per round
+        (``lessons/home.py``). ``repo-factory loop lesson ID`` runs it; a problem is kept as the
+        round's post-mortem line, never raised."""
+        from ..lessons import home as lessons
+
+        idea = self.ledger.must(idea_id)
+        g = idea.get("gate") or {}
+        rnd = g.get("round") or (idea.get("build") or {}).get("round")
+        product = (idea.get("pitch") or {}).get("product") or idea.get("title")
+        try:
+            data = lessons.load(self.cfg.home)
+            if idea.get("state") != "held" or lessons.looked_at(data, idea["id"], rnd):
+                return None
+            reasons = lessons.learnable(list(g.get("reasons") or []))
+            if not reasons:
+                return None
+            if self.over_cap():
+                return lessons.record(
+                    self.cfg.home,
+                    idea=idea["id"],
+                    rnd=rnd,
+                    product=product,
+                    reasons=reasons,
+                    got=None,
+                    result="no lesson: today's spend cap is reached",
+                )
+            try:
+                brief = (Path(idea["task_dir"]) / "spec.md").read_text()
+            except (OSError, KeyError, TypeError):
+                brief = str((idea.get("pitch") or {}).get("brief") or "")
+            got = lessons.postmortem(
+                self.lessons_model, brief=brief, reasons=reasons, product=product, data=data
+            )
+            from .models import spend_kw
+
+            self.ledger.spend("lessons", got["usd"], idea["id"], **spend_kw(got.get("tokens")))
+            new = lessons.record(
+                self.cfg.home,
+                idea=idea["id"],
+                rnd=rnd,
+                product=product,
+                reasons=reasons,
+                got=got,
+            )
+            if new:
+                self.ledger.note(
+                    idea["id"],
+                    f"lesson {new['id']} kept, waiting for you to switch it on: {new['text']}",
+                )
+            return new
+        except Exception as e:  # noqa: BLE001 - kept as the round's line
+            msg = f"{type(e).__name__}: {e}"[:300]
+            log(f"{idea['id']}: no lesson: {msg}")
+            try:
+                lessons.record(
+                    self.cfg.home,
+                    idea=idea["id"],
+                    rnd=rnd,
+                    product=product,
+                    reasons=[],
+                    got=None,
+                    result=f"the post-mortem failed: {msg}",
+                )
+            except Exception:  # noqa: BLE001 - the file itself is the problem
+                pass
+            return None
 
     def retry(self, idea_id: str, rebuild: bool = False, note: str | None = None) -> dict:
         """A held idea goes again. Held by the pre-push checks with a ready gate: publish is
@@ -1255,7 +1402,7 @@ class Loop:
             and not builds.resumable(task, rec.get("round") or 0)
         ):
             # the simple flow: Retry is the loop once more on the delivered tree, the hold as
-            # its brief (BF D6); Retry with a rebuild builds it again
+            # its brief; Retry with a rebuild builds it again
             try:
                 return self.revise(
                     idea["id"],
@@ -1304,7 +1451,7 @@ class Loop:
     # names its task, and only its own process tree) and SIGKILL after ``kill_grace`` by a
     # detached reaper. The idea stays ``building`` with ``build.kill`` ("stopping…") until
     # the loop's watch sees the build gone, then ``_controlled`` makes the change. (Pause build
-    # went into Stop round, AU1 #9: a "pause" kill recorded before that is a stop.)
+    # went into Stop round: a "pause" kill recorded before that is a stop.)
     CONTROL_WORDS = {"stop": "stopping", "pause": "stopping", "restart": "restarting"}
 
     def kill_grace(self) -> float:
@@ -1349,7 +1496,7 @@ class Loop:
         """Stop round: kill this build's workers and put the idea back as it was before the
         round (held or ready, that round's gate, reason and publish record); the stopped
         round stays on disk and in the history, resumable only by the owner's Resume. A
-        build paused before Pause build went into Stop round (AU1 #9) stops at once (nothing
+        build paused before Pause build went into Stop round stops at once (nothing
         runs)."""
         idea = self.ledger.must(idea_id)
         rnd = (idea.get("build") or {}).get("round")
@@ -1513,7 +1660,7 @@ class Loop:
     def resume_build(self, idea_id: str, origin: str = "cli", word: str = "resumed") -> dict:
         """Resume build: a round the owner stopped (Stop round) is queued to continue where it
         stopped, when v5 saved it; so is a build paused before Pause build went into Stop
-        round (AU1 #9).
+        round.
         ``word``: how the history says it ("undone" for the flash's Undo)."""
         idea = self.ledger.must(idea_id)
         rec = dict(idea.get("build") or {})
@@ -1938,10 +2085,10 @@ class Loop:
         )
 
     def _charter_draft(self, idea_id: str, key: str, done: dict) -> None:
-        """PJ-PLAN.md §3.2: a ready build's charter is drafted here, in the background pre-push
-        process, from the idea and the staged tree, once per tree (a Retry, a new round or a
-        changed pitch drafts again); kept as ``publish.charter_draft`` until the publish makes
-        the project. Never holds or fails the checks."""
+        """A ready build's charter is drafted here, in the background pre-push process, from
+        the idea and the staged tree, once per tree (a Retry, a new round or a changed pitch
+        drafts again); kept as ``publish.charter_draft`` until the publish makes the project.
+        Never holds or fails the checks."""
         idea = self.ledger.must(idea_id)
         old = (idea.get("publish") or {}).get("charter_draft") or {}
         if idea["state"] != "ready" or old.get("key") == key or self.charter_model is None:
@@ -2024,12 +2171,12 @@ class Loop:
         if pid:
             log(f"{idea['id']} {idea['title']}: pre-push checks started (pid {pid})")
 
-    # -- re-check with current repo-factory (EX-PLAN §7) -----------------------------------------------
+    # -- re-check with current repo-factory ----------------------------------------------------
     def recheck(self, idea_id: str) -> dict:
         """The installed repo-factory's checks on a held or ready build's delivered tree, compared
         with the version that built it (``recheck.run``): ``gate.recheck`` and a history line.
-        A held build's re-check that only turned holds into passes is its verdict (AU1 #3,
-        ``recheck.clears``): the gate re-recorded, judged by this version, and the build ready
+        A held build's re-check that only turned holds into passes is its verdict
+        (``recheck.clears``): the gate re-recorded, judged by this version, and the build ready
         when nothing else holds it; any other re-check changes nothing about the build. A press
         from the UI, MCP or the chat
         starts it detached (``recheck.spawn``) and returns at once; the command line runs it."""
@@ -2091,7 +2238,7 @@ class Loop:
         if won is None:
             log(f"{idea['id']} {idea['title']}: {said}")
             return self.ledger.update(idea["id"], gate=g, note=said)
-        # AU1 #3: it only turned holds into passes: the verdict, judged by this version
+        # It only turned holds into passes: the verdict, judged by this version
         gate_mod.record(Path(idea["task_dir"]), won)
         said += f"; the verdict is recorded, judged by repo-factory {won['judged_by']}: " + (
             "ready to publish"
@@ -2114,7 +2261,7 @@ class Loop:
         """``(gate.override_plan, the gate)`` for a held idea: the gate evaluated again on
         its delivered round, and the pre-push checks that would hold its push (its current
         ``publish.precheck``; none when they have not run on this tree). The gate is
-        ``gate.now``: the evaluation the page's dialog shows (ASKF)."""
+        ``gate.now``: the evaluation the page's dialog shows."""
         rnd = (idea.get("gate") or {}).get("round") or (idea.get("build") or {}).get("round")
         g = gate_mod.judged(idea.get("task_dir"), rnd, idea.get("gate"))
         if not g.get("checks"):  # no verdict at all: judged on the records
@@ -2132,7 +2279,7 @@ class Loop:
         yes: bool = False,
         holds: list[str] | None = None,
     ) -> dict:
-        """The owner publishes a held build over its holds (AR-PLAN.md §4): into a **private**
+        """The owner publishes a held build over its holds: into a **private**
         repo, with the override recorded and disclosed in its NOTICE and release notes. Only
         the holds in ``publish.anyway.may_override`` are overridden; nothing delivered,
         security, a secrets hit and a red bind_localhost never are. Going public is still the
@@ -2366,9 +2513,9 @@ class Loop:
 
     # -- maintenance (GitHub is the record; this only polls it) ----------------------------------
     def maintain(self) -> dict:
-        """One poll of the maintained repos (``maintain.poll.maintain_tick``). A failure is
-        logged and kept out of the rest of the tick."""
-        from ..maintain.poll import maintain_tick
+        """One poll of the repos maintenance is switched on for (``maintain.watch.tick``). A
+        failure is logged and kept out of the rest of the tick."""
+        from ..maintain.watch import tick as maintain_tick
 
         try:
             out = maintain_tick(self)
@@ -2376,37 +2523,36 @@ class Loop:
             self.ledger.meta("maintain_last_poll", time.time())
             log(f"maintenance poll failed: {type(e).__name__}: {e}")
             return {"error": f"{type(e).__name__}: {e}"}
-        n = sum(len(r.get("triaged") or []) for r in out.get("repos") or [])
-        if n:
-            log(f"maintenance: triaged {n} issue(s) across {len(out['repos'])} repo(s)")
         for r in out.get("repos") or []:
-            for k in (r.get("revise") or {}).get("started") or []:
+            for k in r.get("started") or []:
                 log(f"maintenance: fixing {r['repo']}#{k}")
-            for e in (r.get("revise") or {}).get("ended") or []:
+            for e in r.get("ended") or []:
                 log(
                     f"maintenance: the fix of {r['repo']}#{e['number']} ended: {e.get('outcome')}"
                     + (f" (PR #{e['pr']})" if e.get("pr") else "")
                 )
+            for k in r.get("merged") or []:
+                log(f"maintenance: merged {r['repo']}#{k}")
             if (r.get("release") or {}).get("tag"):
                 log(f"maintenance: released {r['repo']} {r['release']['tag']}")
-        try:  # projects: charters
-            from ..projects.life import tick as projects_tick
+        if out.get("spend"):
+            log(out["spend"])
+        try:  # projects: this week's proposals of the repos maintenance is on for
+            from ..maintain.proposals import tick as proposals_tick
 
-            out["projects"] = got = projects_tick(self)
-            for pid in got["drafting"]:
-                log(f"projects: drafting the charter of {pid} in the background")
-            for e in got["errors"]:
-                log(f"projects: {e}")
+            out["proposals"] = got = proposals_tick(self)
+            for e in got.get("errors") or []:
+                log(f"proposals: {e}")
         except Exception as e:  # noqa: BLE001 - the tick goes on
-            log(f"projects: {type(e).__name__}: {e}")
+            log(f"proposals: {type(e).__name__}: {e}")
         return out
 
     def maintain_due(self) -> bool:
-        m = self.cfg.get("maintain") or {}
-        if not m.get("enabled", False):
-            return False
-        last = self.ledger.meta("maintain_last_poll") or 0
-        return time.time() - last >= float(m.get("poll_s") or 900)
+        """A poll is due: maintenance is switched on for a published repo that is not paused,
+        and ``maintain.poll_s`` passed since the last one (``maintain.watch.due``)."""
+        from ..maintain.watch import due
+
+        return due(self)
 
     # -- the kill switch -----------------------------------------------------------------------
     def pause(self) -> None:
@@ -2500,6 +2646,8 @@ class Loop:
 
     def tick(self, only: list[str] | None = None) -> dict:
         """One pass of the loop."""
+        if self.cfg.changed():  # Settings or a hand edit: from the next brief or build on
+            self.cfg = self.cfg.reread().ensure()
         out: dict = {"watched": [i["id"] for i in self.watch()]}
         if time.time() - float(self.ledger.meta("activity_pruned") or 0) > 86400:
             try:  # the loop's marks past their keep, daily

@@ -30,7 +30,7 @@ REQUIRED = os.environ.get("REPO_FACTORY_BROWSER_REQUIRED") == "1"
 BUILT = (static.APP_DIR / ".vite" / "manifest.json").is_file()
 SIZES = [("wide", 1400, 900), ("phone", 390, 844)]
 SCHEMES = ["light", "dark"]
-SETTINGS = ["claude", "github", "building", "publishing", "spend", "appearance"]
+SETTINGS = ["claude", "github", "building", "publishing", "maintenance", "spend", "appearance"]
 TASK = "a command-line tool that turns a folder of Markdown notes into one searchable HTML page"
 NOTICE = (
     "repo-factory is an experiment. It runs code a model wrote and can publish under your "
@@ -160,7 +160,12 @@ def test_the_first_screen_says_the_notice_and_builds_empty_with_new_task(browser
         assert page.inner_text("#notice").startswith(NOTICE)
         buttons = page.locator("main .btn:not(#notice-dismiss)")
         assert buttons.count() == 1 and buttons.first.inner_text() == "New task"
-        assert page.locator("nav.nav .item").all_inner_texts() == ["Builds", "Settings"]
+        assert page.locator("nav.nav .item").all_inner_texts() == [
+            "Builds",
+            "Projects",
+            "Lessons",
+            "Settings",
+        ]
         problems = look(page, name)
         page.click("#notice-dismiss")
         page.reload()
@@ -287,6 +292,25 @@ def test_every_settings_page_draws_in_light_and_dark_wide_and_on_a_phone(browser
     assert not problems, problems
 
 
+def test_lessons_and_build_from_an_issue_draw_in_light_and_dark_wide_and_on_a_phone(
+    browser, server
+):
+    problems = []
+    for name, w, h in SIZES:
+        for scheme in SCHEMES:
+            page = open_page(browser, server, w, h, scheme, "#/lessons")
+            until(page, "document.querySelector('#lessons-empty')")
+            assert page.locator('nav.nav .item[aria-current="page"]').inner_text() == "Lessons"
+            problems += look(page, f"lessons {name} {scheme}")
+            page.evaluate("() => { location.hash = '#/builds/new'; }")
+            until(page, "document.querySelector('#issue-build')")
+            assert page.locator("#issue-build").inner_text() == "Build from an issue"
+            problems += look(page, f"new task {name} {scheme}")
+            assert theme_is(page, scheme), f"{name} {scheme}: drawn in the other scheme"
+            page.close()
+    assert not problems, problems
+
+
 def test_appearance_switches_light_and_dark(browser, server):
     page = open_page(browser, server, 1400, 900, "light", "#/settings/appearance")
     until(page, "document.querySelector('#theme')")
@@ -300,3 +324,22 @@ def test_appearance_switches_light_and_dark(browser, server):
     problems = look(page, "appearance")
     page.close()
     assert not problems, problems
+
+
+def test_projects_say_nothing_is_published_and_maintenance_is_off(browser, server):
+    """Projects and Settings › Maintenance on a fresh home: nothing published, maintenance off,
+    its money on Spend; light and dark, desktop and phone."""
+    for name, w, h in SIZES:
+        for scheme in ("light", "dark"):
+            page = open_page(browser, server, w, h, scheme, "#/projects")
+            until(page, "document.querySelector('#projects-empty')")
+            assert "Maintenance is off until you switch it on" in page.inner_text("main")
+            problems = look(page, f"{name}-{scheme}-projects")
+            page.goto(page.url.split("#")[0] + "#/settings/maintenance")
+            until(page, "document.querySelector('#maint-none')")
+            page.goto(page.url.split("#")[0] + "#/settings/spend")
+            until(page, "document.querySelector('#spend-maint-month')")
+            assert "$0.00 of $20.00" in page.inner_text("#spend-maint-month")
+            problems += look(page, f"{name}-{scheme}-spend")
+            page.close()
+            assert not problems, problems

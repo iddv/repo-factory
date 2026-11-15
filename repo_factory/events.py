@@ -607,8 +607,8 @@ def v4_event(st: dict, act: _Activity, t: str, e: dict) -> None:
             )
 
 
-# an old round's ``mutation`` event (the retired mutants stage, AU1 #4) and ``prediction``
-# event (p_hidden, AU1 #5) are not read: a type fold does not know changes nothing
+# an old round's ``mutation`` event (the retired mutants stage) and ``prediction``
+# event (p_hidden, retired too) are not read: a type fold does not know changes nothing
 V5_TYPES = (
     "v5_stage",
     "claims",
@@ -636,7 +636,7 @@ V5_STAGE_WORDS = {
     "readiness": "Readiness: security review, operational checks, repair",
     "deliver": "Delivering",
     "reproduce": "Reproducing the issue as a failing test",
-    # the simple flow's steps (BF-DESIGN §4)
+    # the simple flow's steps
     "plan": "Planning the product (the plan and the checklist)",
     "check": "Checking it: tests, security and readiness at once",
     "fix": "Fixing what the checks found",
@@ -689,7 +689,7 @@ def v5_event(st: dict, act: _Activity, t: str, e: dict) -> None:
                 s[k] = int(s.get(k) or 0) + int(e[k])
         if isinstance(e.get("prompts"), dict):  # the prompt versions the stage used
             s["prompts"] = {**(s.get("prompts") or {}), **e["prompts"]}
-        if isinstance(e.get("tools_by_server"), dict):  # MCP calls per server (CAP-PLAN §3)
+        if isinstance(e.get("tools_by_server"), dict):  # MCP calls per server
             tbs = s.setdefault("tools_by_server", {})
             for k, n in e["tools_by_server"].items():
                 tbs[k] = int(tbs.get(k) or 0) + int(n or 0)
@@ -911,7 +911,7 @@ def _on_start(f: _Fold, t: str, e: dict) -> None:
     )
     if e.get("pipeline") == "v5" and e.get("stages"):  # the stage strip's plan
         v5_event(st, f.act, "v5_plan", e)
-    if e.get("kind") == "revise":  # a revise round (Ask for changes; AR-PLAN.md §2)
+    if e.get("kind") == "revise":  # a revise round (Ask for changes)
         st["revise"] = {k: e.get(k) for k in ("revises", "origin", "mode", "instructions")}
 
 
@@ -948,7 +948,7 @@ def _on_tests_generated(f: _Fold, t: str, e: dict) -> None:
 
 def _on_brief(f: _Fold, t: str, e: dict) -> None:
     f.act.event(t, e)
-    # Build v3 §7b: emitted just before its candidate starts (``core.briefs``).
+    # Build v3: emitted just before its candidate starts (``core.briefs``).
     if e.get("candidate") is not None:
         f.cands.setdefault(e["candidate"], {"candidate": e["candidate"]})["brief"] = {
             k: e.get(k)
@@ -991,7 +991,7 @@ def _on_plan(f: _Fold, t: str, e: dict) -> None:
     }
     if e.get("backtrack"):
         st["plan"]["backtrack"] = e["backtrack"]
-    # After a backtrack's replan (build v3 §4) the milestones it kept keep their state.
+    # After a backtrack's replan (build v3) the milestones it kept keep their state.
     before = {k: v for k, v in f.ms.items() if k in set(e.get("kept") or [])}
     f.ms = {
         m["id"]: {
@@ -1346,7 +1346,7 @@ FOLD: dict[str, Callable[[_Fold, str, dict], None]] = {
     "verdict": _on_verdict,
     "build_finished": _on_build_finished,
 }
-"""Event type -> its handler (CR-PLAN S-14). A type not here changes nothing."""
+"""Event type -> its handler. A type not here changes nothing."""
 
 
 def fold(events: list[dict], build=None) -> dict | None:
@@ -1374,7 +1374,7 @@ def fold(events: list[dict], build=None) -> dict | None:
     st["candidates"] = [f.cands[k] for k in sorted(f.cands)]
     st["milestones"] = sorted(f.ms.values(), key=lambda m: (m.get("n") or 0, m["id"]))
     if st["controller"]:
-        # Each milestone box lists the controller's decisions after its runs (build v3 §4).
+        # Each milestone box lists the controller's decisions after its runs (build v3).
         for m in st["milestones"]:
             m["decisions"] = [
                 d for d in st["controller"]["decisions"] if d.get("milestone") == m["id"]
@@ -1390,7 +1390,7 @@ def fold(events: list[dict], build=None) -> dict | None:
 
 
 def forks(st: dict, judging: set = frozenset()) -> dict | None:
-    """The latest design task's parallel forks (build v3 §3): one entry per approach hint,
+    """The latest design task's parallel forks (build v3): one entry per approach hint,
     its latest run, and the judge's outcome once the task is judged."""
     seen = [
         (tk, m)

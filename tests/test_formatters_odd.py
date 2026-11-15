@@ -1,8 +1,7 @@
-"""The loop's formatters over every shape a stored idea can take (repo-factory-notes
-plans/CTR-DESIGN.md §4.5): an idea's columns come from their contract types' strategies
-(``stored.testing.strategy``) read back as the ledger reads them (``stored.kept``), so a field
-added to a type is generated on the next run. A formatter never raises, and the page's idea
-row keeps its type."""
+"""The loop's formatters over every shape a stored idea can take: an idea's columns come from
+their contract types' strategies (``stored.testing.strategy``) read back as the ledger reads
+them (``stored.kept``), so a field added to a type is generated on the next run. A formatter
+never raises, and the page's idea row keeps its type."""
 
 from __future__ import annotations
 

@@ -1,8 +1,8 @@
 /* repo-factory.css: the page's tokens, its resets and small utilities, and the help page's rules
    repo-factory serves it at static/repo-factory.css, before the first paint with theme.js;
    /help reads it alone. The app's own rules
-   (the frame, the lists, the panes) are ui/web/src/lib/base.css, in the built app (FE-13).
-   The palette is UI-v4.md section 1, from the logo: its blue, violet and navy as ink in the
+   (the frame, the lists, the panes) are ui/web/src/lib/base.css, in the built app.
+   The palette comes from the logo: its blue, violet and navy as ink in the
    light theme and as pastel on navy in the dark one. A pastel is never the only carrier of
    meaning (status is an icon and a word); text on a pastel chip is --chip-text. Every pair
    the UI uses is checked for AA by tests/test_palette.py, which reads this file.
@@ -59,7 +59,7 @@
     color-scheme: dark;
   }
 }
-/* the workspace's layout tokens (WORKSPACE.md 7): names for the panes, aliases of the palette */
+/* the workspace's layout tokens: names for the panes, aliases of the palette */
 :root { --pane: var(--box); --raise: var(--box); --sunk: var(--subtle); --line: var(--border); --line2: var(--border-2); --ink: var(--text); --ink2: var(--muted);
   --sel: var(--blue-wash); --selbar: var(--blue); --run: var(--violet); --runbg: var(--violet-wash); }
 /* the navigator's tokens: the page's own here; a sidebar theme (static/looks.css) sets each */

@@ -1,7 +1,7 @@
 """Tokens next to dollars (the UI shows tokens per thing; dollars stay for Settings > Spend):
 the loop's spend table gains token columns by an add-only migration, the den ledger, the
-v5_stage events and their fold, the v5 view, the build rows, triage, the pitch, the context,
-revise, the status' today/week and the maintenance spend. Old records without token data
+v5_stage events and their fold, the v5 view, the build rows, the pitch, the context,
+revise and the status' today/week. Old records without token data
 read as None, never as zero and never from dollars. Offline: scripted models and harnesses,
 the fake claude."""
 
@@ -15,13 +15,12 @@ import pytest
 from repo_factory.events import EventLog, fold, read_events
 from repo_factory.loop import ledger as loop_ledger
 from repo_factory.loop.models import Costed, split
-from repo_factory.maintain import github, revise, triage
-from repo_factory.ui import api, server
+from repo_factory.maintain import revise
+from repo_factory.ui import server
 
 from .loop_common import FakeModel, make_loop
-from .test_maintain_revise import REPO, Scripted, fix, fixes, names_test
+from .maintain_common import REPO, Scripted, fix, fixes, names_test
 from .test_maintain_revise import world as world  # noqa: F401  (fixture)
-from .test_maintain_triage import FakeGitHub, fixture_issues, maintained, scripted
 
 # -- the spend table ---------------------------------------------------------------------------
 OLD_SCHEMA = """
@@ -88,7 +87,7 @@ def test_status_sums_tokens_today_and_this_week(tmp_path):
     assert st["spend"]["today"]["builds"] == pytest.approx(0.7), "dollars unchanged"
 
 
-# -- the model callable, triage and the pitch ---------------------------------------------------
+# -- the model callable and the pitch ---------------------------------------------------
 class TokenModel(FakeModel):
     def __call__(self, prompt):
         text, usd = super().__call__(prompt)
@@ -101,49 +100,6 @@ def test_a_reply_carries_tokens_and_still_unpacks_as_two():
     assert split(Costed("hi", 0.1, {"in": 1, "out": 2})) == ("hi", 0.1, {"in": 1, "out": 2})
     assert split(("hi", 0.1)) == ("hi", 0.1, None), "a plain 2-tuple has no tokens"
     assert split(("hi", 0.1, (5, 6))) == ("hi", 0.1, {"in": 5, "out": 6})
-
-
-def test_triage_counts_the_tokens_of_both_tries_and_records_them():
-    it = github.issue(fixture_issues()[0])
-    bad = TokenModel(
-        ["not json", json.dumps({"kind": "bug", "prio": "p1", "summary": "x"})], usd=0.01
-    )
-    out = triage.classify(it, bad, product="P")
-    res, usd = out
-    assert res["kind"] == "bug" and usd == pytest.approx(0.02)
-    assert out.tokens == {"in": 600, "out": 80}
-    plain = triage.classify(
-        it, FakeModel(json.dumps({"kind": "bug", "prio": "p1", "summary": "x"})), product="P"
-    )
-    assert plain.tokens is None
-
-
-def test_the_poll_records_triage_tokens_in_spend(tmp_path, maintenance_on):
-    from repo_factory.gh import Gh
-
-    lp = make_loop(tmp_path)
-    lp._gh = Gh(run=FakeGitHub(fixture_issues(), policy_text=maintained()))
-    base = scripted()
-    lp._triage = lambda p: Costed(*base(p), {"in": 500, "out": 50})
-    i, _ = lp.ledger.add("allotment plots", "typed", title="Plotkeeper")
-    lp.ledger.update(
-        i["id"],
-        state="published",
-        pitch={"product": "Plotkeeper", "one_liner": "Allotment plots."},
-        publish={"repo": "o/plots", "url": "https://github.com/o/plots"},
-    )
-    lp.maintain()
-    assert lp.ledger.own_tokens(0, kind="triage") == {"in": 6 * 500, "out": 6 * 50}
-    a = api.App(lp.cfg.tasks_dir, "fake", lp.cfg.home)
-    a.loop = lambda: lp
-    ms = a.maint_spend(i["id"], 0)
-    assert ms["tokens"] == {"in": 3000, "out": 300}
-    assert ms["by_kind"]["triage"]["tokens"] == {"in": 3000, "out": 300}
-    assert ms["usd"] == pytest.approx(6 * 0.02)
-    lp.ledger.spend("lesson", 0.5, i["id"])  # no token data for this kind
-    ms = a.maint_spend(i["id"], 0)
-    assert ms["by_kind"]["lesson"]["tokens"] is None and ms["tokens"] == {"in": 3000, "out": 300}
-    assert a.maint_spend("nobody", 0)["tokens"] is None
 
 
 def test_the_pitch_records_its_tokens(tmp_path):

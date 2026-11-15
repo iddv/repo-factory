@@ -1,4 +1,4 @@
-"""A drift finding follows main, not the calendar (track AM2, after Beliefline, 2026-10-13: its
+"""A drift finding follows main, not the calendar (after Beliefline: its
 AGENTS.md was merged at 20:10, and Today still said "AGENTS.md is missing" from a check two
 days old, because the doctor ran every ``maintain.doctor_days``).
 
@@ -18,12 +18,12 @@ import pytest
 
 from repo_factory import registry as R
 from repo_factory.gh import Gh
-from repo_factory.maintain import doctor, github, policy, poll, recheck
+from repo_factory.maintain import doctor, github, policy, recheck, switch, watch
 from repo_factory.ui import api
 
 from .loop_common import make_loop
+from .maintain_common import REPO, S5
 from .test_maintain_agents_held import AGENTS, UI, Hub, origin_without_agents
-from .test_maintain_revise import REPO, S5
 
 pytestmark = pytest.mark.usefixtures("maintenance_on")
 
@@ -88,6 +88,7 @@ def drifted(tmp_path):
         pitch={"product": "Plotkeeper", "one_liner": "Allotment plots."},
         publish={"repo": REPO, "url": f"https://github.com/{REPO}"},
     )
+    switch.set_on(lp.cfg.home, REPO, True)
     github.Cache(lp.cfg.home).write_repo(
         REPO,
         {
@@ -103,7 +104,11 @@ def drifted(tmp_path):
 
 
 def kinds(lp):
-    return [x["kind"] for x in poll.today(lp.cfg.home)["rows"] if x["repo"] == REPO]
+    return [x["kind"] for x in watch.today(lp.cfg.home)["rows"] if x["repo"] == REPO]
+
+
+def problems(lp):
+    return github.Cache(lp.cfg.home).repo(REPO)["doctor"]["problems"]
 
 
 # -- the conditional read -------------------------------------------------------------------------
@@ -141,22 +146,21 @@ def test_the_doctor_is_due_when_main_moved_or_after_a_backfill_and_by_days_other
 
 
 # -- the poll: a merged fix clears the row at the next poll ---------------------------------------
-def test_a_merged_agents_md_clears_the_drift_row_on_the_next_poll(drifted):
+def test_a_merged_agents_md_clears_the_drift_finding_on_the_next_poll(drifted):
     lp, fake = drifted
-    poll.maintain_tick(lp)
+    watch.tick(lp)
     # main is where the result was computed: a 304 later, nothing is read again
-    assert kinds(lp) == ["drift"] and fake.trees() == 0
-    row = [x for x in poll.today(lp.cfg.home)["rows"] if x["kind"] == "drift"][0]
-    assert row["checked"] and row["head"] == "a" * 7 and row["problems"] == [STALE]
-    poll.maintain_tick(lp, now=time.time() + 900)
+    assert problems(lp) == [STALE] and fake.trees() == 0
+    assert watch.rows_of(lp.cfg.home, REPO)["doctor"] == [STALE]
+    watch.tick(lp, now=time.time() + 900)
     assert fake.heads == ["200", "304"], "the second poll asked with the ETag: a free 304"
-    assert kinds(lp) == ["drift"] and fake.trees() == 0
+    assert problems(lp) == [STALE] and fake.trees() == 0
     # the owner merges the fix (AGENTS.md as the tree and the README say): main moves
-    fake.files.update(FIXED)
+    fake.contents.update(FIXED)
     fake.main_sha = "b" * 40
-    poll.maintain_tick(lp, now=time.time() + 1800)
+    watch.tick(lp, now=time.time() + 1800)
     assert fake.heads[-1] == "200" and fake.trees() == 1
-    assert "drift" not in kinds(lp), "cleared within one poll of the merge, not days"
+    assert problems(lp) == [], "cleared within one poll of the merge, not days"
     rec = github.Cache(lp.cfg.home).repo(REPO)
     assert rec["doctor"]["head"] == "b" * 40 and rec["doctor"]["problems"] == []
     assert rec["head"]["sha"] == "b" * 40 and rec["head"]["moved"]
@@ -192,7 +196,7 @@ def test_recheck_is_a_read_with_no_confirm_and_runs_in_the_background(drifted):
     from repo_factory import proc
 
     lp, fake = drifted
-    poll.maintain_tick(lp)
+    watch.tick(lp)
     lp.cfg.data["maintain"]["recheck_command"] = [
         sys.executable,
         "-c",
@@ -213,10 +217,6 @@ def test_recheck_is_a_read_with_no_confirm_and_runs_in_the_background(drifted):
         assert st["state"] == "running" and st["by"] == "ui"
         code, again = press(app)
         assert code == 200 and "being checked already" in again["say"]
-        rows = [x for x in poll.today(lp.cfg.home)["rows"] if x["kind"] == "drift"]
-        assert rows and rows[0]["recheck"]["state"] == "running", "the row says it at once"
-        summary = app.maintain_summary()["repos"][0]
-        assert summary["recheck"]["state"] == "running" and summary["doctor"]["head"] == "a" * 7
     finally:
         os.kill(st["pid"], signal.SIGKILL)
     deadline = time.time() + 10
@@ -234,19 +234,24 @@ def test_the_recheck_reads_main_now_and_replaces_only_the_doctors_rows(
     from repo_factory.maintain import cli
 
     lp, fake = drifted
-    poll.maintain_tick(lp)
+    watch.tick(lp)
     rec = github.Cache(lp.cfg.home).repo(REPO)
-    rec["rows"] = rec["rows"] + [{"kind": "factory_pr", "number": 3, "title": "PR 3"}]
+    rec["rows"] = rec["rows"] + [
+        {"kind": "drift", "number": None, "title": "AGENTS.md has drifted"},
+        {"kind": "fix_pr", "number": 3, "title": "PR 3"},
+    ]
     github.Cache(lp.cfg.home).write_repo(REPO, rec)
     assert fake.trees() == 0
-    fake.files.update(FIXED)  # merged a moment ago; the next poll is far off
+    fake.contents.update(FIXED)  # merged a moment ago; the next poll is far off
     fake.main_sha = "b" * 40
     monkeypatch.setattr(cli, "_loop", lambda args: lp)  # the fake GitHub, never gh
     main(["maintain", "recheck", REPO, "--home", str(lp.cfg.home)])
     said = capsys.readouterr().out
     assert "AGENTS.md: current" in said and f"main at {'b' * 7}" in said
     assert fake.trees() == 1 and fake.heads[-1] == "200", "asked without the ETag"
-    assert kinds(lp) == ["factory_pr"], "the drift row is gone; the poll's other rows stay"
+    got = kinds(lp)
+    assert "drift" not in got and "fix_pr" in got, "the drift row is gone; the poll's rows stay"
+    assert problems(lp) == []
     st = recheck.job_state(lp.cfg.home, REPO)
     assert st["state"] == "done" and st["by"] == "cli" and st["finished"]
     assert fake.writes() == []

@@ -1,4 +1,16 @@
 {
+ "GET /api/lessons": [
+  200,
+  "application/json",
+  [
+   "at",
+   "enabled",
+   "error",
+   "lessons",
+   "postmortems",
+   "waiting"
+  ]
+ ],
  "GET /api/details": [
   400,
   "application/json",
@@ -124,11 +136,13 @@
   200,
   "application/json",
   [
+   "api",
    "build",
    "concurrency",
    "daily_usd",
    "exam",
    "github",
+   "lessons",
    "maintain",
    "pitch",
    "pitch_per_tick",
@@ -261,30 +275,28 @@
    "policy"
   ]
  ],
- "GET /api/maintain/summary": [
+ "GET /api/maintenance": [
   200,
   "application/json",
   [
-   "file",
-   "identity",
    "last_poll",
+   "net_hosts",
+   "paused",
    "repos",
+   "rules",
    "settings",
    "spend"
   ]
  ],
- "GET /api/maintain/lessons": [
-  200,
+ "GET /api/maintain/summary": [
+  404,
   "application/json",
-  [
-   "by_kind",
-   "errors",
-   "file",
-   "issues",
-   "lessons",
-   "repos",
-   "version"
-  ]
+  "error: not found"
+ ],
+ "GET /api/maintain/lessons": [
+  404,
+  "application/json",
+  "error: not found"
  ],
  "GET /api/maintain/repos": [
   404,
@@ -309,7 +321,7 @@
  "GET /api/maintain/i0123abcd": [
   404,
   "application/json",
-  "error: not a maintained repository"
+  "error: not found"
  ],
  "GET /api/maintain/not-an-idea": [
   404,
@@ -333,6 +345,7 @@
    "maintain",
    "now",
    "project_asks",
+   "record",
    "root",
    "status"
   ]
@@ -341,11 +354,9 @@
   200,
   "application/json",
   [
-   "archived",
-   "backfill",
-   "charters_by_you",
-   "counts",
-   "projects"
+   "paused",
+   "projects",
+   "spend"
   ]
  ],
  "GET /api/project?id=nope": [
@@ -625,12 +636,12 @@
  "POST /api/maintain/settings {}": [
   400,
   "application/json",
-  "error: send one or more of: enabled, poll_s, cache_s, triage_max_per_poll, repos, concurrency, max_usd, net, lesson_label, doctor_days, identity, refresh_max"
+  "error: send one or more of: poll_s, concurrency, max_usd, monthly_usd, proposals, proposals_model, net, allow_signin_file, doctor_days, identity"
  ],
  "POST /api/maintain/settings {\"nope\": 1}": [
   400,
   "application/json",
-  "error: send one or more of: enabled, poll_s, cache_s, triage_max_per_poll, repos, concurrency, max_usd, net, lesson_label, doctor_days, identity, refresh_max"
+  "error: send one or more of: poll_s, concurrency, max_usd, monthly_usd, proposals, proposals_model, net, allow_signin_file, doctor_days, identity"
  ],
  "POST /api/projects/settings {}": [
   400,
@@ -638,6 +649,41 @@
   "error: projects. is not a setting this page writes"
  ],
  "POST /api/maintain/act {}": [
+  404,
+  "application/json",
+  "error: no such build under ROOT"
+ ],
+ "POST /api/maintenance/switch {}": [
+  404,
+  "application/json",
+  "error: not a maintained repository"
+ ],
+ "POST /api/maintenance/switch {\"on\": true, \"repo\": \"someone/thing\"}": [
+  404,
+  "application/json",
+  "error: not a maintained repository"
+ ],
+ "POST /api/maintenance/merge {}": [
+  404,
+  "application/json",
+  "error: not a maintained repository"
+ ],
+ "POST /api/maintenance/release {}": [
+  404,
+  "application/json",
+  "error: not a maintained repository"
+ ],
+ "POST /api/maintenance/pause {}": [
+  404,
+  "application/json",
+  "error: not a maintained repository"
+ ],
+ "POST /api/maintenance/retry {}": [
+  404,
+  "application/json",
+  "error: not a maintained repository"
+ ],
+ "POST /api/maintenance/proposal {}": [
   404,
   "application/json",
   "error: not a maintained repository"

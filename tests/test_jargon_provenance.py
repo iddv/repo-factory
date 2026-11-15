@@ -1,4 +1,4 @@
-"""The provenance scan (EX-PLAN §4.6) and the fixed NOTICE (§4.5), PR 3.
+"""The provenance scan and the fixed NOTICE.
 
 The scan matches the exact ids a build minted, next to their kind word, and repo-factory's own
 literal words, in the product's prose only; never id shapes. A product whose own domain is

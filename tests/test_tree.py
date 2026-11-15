@@ -106,10 +106,58 @@ def test_workflow_jobs_have_time_limits_and_a_read_only_token(wf):
     assert text.count("timeout-minutes:") >= len(jobs), "every job has a timeout"
 
 
+def _job_bodies(text: str) -> dict[str, str]:
+    body = text.split("\njobs:\n", 1)[1]
+    parts = re.split(r"^  ([A-Za-z0-9_-]+):\s*$", body, flags=re.M)
+    return dict(zip(parts[1::2], parts[2::2], strict=True))
+
+
+def test_only_the_release_publish_job_may_write():
+    """A token that may write exists in one job: the release workflow's publish job, behind
+    the `release` environment, which refuses a tag not on main and runs no third-party action."""
+    allowed = {("release.yml", "publish")}
+    for wf in WORKFLOWS:
+        text = _code(wf)
+        top = text.split("\njobs:\n", 1)[0]
+        assert not re.search(r":\s*write", top), f"{wf.name}: a workflow-wide write permission"
+        for job, body in _job_bodies(text).items():
+            if re.search(r":\s*write|write-all", body):
+                assert (wf.name, job) in allowed, f"{wf.name} job {job} may write"
+    pub = _job_bodies(_code(ROOT / ".github" / "workflows" / "release.yml"))["publish"]
+    assert "environment: release" in pub and "merge-base --is-ancestor" in pub
+    assert not [u for u in re.findall(r"uses:\s*([^\s#]+)", pub) if not u.startswith("actions/")]
+
+
 def test_ci_workflow_cancels_superseded_runs():
     text = _code(ROOT / ".github" / "workflows" / "ci.yml")
     assert "cancel-in-progress: true" in text
     assert "matrix" not in text
+
+
+def test_nothing_in_the_package_comments_force_pushes_or_changes_a_repository_setting():
+    """The earlier poll commented on issues, force-pushed refreshes, updated pull request branches
+    and changed repository settings; none of it is in the package any more, and nothing brings
+    it back: no comment writer, no force push, no branch update, no settings change."""
+    pattern = re.compile(
+        r'comment_with_marker|force-with-lease|"-f"|update-branch|delete_branch_on_merge'
+    )
+    pkg = ROOT / "repo_factory"
+    files = [
+        p
+        for p in pkg.rglob("*")
+        if p.is_file()
+        and "__pycache__" not in p.parts
+        and "node_modules" not in p.parts
+        and (p.suffix in (".py", ".tmpl", ".md", ".yml", ".yaml") or p.parent.name == "templates")
+    ]
+    assert len(files) > 100
+    hits = [
+        f"{p.relative_to(ROOT)}:{n}: {line.strip()}"
+        for p in files
+        for n, line in enumerate(p.read_text(errors="replace").splitlines(), 1)
+        if pattern.search(line)
+    ]
+    assert hits == [], "\n".join(hits)
 
 
 def test_git_tracks_no_generated_or_private_files():

@@ -20,7 +20,7 @@ TARGETS = {
     "reverify": 0.40,
     "readiness": 2.10,
     "deliver": 0.0,
-    # the simple flow's steps (BF-DESIGN §4.7)
+    # the simple flow's steps
     "plan": 0.35,
     "check": 3.30,
     "fix": 2.20,

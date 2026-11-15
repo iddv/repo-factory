@@ -1,4 +1,4 @@
-"""The gate's p_hidden check is gone (AU1 #5). It was ``1 - (unfound + unfixed + 0.5 blocked) /
+"""The gate's p_hidden check is gone. It was ``1 - (unfound + unfixed + 0.5 blocked) /
 max(1, claims)`` clamped to [0.5, 0.99]: 0.958-0.99 in all 36 recorded rounds, never a hold,
 and 0.99 when nothing was checked. The real case: Sidedoor r1 had 0 claims and 0 scenarios and
 "passed 0.99 of a hidden suite" (its records, trimmed, in ``fixtures/sidedoor_r1_gate``). The
@@ -42,18 +42,19 @@ def test_sidedoor_r1_has_no_p_hidden_check_and_the_same_verdict_otherwise(tmp_pa
     assert "p_hidden" not in checks
     assert set(checks) == set(BEFORE) - {"p_hidden"}
     for k, c in checks.items():
-        if k in ("security", "completeness"):  # AU1 #1 reworded these: below
+        if k in ("security", "completeness"):  # reworded since: below
             continue
         ok, detail = BEFORE[k]
         assert c["ok"] is ok, k
         if detail is not None:
             assert c["detail"] == detail, k
-    # AU1 #1: the review that did not run is a gap; with nothing measured completeness holds
-    assert checks["security"]["ok"] and checks["security"]["gap"]
+    # the review that did not run holds (never overridden); with nothing measured
+    # completeness holds too
+    assert gate.is_unreviewed(checks["security"])
     assert checks["completeness"] == {"ok": False, "detail": gate.NOTHING_MEASURED}
     v = gate._verdict(checks, 1, None, None, None)
     assert v["verdict"] == "held" and "p_hidden" not in v
-    assert [r.split(":")[0] for r in v["reasons"]] == ["documents", "completeness"]
+    assert [r.split(":")[0] for r in v["reasons"]] == ["documents", "security", "completeness"]
     # what p_hidden hid is a fact on its own: nothing was checked
     assert json.loads((rd / "findings.json").read_text())["scenarios"] == []
 

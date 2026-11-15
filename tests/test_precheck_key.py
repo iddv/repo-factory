@@ -1,5 +1,5 @@
-"""The pre-push checks are keyed on what they read, and the press scans with the installed repo-factory
-(AU2 #4, #7, #8).
+"""The pre-push checks are keyed on what they read, and the press scans with the installed
+repo-factory.
 
 The checks' key held the whole pitch, so every owner press made them stale and started the
 model again. Sidedoor's owner saved the release text twice with the text already there (10-12

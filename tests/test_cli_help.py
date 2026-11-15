@@ -31,14 +31,14 @@ def test_version(capsys):
     assert e.value.code == 0 and capsys.readouterr().out.strip() == f"repo-factory {__version__}"
 
 
-def test_doctor_says_four_lines_and_fails_without_claude(monkeypatch):
+def test_doctor_says_five_lines_and_fails_without_claude(monkeypatch):
     said = []
     monkeypatch.setattr(doctor, "claude_line", lambda: (False, "Claude Code is not installed"))
     monkeypatch.setattr(doctor, "bwrap_line", lambda: (True, "bubblewrap can make a sandbox"))
     monkeypatch.setattr(doctor, "git_line", lambda: (True, "git"))
     monkeypatch.setattr(doctor, "gh_line", lambda: (False, "gh is not installed"))
     assert doctor.run(said.append) == 1
-    assert len(said) == 4 and said[1].startswith("ok ") and said[0].startswith("missing: ")
+    assert len(said) == 5 and said[1].startswith("ok ") and said[0].startswith("missing: ")
 
 
 def test_doctor_passes_without_gh(monkeypatch):
@@ -71,3 +71,12 @@ def test_doctor_says_nothing_of_a_copy_with_a_login_token(monkeypatch):
     _claude_here(monkeypatch, "login")
     ok, line = doctor.claude_line()
     assert ok and "copy" not in line
+
+
+def test_doctor_warns_under_five_gb(tmp_path):
+    m = tmp_path / "meminfo"
+    m.write_text("MemTotal:       16000000 kB\nMemAvailable:    3145728 kB\n")
+    assert doctor.mem_available(str(m)) == 3.0
+    m.write_text("MemAvailable:    8388608 kB\n")
+    assert doctor.mem_available(str(m)) == 8.0
+    assert doctor.mem_available(str(tmp_path / "none")) is None

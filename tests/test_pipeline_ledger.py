@@ -1,5 +1,4 @@
-"""Builds with the ledger and ideas in the workspace (WORKSPACE.md 2.2, 2.3, 2.9, 6.1;
-fleet2 track W4): api/state's build rows carry their pipeline (the stage strip the row's state
+"""Builds with the ledger and ideas in the workspace: api/state's build rows carry their pipeline (the stage strip the row's state
 already folded), the six-cell ledger and its miniature, the build pane's sections and
 outline, the idea pane, Ideas and Builds as grouped lists. The components are read whole;
 what they do is pressed in Vitest beside them (pages/builds/pipe.test.ts,

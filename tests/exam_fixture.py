@@ -1,4 +1,4 @@
-"""The exam's fixture products (EX-PLAN §6.2): ``tests/fixtures/exam/<name>/`` holds a
+"""The exam's fixture products:``tests/fixtures/exam/<name>/`` holds a
 product tree (``product/``), a hand-written exam (``exam/_verify/driver.py`` and a few
 scenarios) and ``expected.json``. ``FakeRun`` is the slice of a v5 ``Run`` that ``exam.run``
 reads: a round folder, a rule store holding the fixture's scenarios, the helpers and a venv."""

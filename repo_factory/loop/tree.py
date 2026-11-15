@@ -14,8 +14,8 @@ from ..gh import PublishError
 
 DROP = ("REPORT.md", "bench-meta.json")
 # Build output and environments, wherever they are (``*.egg-info``, caches), and ``build/`` and
-# ``dist/`` at the root: never published, even from a commit that tracked them (AU2 #6:
-# NoteHatch's build/ and egg-info; Sidedoor's and Repo Recall's egg-info)
+# ``dist/`` at the root: never published, even from a commit that tracked them
+# (NoteHatch's build/ and egg-info; Sidedoor's and Repo Recall's egg-info)
 JUNK_DIRS = ("__pycache__", ".pytest_cache", "node_modules", ".venv", "venv")
 JUNK_ROOT = ("build", "dist")
 

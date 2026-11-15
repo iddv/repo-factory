@@ -1,4 +1,4 @@
-"""AGENTS.md (MAINTAIN.md §3): render it from a product's own documents, and report drift.
+"""AGENTS.md: render it from a product's own documents, and report drift.
 
 ``values_from_tree(root)`` reads the values without a model: product, one-liner and audience
 from the README's *At a glance*, commands from its install, tests and command sections, the
@@ -23,7 +23,7 @@ TEMPLATE = "AGENTS.md.tmpl"
 COMMANDS_RUN_BY_CI = (
     "These commands are run by CI exactly as written (`.github/workflows/ci.yml`, job `agents-md`)."
 )
-COMMANDS_RUN_BY_BEARS = (
+COMMANDS_RUN_BY_FACTORY = (
     "repo-factory runs these commands exactly as written before it proposes a fix."
 )
 # repo-factory's own command for the acceptance suite: AGENTS.md names it, the README need not
@@ -291,7 +291,7 @@ def docstring(p: Path) -> str | None:
 def defines(p: Path) -> str | None:
     """A module described by what it defines, with no model: its public top-level classes and
     functions (``Defines `Store`, `open_db`.``), else None. Never a placeholder the doctor
-    then refuses (AU3 finding 3)."""
+    then refuses."""
     try:
         tree = ast.parse(_read(p))
     except (SyntaxError, ValueError):
@@ -508,7 +508,7 @@ def values_from_tree(root: Path, repo: str | None = None, describe=None) -> dict
                 data_dir = m.group(1)
                 break
     # what the product says of itself, never SCOPE.md's: it was written from the pitch before
-    # the build (AU2 #1: Sidedoor's AGENTS.md said what SCOPE.md meant, not what was built)
+    # the build (an AGENTS.md once said what SCOPE.md meant, not what was built)
     append_only = " ".join(data_rules(sentences(readme))) or (
         "SCOPE.md's domain rules say which records may never be changed or deleted."
     )
@@ -565,7 +565,7 @@ def values_from_tree(root: Path, repo: str | None = None, describe=None) -> dict
         ),
         # none found: a comment line the check skips and the doctor reports, never a guess
         "unit_test_command": test_cmd or NO_TEST,
-        # only where the suite exists (notehatch and nextread have none: AU3 finding 3)
+        # only where the suite exists (some products have none)
         "acceptance_line": (
             f"\npython -m pip install pytest && {ACCEPTANCE_RUN}   # the acceptance suite"
             if (root / "tests" / "acceptance").is_dir()
@@ -618,8 +618,8 @@ def render(values: dict) -> str:
 def _checker():
     """The repo-side check (``templates/check_agents_md.py``) as a module: the doctor reads
     AGENTS.md with its readers, so the two never disagree on which heading, fence or path
-    counts (the owner, 2026-10-17: nextread's "## Set up, run, test" over a bare fence was
-    flagged "no sh fence"). Compiled here, never imported: no ``__pycache__`` in templates/."""
+    counts (a "## Set up, run, test" heading over a bare fence was once flagged "no sh
+    fence"). Compiled here, never imported: no ``__pycache__`` in templates/."""
     import types
 
     path = Path(__file__).with_name("templates") / "check_agents_md.py"
@@ -668,24 +668,28 @@ def documented(cmd: str, readme: str, root: Path) -> bool:
 
 
 def self_hosted(workflow: str) -> bool:
-    """Whether a workflow's ``runs-on`` names a self-hosted runner, in any of its forms (a
-    word, a list, a block list, ``{labels: …}``)."""
-    if re.search(r"runs-on:.*self-hosted", workflow):
-        return True
-    try:
-        import yaml
+    """Whether a workflow may run anywhere but GitHub's own hosted runners (``runners.py``:
+    every ``runs-on`` label ``ubuntu-*``, ``windows-*`` or ``macos-*``; anything else, an
+    expression, a group or a reusable workflow is "cannot tell" and counts as not hosted)."""
+    from ..runners import not_hosted
 
-        doc = yaml.safe_load(workflow)
-    except Exception:  # noqa: BLE001 - unparsable: the regex decided
-        return False
-    jobs = doc.get("jobs") if isinstance(doc, dict) else None
-    for job in jobs.values() if isinstance(jobs, dict) else []:
-        ro = job.get("runs-on") if isinstance(job, dict) else None
-        if isinstance(ro, dict):
-            ro = ro.get("labels")
-        if any("self-hosted" in str(x) for x in (ro if isinstance(ro, list) else [ro])):
-            return True
-    return False
+    return bool(not_hosted(workflow))
+
+
+def runner_problems(root: Path) -> list[str]:
+    """One line for each workflow job under ``root`` that may run off GitHub's own runners
+    (``runners.py``); looked at whether or not AGENTS.md is there."""
+    from ..runners import not_hosted
+
+    wf = Path(root) / ".github" / "workflows"
+    out = []
+    for f in sorted(wf.glob("*.y*ml")) if wf.is_dir() else []:
+        for why in not_hosted(_read(f)):
+            out.append(
+                f".github/workflows/{f.name}: {why}: it may run on a machine that is not a "
+                "GitHub-hosted runner, where a fix's pull request would run model-written code"
+            )
+    return out
 
 
 def check(root: Path) -> list[str]:
@@ -694,7 +698,7 @@ def check(root: Path) -> list[str]:
     root = Path(root)
     agents = _read(root / "AGENTS.md")
     if not agents:
-        return ["AGENTS.md is missing"]
+        return ["AGENTS.md is missing", *runner_problems(root)]
     readme = _read(root / "README.md")
     problems = []
     cmds = fence_commands(agents)
@@ -731,13 +735,7 @@ def check(root: Path) -> list[str]:
             problems.append(f"`{rel}` is not in AGENTS.md's architecture section")
     if "(describe this module)" in agents:
         problems.append("AGENTS.md's architecture section still has a module without a description")
-    wf = root / ".github" / "workflows"
-    for f in sorted(wf.glob("*.y*ml")) if wf.is_dir() else []:
-        if self_hosted(_read(f)):
-            problems.append(
-                f".github/workflows/{f.name} uses a self-hosted runner; product CI "
-                "runs on GitHub-hosted runners only"
-            )
+    problems += runner_problems(root)
     for name in ("CLAUDE.md", ".github/repo-factory.yml", ".github/labels.yml"):
         if not (root / name).exists():
             problems.append(f"{name} is missing")

@@ -1,4 +1,4 @@
-"""An adopted repository's profile (MX-PLAN §2.6): the policy of a repo repo-factory did not build.
+"""An adopted repository's profile: the policy of a repo repo-factory did not build.
 
 A product repo-factory published keeps its policy in its own ``.github/repo-factory.yml``. A repo the owner
 adds by hand (``adopt_repo``) is someone's code that repo-factory did not write, so its policy lives in
@@ -7,7 +7,7 @@ repo-factory, never in the repo: ``<loop home>/maintain/repos/<owner>--<name>[--
 it is not a trusted channel.
 
 ``DEFAULTS`` is the schema: every key a profile may have, with its default. ``for_access``
-gives the defaults of an access level (MX-PLAN §1.2): the owner's own repo behaves like a
+gives the defaults of an access level: the owner's own repo behaves like a
 product (comments and triage on), a repo where the owner only has push gets pull requests and
 nothing else (no triage, no comments, no labels), and a read-only or triage-only repo is
 ``watch``: read and show, write nothing. ``validate`` refuses unknown keys, bad values and the
@@ -184,7 +184,7 @@ DEFAULTS: dict = {
     "evidence": {},
     "notes": [],
     "detached": None,
-    "ci_main": None,  # the default branch's CI as the last poll saw it (§3.5)
+    "ci_main": None,  # the default branch's CI as the last poll saw it
     "updates_last": None,  # when updates.dependencies last asked for updates
 }
 
@@ -480,7 +480,7 @@ def validate(prof, *, candidates: list[str] | None = None, typed_ok: bool = Fals
     return errors
 
 
-# -- the access level's defaults (MX-PLAN §1.2) ------------------------------------------------
+# -- the access level's defaults ---------------------------------------------------------------
 def access_of(perms: dict | None) -> str:
     perms = perms or {}
     for lvl in LEVELS:
@@ -753,7 +753,7 @@ def matches(path_: str, globs: list[str]) -> bool:
     return any(glob_re(g).match(path_) for g in globs or [])
 
 
-# -- maintain.repos, migrated (MX-PLAN §9 PR 1; the hazard of §0) ------------------------------
+# -- maintain.repos, migrated ------------------------------------------------------------------
 def migrate(cfg, ledger=None, now: float | None = None) -> list[str]:
     """Each name in ``maintain.repos`` becomes an unconfirmed ``watch`` profile with triage and
     comments off, and the list is emptied in loop.yaml. Before this, any name typed there was

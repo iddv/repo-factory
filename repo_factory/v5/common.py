@@ -23,11 +23,11 @@ STAGES = (
     "readiness",
     "deliver",
 )
-# The simple flow's stage library (BF-DESIGN §4: Brief → Plan → Build → Check ⇄ Fix →
-# Publish), a policy with ``flow: simple`` (``policies/simple``). Chosen per build
-# (``build.flow``), beside today's: the records and events keep their names (D10).
+# The simple flow's stage library (Brief → Plan → Build → Check ⇄ Fix → Publish), a policy
+# with ``flow: simple`` (``policies/simple``). Chosen per build (``build.flow``), beside
+# today's: the records and events keep their names (D10).
 SIMPLE_STAGES = ("plan", "build", "check", "fix", "deliver")
-# The lean flow's (track LEAN: Brief → Build → Harden → Check → Fix once → Publish), a policy
+# The lean flow's (Brief → Build → Harden → Check → Fix once → Publish), a policy
 # with ``flow: lean`` (``policies/lean``); its stage list is ``stages.LEAN``.
 LEAN_STAGES = ("scope", "build", "harden", "check", "fix", "deliver")
 # Today's role and stage names onto the lean flow's (a loop.yaml's build.models and
@@ -42,7 +42,7 @@ LEAN_MAP = {
     "readiness": "check",
 }
 # Today's stage names onto the simple flow's (a loop.yaml's build.models and build.stage_caps
-# written for today's flow; BF-DESIGN §7.3): a name mapped to None does nothing there.
+# written for today's flow): a name mapped to None does nothing there.
 SIMPLE_MAP = {
     "scope": "plan",
     "claims": None,
@@ -65,9 +65,9 @@ SIMPLE_LEDGER = {
 }
 # Stages repo-factory no longer has. An older rules.yaml, or a loop.yaml's build.models or
 # build.stage_caps, may still name one: it is dropped as if it were not there. mutants: its
-# score decided nothing (AU1 #4).
+# score decided nothing.
 RETIRED_STAGES = ("mutants",)
-# Stages only a maintenance fix runs (MAINTAIN.md §5.2, ``maintain/revise.py``): reproduce
+# Stages only a maintenance fix runs (``maintain/revise.py``): reproduce
 # writes the failing test first. Kept out of STAGES so a build's stage list, report and costs
 # stay as they were.
 REVISE_STAGES = ("reproduce",)
@@ -324,6 +324,14 @@ class Budget:
         # runs once per repair round (repair, reverify) gets a cap per round, not one cap
         # shared by every round (round 2 once got $0.06 because round 1 had used the rest)
         self.windows: dict[str, list[float]] = {}
+        # stage -> money kept aside for it under the global cap: every other stage stops
+        # that much short of the cap (the security review's typical cost, from the first
+        # session on, so a tight cap stops the Fix stage before it stops the review)
+        self.keep: dict[str, float] = {}
+
+    def kept(self, stage: str) -> float:
+        """What the cap keeps aside from ``stage`` for the other stages (``keep``)."""
+        return round(sum(v for s, v in self.keep.items() if s != stage), 4)
 
     def window(self, stage: str, cap: float | None = None) -> None:
         """Open a new window for ``stage``: from now on its cap (``cap``, default the
@@ -394,10 +402,13 @@ class Budget:
     def check(self, stage: str, need: float = 0.01) -> None:
         """Before a call: raises ``BudgetExceeded`` unless ``need`` (default: a cent, any
         call costs something) fits under the build's cap and the stage has money left."""
-        if self.cap is not None and self.spent() + need > self.cap:
+        kept = self.kept(stage)
+        if self.cap is not None and self.spent() + need > self.cap - kept:
             self._hit(stage)
             raise BudgetExceeded(
-                f"{stage}: the build's cap ${self.cap:.2f} is reached (spent ${self.spent():.2f})"
+                f"{stage}: the build's cap ${self.cap:.2f} is reached (spent ${self.spent():.2f}"
+                + (f", ${kept:.2f} kept for the security review" if kept else "")
+                + ")"
             )
         if self.stage_left(stage) <= 0:
             self._hit(stage)
@@ -425,7 +436,11 @@ class Budget:
         (forks) an earlier session: Claude Code 2.1.287 reports ``total_cost_usd``
         cumulatively over the session's history, but ``--max-budget-usd`` counts only the
         resumed run's own spend (measured; ``profile.launch``'s doc)."""
-        lim = min(math.inf if want is None else float(want), self.stage_left(stage), self.left())
+        lim = min(
+            math.inf if want is None else float(want),
+            self.stage_left(stage),
+            self.left() - self.kept(stage),
+        )
         if lim == math.inf:
             return None
         return round(max(0.0, lim), 2)

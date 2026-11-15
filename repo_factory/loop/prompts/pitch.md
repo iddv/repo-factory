@@ -19,7 +19,7 @@ Score buildability from 0 to 1: 1 means a strong builder would very likely ship 
 
 ## The brief
 
-Write it the way the owner writes ideas: 2 to 4 plain sentences, outcome-focused, casual, no headings, no bullet lists, no technology choices, no invented numbers. Say who has the problem, and what they should be able to do after they install it. Examples of the owner's style:
+Write it the way the owner writes ideas: 2 to 4 plain sentences, outcome-focused, casual, no headings, no bullet lists, no technology choices but one, no invented numbers. The one: the language. When the idea names a programming language, keep it in the brief; when it names none, end the brief with "Write it in Python." (the builder's record and its checks are Python's). Say who has the problem, and what they should be able to do after they install it. Examples of the owner's style:
 
 - "there is an uptick in libraries that need software to manage their inventory. create something that someone can easily install and start checking out books for their customers and keep track of their money"
 - "Freelancers keep losing track of hours and invoices across clients. Build something they can install and use from the terminal to log time per client and project, and send clean invoices at month end."

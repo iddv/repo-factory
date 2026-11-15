@@ -1,4 +1,4 @@
-"""Filing changes (PJ-PLAN.md §4.7, PJ-7) on an in-process fake GitHub (no network): a patch
+"""Filing changes on an in-process fake GitHub (no network): a patch
 under quiet files an issue with go; a minor change filed after the owner's click gets no go
 because the product's policy excludes features (the policy wins, and the idea says so); an
 adopted repo the owner does not own gets a factory-side request and no issue; hands-on files
@@ -15,9 +15,7 @@ from repo_factory.projects import changes as X
 from repo_factory.projects import evolve, filing, life, sources
 from repo_factory.projects.charter import normalize, parse, save
 from repo_factory.projects.record import Projects, create_for_idea, create_for_profile
-from repo_factory.ui import api
 
-from .app_common import call
 from .loop_common import FakeModel, make_loop
 from .test_evolve import CHARTER, EVOLVE
 from .test_projects import published
@@ -128,40 +126,14 @@ def test_a_minor_change_after_the_owners_click_gets_go_the_press_is_the_go(world
     lp, p, hub = world()
     evolve.run(lp, p["id"], FakeModel(EVOLVE["receipts"]))
     minor = next(ch for ch in X.all_of(lp.ledger, p["id"]) if ch["class"] == "minor")
-    app = api.App(lp.cfg.tasks_dir, "fake", lp.cfg.home)
-    lp_app = app.loop()
-    lp_app._gh = lp._gh
-    app.loop = lambda: lp_app
-    code, out = call(
-        app,
-        "POST",
-        "/api/act",
-        None,
-        {
-            "kind": "accept_change",
-            "subject": {"kind": "new"},
-            "fields": {"change": minor["id"]},
-            "origin": "ui",
-        },
-    )
-    assert code == 200 and out["undo"]["until"] > time.time(), out
+    out = X.accept(lp, minor["id"], "ui")
+    assert out["card"]["undo"]["until"] > time.time(), out
     ch = X.must(lp.ledger, minor["id"])
     assert ch["filed"]["labels"] == ["feature", "p3", "go"] and ch["filed"]["go"]
     assert ch["filed"]["go_held"] is None
     # Undo within the window: the issue is closed unworked and the idea is proposed again
-    code, out = call(
-        app,
-        "POST",
-        "/api/act",
-        None,
-        {
-            "kind": "undo_change",
-            "subject": {"kind": "new"},
-            "fields": {"change": minor["id"]},
-            "origin": "ui",
-        },
-    )
-    assert code == 200 and X.must(lp.ledger, minor["id"])["state"] == "new"
+    filing.undo(lp, minor["id"], origin="ui")
+    assert X.must(lp.ledger, minor["id"])["state"] == "new"
     assert hub.issues[ch["filed"]["number"]]["state"] == "closed"
 
 
@@ -272,37 +244,11 @@ def test_accept_filed_on_a_later_tick_still_offers_undo(world):
         "runs": {"agreeing": 1},
     }
     cid = X.add(lp.ledger, p["id"], card)["id"]
-    app = api.App(lp.cfg.tasks_dir, "fake", lp.cfg.home)
-    lp_app = app.loop()
-    lp_app._gh = lp._gh
-    app.loop = lambda: lp_app
-    code, out = call(
-        app,
-        "POST",
-        "/api/act",
-        None,
-        {
-            "kind": "accept_change",
-            "subject": {"kind": "new"},
-            "fields": {"change": cid},
-            "origin": "ui",
-        },
-    )
-    assert code == 200 and "next tick" in out["say"] and out["undo"]["until"] > time.time(), out
-    code, out = call(
-        app,
-        "POST",
-        "/api/act",
-        None,
-        {
-            "kind": "undo_change",
-            "subject": {"kind": "new"},
-            "fields": {"change": cid},
-            "origin": "ui",
-        },
-    )
+    out = X.accept(lp, cid, "ui")
+    assert not out.get("filed") and out["card"]["undo"]["until"] > time.time(), out
+    filing.undo(lp, cid, origin="ui")
     ch = X.must(lp.ledger, cid)
-    assert code == 200 and ch["state"] == "new" and not ch.get("filed"), out
+    assert ch["state"] == "new" and not ch.get("filed")
     assert "file_error" not in ch["card"] and hub.posted() == []
     filing.follow(lp, p)  # the tick files nothing now
     assert not X.must(lp.ledger, cid).get("filed")

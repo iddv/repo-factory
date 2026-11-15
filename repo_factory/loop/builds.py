@@ -18,6 +18,7 @@ from pathlib import Path
 from .. import proc
 from ..events import load_state
 from ..models import build_env
+from ..settings.schema import NOT_A_CAP
 
 BRB = [sys.executable, "-m", "repo_factory.cli"]
 
@@ -55,8 +56,11 @@ def command(
         "--harness",
         b.get("harness") or "claude-code",
     ]
-    if b.get("max_usd"):
-        args += ["--max-cost", f"{float(b['max_usd']):g}"]
+    cap = b.get("max_usd")
+    if cap is not None and not isinstance(cap, bool) and isinstance(cap, (int, float)):
+        if cap <= 0:  # the schema refuses it before a build starts; never "no cap" here
+            raise ValueError("build.max_usd: " + NOT_A_CAP)
+        args += ["--max-cost", f"{float(cap):g}"]
     if resume is not None:
         args += ["--resume", str(int(resume))]
     elif fresh:
@@ -70,8 +74,7 @@ FLOWS = ("v5", "simple", "lean")
 def policy_of(b: dict) -> Path:
     """The policy a new build runs: ``build.policy``; with ``build.flow: simple`` or
     ``lean`` and the policy left at its default (``policies/v5``), that flow's
-    (``policies/simple``, BF-DESIGN; ``policies/lean``, track LEAN). A policy set by hand is
-    used as it is."""
+    (``policies/simple`` or ``policies/lean``). A policy set by hand is used as it is."""
     from ..resources import POLICIES
 
     policy = Path(b["policy"]).expanduser()

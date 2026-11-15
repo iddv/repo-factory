@@ -74,11 +74,11 @@ def main() -> int:
     print("== repo-factory doctor", flush=True)
     d = subprocess.run([rf, "doctor"], env=env, capture_output=True, text=True)
     print(d.stdout.rstrip(), d.stderr.rstrip(), f"(exit {d.returncode})", sep="\n")
-    for what in ("Claude Code", "bubblewrap", "git", "gh"):
+    for what in ("Claude Code", "bubblewrap", "git", "gh", "memory"):
         if what.lower() not in d.stdout.lower():
             fail(f"doctor said nothing about {what}")
     lines = [ln for ln in d.stdout.splitlines() if ln.strip()]
-    if len(lines) != 4:
+    if len(lines) != 5:
         fail(f"doctor printed {len(lines)} lines, not one per requirement")
 
     print("== repo-factory ui", flush=True)

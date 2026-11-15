@@ -3,7 +3,7 @@ with an ``npm test`` script has it run in the exam sandbox with Node's junit rep
 test (``file::name``) beside pytest's, so the lean flow's completeness (each flow's own
 tests, by the harden step's map) is measured instead of "unchecked".
 
-The real case (track LEAN): Plotkeeper is a Node product (``node --test``); its harden step
+The real case: Plotkeeper is a Node product (``node --test``); its harden step
 mapped every flow to ``test/*.test.js`` tests, and all of them were "unchecked" because the
 own-suite run was pytest only."""
 

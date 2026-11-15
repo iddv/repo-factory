@@ -9,7 +9,7 @@ session), ``ignore_term`` (SIGTERM does nothing), ``outcome`` (``ok``,
 ``error`` or ``auth``, a failed build stage on the Claude login; a list is taken one item
 per run), ``readiness``/``findings``/``prediction``
 overrides, ``files`` (extra delivered files) and ``evidence`` (false: the round has no
-evidence folder; EX-PLAN §4.4 puts the reports there, never in the tree). Every run appends its argv to
+evidence folder; the reports go there, never in the tree). Every run appends its argv to
 ``<task>/fake_runs.jsonl``."""
 import json
 import os

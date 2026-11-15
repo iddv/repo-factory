@@ -248,6 +248,14 @@ def license_text(kind: str, holder: str, year: int) -> str | None:
     return MIT.format(year=year, holder=holder)
 
 
+def identity(cfg) -> dict:
+    """Who a published repository names, said before the press: ``{"name", "email"}``. The
+    licence and NOTICE carry ``name`` (``publish.copyright``, else git's ``user.name``); its
+    first commit is made with git's ``user.email`` (None when git has none)."""
+    p = gitcmd.run(["config", "user.email"], capture_output=True, text=True)
+    return {"name": holder_name(cfg), "email": p.stdout.strip() or None}
+
+
 def holder_name(cfg) -> str:
     if cfg["publish"].get("copyright"):
         return cfg["publish"]["copyright"]
@@ -365,6 +373,11 @@ def finish(prep: dict, cfg, override: dict | None = None) -> dict:
         blocked.append(
             "secrets scan: " + "; ".join(f"{h['file']}:{h['line']} {h['kind']}" for h in sec[:10])
         )
+    from . import workflows
+
+    wf = workflows.scan(stage, skip=mine)  # the build's workflows, not repo-factory's
+    if wf:
+        blocked.append("workflow check: " + "; ".join(wf[:10]))
     # wording is never a hold: the review reworded what the jargon
     # scan found in README and AGENTS.md; the hits left are listed on the build page
     return {**prep, "blocked": blocked, "secrets": sec, "jargon": jar, "override": override}
@@ -378,7 +391,7 @@ MAINTENANCE_FILES = ("policy", "all", "none")
 
 
 def maintenance_which(cfg) -> str:
-    """``publish.maintenance_files`` (EX-PLAN Q5): ``policy`` (default), ``all`` or ``none``."""
+    """``publish.maintenance_files``: ``policy`` (default), ``all`` or ``none``."""
     v = str(cfg["publish"].get("maintenance_files") or "policy")
     return v if v in MAINTENANCE_FILES else "policy"
 
@@ -401,7 +414,7 @@ def maintenance_files(stage: Path, full: str, which: str = "policy") -> dict:
         res = backfill.write_files(stage, {}, only=backfill.POLICY_FILES)
         if (stage / "AGENTS.md").is_file():  # the product's own wins
             return {"files": res["written"], "kept": [], "removed": [], "doctor": []}
-        values = {**_values(stage, full), "commands_run_by": agentsmd.COMMANDS_RUN_BY_BEARS}
+        values = {**_values(stage, full), "commands_run_by": agentsmd.COMMANDS_RUN_BY_FACTORY}
         (stage / "AGENTS.md").write_text(agentsmd.render(values))
         return {
             "files": [*res["written"], "AGENTS.md"],
@@ -428,10 +441,10 @@ def _values(stage: Path, full: str) -> dict:
 
 
 def maintenance_github(gh: Gh, full: str) -> dict:
-    """Right after ``gh repo create``: the label scheme (created, never pruned) and the repo
-    settings (``delete_branch_on_merge``, Dependabot alerts). A failure is recorded, never
-    fatal: the repo is published either way and the backfill command can redo it."""
-    from ..maintain import backfill, labels
+    """Right after ``gh repo create``: the label scheme (created, never pruned). No repository
+    setting is changed. A failure is recorded, never fatal: the repo is published either way
+    and maintenance's setup pull request applies the labels again."""
+    from ..maintain import labels
 
     out: dict = {"errors": []}
     try:
@@ -439,10 +452,6 @@ def maintenance_github(gh: Gh, full: str) -> dict:
         out["labels"] = {k: len(v) for k, v in lab.items() if k != "extra"}
     except PublishError as e:
         out["errors"].append(f"labels: {e}")
-    try:
-        out["settings"] = backfill.repo_settings(gh, full)
-    except Exception as e:  # noqa: BLE001 - recorded, not fatal
-        out["errors"].append(f"settings: {type(e).__name__}: {e}")
     return out
 
 
@@ -538,7 +547,7 @@ def push(prep: dict, idea: dict, gh: Gh) -> dict:
 def update_release_text(
     gh: Gh, full: str, product: str, text: str, tag: str = f"v{VERSION}"
 ) -> dict:
-    """repo-factory's own text on a published repo, reworded (NG-PLAN §5): the description, and the
+    """repo-factory's own text on a published repo, reworded: the description, and the
     first paragraph of the release notes (the checks asset's sentence and any override
     disclosure after it stay as they were). Code, files and visibility are never touched."""
     from . import claims as cl
@@ -561,5 +570,6 @@ def update_release_text(
 def make_public(gh: Gh, full: str) -> None:
     # The REST call, not ``gh repo edit --visibility``: that needs
     # ``--accept-visibility-change-consequences``, which older gh releases (Ubuntu 24.04's
-    # 2.45) don't know, and newer ones refuse to run without.
-    gh("api", "-X", "PATCH", f"repos/{full}", "-f", "visibility=public")
+    # 2.45) don't know, and newer ones refuse to run without. ``--raw-field`` is ``-f`` spelled
+    # out (a string field), so no short flag reads as a force anywhere in the package.
+    gh("api", "-X", "PATCH", f"repos/{full}", "--raw-field", "visibility=public")

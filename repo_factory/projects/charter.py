@@ -1,4 +1,4 @@
-"""A project's charter (PJ-PLAN.md §3): one page in plain words saying what the project is, for
+"""A project's charter: one page in plain words saying what the project is, for
 whom, what it promises, what it will not do, which ways it may grow, and the tests a reviewer
 asks of any change. Everything else about a project reads or writes this page.
 
@@ -578,7 +578,7 @@ def draft_for_project(
 def github_docs(loop, repo: str) -> dict:
     """The repo's documents read from GitHub (no clone here): ``{name: text}``."""
     from ..maintain.github import GitHubError, Repo
-    from ..maintain.poll import gh_for
+    from ..maintain.watch import gh_for
 
     r, out = Repo(gh_for(loop), repo), {}
     for name in DOCS:

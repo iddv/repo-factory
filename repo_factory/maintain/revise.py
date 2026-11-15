@@ -1,11 +1,13 @@
-"""Revise (MAINTAIN.md §5.2): repo-factory fixes an issue the owner labelled ``go``.
+"""Revise: repo-factory fixes an issue you labelled ``go``, as the maintenance poll
+(``watch.py``) starts it.
 
-GitHub is the record. The queue is a search over the open issues the poll already read
-(``queue``); the lock is the ``claim:repo-factory`` label plus one lease comment (``claim``, ``renew``);
-the attempts are counted from marker comments (``attempts``); the proposal is a pull request;
-a failure is a comment, and after ``revise.max_attempts`` of them the ``needs-you`` label.
-Nothing here keeps state of its own: ``<loop home>/maintain/cache.json`` only remembers which
-fix process is running, and losing it costs at most one lease.
+Nothing is written on the issue: no label, no claim, no comment. Which fix ran, its attempts,
+its outcome and why live in repo-factory's own record, ``<loop home>/maintain/fixes.json``
+(``fixes.py``); ``<loop home>/maintain/cache.json`` only remembers which fix process is
+running. Before anything is spent and again before the push, the fix reads again that the
+repository's maintenance is switched on and not paused, that maintenance's money is not spent
+(``spend.py``), that the issue's ``go`` is still yours (``consent.py``), and where main's
+workflows run and how sessions sign in (``where_it_runs``).
 
 A fix runs detached, as a build does (``start``; ``repo-factory maintain revise REPO N`` is the
 process), in a task folder ``<tasks_dir>/fix-<owner>-<name>-<N>`` whose event log the Builds list and the
@@ -23,26 +25,24 @@ build page read like any build's (kind *fix*). Its stages (``policies/v5-revise/
 5. **readiness**: no model. ``check_agents_md.py`` runs AGENTS.md's commands exactly as
    written (the quick start, the product's own tests, the acceptance suite) in the sandbox, on
    main and on the fix: a command that ran on main must still run on the fix. One that already
-   fails on main is main's, not the fix's, and holds nothing (AU3 finding 4).
+   fails on main is main's, not the fix's, and holds nothing.
    With ``maintain.exam`` (report, the default, or require), the checks published with the
    latest release run on main and on the fix (``checks.py``); a check that passed on main and
    fails on the fix is in the PR body (report) or stops the fix (require).
-6. **deliver**: the scope check refuses a diff that touches ``.github/workflows/``,
-   ``.github/repo-factory.yml``, ``LICENSE``, ``NOTICE`` or adds a secret-shaped file; the changed
-   files are scanned for secrets and build jargon; the branch is pushed by the host and the
-   pull request opened with ``Fixes #N``.
+6. **deliver**: the scope check refuses a diff that touches ``.github/``, the policy file,
+   ``LICENSE``, ``NOTICE``, an agent's or editor's file, or adds a secret-shaped file; the
+   changed files are scanned for secrets and build jargon. The host then clones the repository
+   afresh into its own folder (``outbox``), carries the changed files over as files
+   (``carry.py``), checks the scope again there, commits and pushes onto a ``repo-factory/``
+   branch that does not exist yet (a later attempt takes the next free name; nothing is ever
+   overwritten), and opens the pull request with ``Fixes #N``. No git that reaches GitHub
+   ever runs in the session's tree.
 
-A **refresh** (``Fix(..., refresh=PR)``, started by ``current.py`` when ``main`` moved under one
-of repo-factory's pull requests with a conflict) runs the same stages on the new ``main`` and pushes to
-that pull request's own branch with ``--force-with-lease`` (its review history stays). It is not
-an attempt: it claims nothing and writes no attempt comment on the issue; it reports on the pull
-request (``current.CURRENT``), and when the fix is on ``main`` already it closes the pull request.
-
-Security (§6.2): the sessions run in the build sandbox with no GitHub credential, and with
+Security: the sessions run in the build sandbox with no GitHub credential, and with
 ``maintain.net: allowlist`` their proxy reaches only ``maintain.net_hosts``; the issue's text
 reaches them only inside document delimiters; every GitHub write is the host's, from templates,
-with the model's words sanitised. repo-factory only ever clones ``main`` and pushes ``repo-factory/`` branches;
-it never checks out a branch it did not create."""
+with the model's words sanitised. repo-factory only ever clones the default branch and pushes
+new ``repo-factory/`` branches; it never checks out a branch it did not create."""
 from __future__ import annotations
 
 import hashlib
@@ -62,24 +62,19 @@ import yaml
 from .. import gitcmd
 from ..resources import POLICIES
 from . import labels as L
-from . import triage
-from .github import GitHubError, Repo, epoch, iso
-from .words import META, SIGNATURE
+from .github import GitHubError, Repo
+from .words import META, _doc, sanitize
 
 POLICY = POLICIES / "v5-revise"
-CLAIM = "<!-- repo-factory:claim"
-MINE = " by=repo-factory -->"                           # the marker of repo-factory's own lease comment
-LEASE = re.compile(r"<!-- repo-factory:claim lease_until=(\S+)(?: branch=(\S+))?(?: by=(\S+))? -->")
-FAILED = re.compile(r"<!-- repo-factory:revise attempt=(\d+) result=failed\b")
-RESET = "<!-- repo-factory:revise reset"
-TICKET = "<!-- repo-factory:ticket v1 -->"              # an issue repo-factory opened (chat's Cut a ticket)
 FORBIDDEN = (".github/workflows/", ".github/repo-factory.yml", "LICENSE", "NOTICE")
+# what a fix never changes besides FORBIDDEN: all of .github/, and the files an agent or an
+# editor runs or obeys (a fix that needs one is a row for the person)
+NEVER_DIRS = (".github/", ".claude/", ".vscode/", ".devcontainer/", ".idea/", ".cursor/")
+NEVER_NAMES = ("AGENTS.md", "CLAUDE.md", ".cursorrules")
 MISSES = ("scope", "verify", "readiness", "security", "interpretation")
-NO_RETRY = ("error",)                            # stages no model made: an exception in repo-factory
 # the kinds whose test reproduces a failure; any other kind but docs gets a test that specifies
 # the requested behaviour (prompts/specify.md), which fails on main because it is not there yet
 REPRODUCE = ("bug", "security")
-PRIO = {"p1": 0, "p2": 1, "p3": 2}
 FIXES = re.compile(r"\b(?:fix|fixes|fixed|close|closes|closed|resolve|resolves|resolved)\s+#(\d+)\b",
                    re.I)
 ACC = "tests/acceptance"
@@ -116,6 +111,16 @@ def slug(title: str, n: int = 40) -> str:
     return out or "issue"
 
 
+def safe_title(title: str) -> str:
+    """An issue's title as a fix copies it into a commit message, a pull request's title and
+    the first line of its body: sanitised (no link, mentions as code, one line) and with every
+    issue reference broken (``#9`` becomes ``# 9``, ``GH-9`` ``GH- 9``), so a "closes #9" in
+    someone's title closes nothing and links nothing."""
+    t = sanitize(" ".join(str(title or "").split()), 200)
+    t = re.sub(r"#(?=\d)", "# ", t)
+    return re.sub(r"(?i)\bGH-(?=\d)", "GH- ", t)
+
+
 def branch_name(number: int, title: str) -> str:
     return f"repo-factory/{int(number)}-{slug(title)}"
 
@@ -127,58 +132,10 @@ def task_dir(tasks_dir: Path, full: str, number: int) -> Path:
     return Path(tasks_dir) / f"fix-{owner}-{name}-{int(number)}"
 
 
-# -- the protocol on GitHub ---------------------------------------------------------------------
-def lease_of(comments: list[dict]) -> dict | None:
-    """The newest claim comment's lease (repo-factory's own or another agent's):
-    ``{"until", "branch", "by", "id", "mine"}``; None when there is none."""
-    best = None
-    for c in comments:
-        m = LEASE.search(c.get("body") or "")
-        if m:
-            rec = {"until": epoch(m.group(1)) or 0.0,
-                   "branch": m.group(2), "by": m.group(3) or "agent", "id": c.get("id"),
-                   "mine": MINE in (c.get("body") or ""),
-                   "at": c.get("updated") or c.get("created") or 0}
-            if best is None or rec["at"] >= best["at"]:
-                best = rec
-    return best
-
-
-def lease_body(until: float, branch: str, previous: dict | None = None) -> str:
-    stamp = iso(until)[:16] + "Z"
-    took = ""
-    if previous and previous.get("until") and not previous.get("mine"):
-        took = (f" The previous claim's lease expired at {iso(previous['until'])[:16]}Z with no "
-                "open pull request, so repo-factory takes it over.")
-    return (f"<!-- repo-factory:claim lease_until={stamp} branch={branch}{MINE}\n"
-            f"repo-factory is working on this on branch `{branch}` (lease until {stamp}).{took} "
-            f"A pull request will follow, or a comment saying why not.\n\n_{SIGNATURE}_\n")
-
-
-def seq(comments: list[dict]) -> int:
-    """The next revise comment's number on the issue: each marker is unique (an attempt
-    after a reset is attempt 1 again, so the number tells it from the old attempt 1)."""
-    return 1 + sum(1 for c in comments if "<!-- repo-factory:revise" in (c.get("body") or ""))
-
-
-def marker(k: int, result: str, n: int) -> str:
-    return f"<!-- repo-factory:revise attempt={k} result={result} n={n}"
-
-
-def attempts(comments: list[dict]) -> int:
-    """Failed attempts since the newest reset (the owner removed ``needs-you``)."""
-    n = 0
-    for c in comments:
-        body = c.get("body") or ""
-        if RESET in body:
-            n = 0
-        elif FAILED.search(body):
-            n += 1
-    return n
-
-
+# -- what the issue list says --------------------------------------------------------------------
 def linked(items: list[dict]) -> dict[int, list[int]]:
-    """Issue number -> the open pull requests that say ``Fixes #N`` (the PR is the lock)."""
+    """Issue number -> the open pull requests whose title or body says ``Fixes #N`` (anyone's:
+    the poll lists them; only a pull request this install's fix opened is the fix of N)."""
     out: dict[int, list[int]] = {}
     for p in items:
         if p["is_pr"] and p.get("state", "open") == "open":
@@ -187,101 +144,8 @@ def linked(items: list[dict]) -> dict[int, list[int]]:
     return out
 
 
-def queue(items: list[dict], pol: dict, now: float, lease=lambda n: None) -> list[dict]:
-    """The §2.2 search over the open issues: labelled ``go`` (the owner's signature: triage's
-    ``auto_go`` and repo-factory's own filing keep to ``revise.kinds``; the owner's go starts any kind),
-    not a ``question``, without ``needs-you`` or ``cannot-reproduce``, no assignee (a person's claim
-    never expires), no open pull request that fixes it, and no live ``claim:*`` lease
-    (``lease(number)`` reads it; an expired one is free again). ``p1`` first, then ``p2``,
-    ``p3``, none; oldest first within a priority."""
-    if pol.get("status") != "maintained" or pol["revise"]["trigger"] == "off":
-        return []
-    prs = linked(items)
-    out = []
-    for i in items:
-        labs = set(i["labels"])
-        if i["is_pr"] or "go" not in labs or labs & {"needs-you", "cannot-reproduce",
-                                                         "question"} \
-                or i["assignees"] or prs.get(i["number"]):
-            continue
-        if labs & {"claim:repo-factory", "claim:agent"}:
-            ls = lease(i["number"])
-            if ls and (ls.get("until") or 0) > now:
-                continue
-        out.append(i)
-    return sorted(out, key=lambda i: (min([PRIO[x] for x in i["labels"] if x in PRIO] or [3]),
-                                      i.get("created") or 0, i["number"]))
-
-
 def kind_of(item: dict) -> str | None:
     return next((x for x in L.KINDS if x in item["labels"]), None)
-
-
-def claim(r: Repo, item: dict, branch: str, now: float, hours: float,
-          comments: list[dict] | None = None) -> dict:
-    """``claim:repo-factory`` and repo-factory's lease comment (an expired lease of another agent is taken
-    over, and the comment says so)."""
-    comments = r.comments(item["number"]) if comments is None else comments
-    prev = lease_of(comments)
-    until = now + float(hours) * 3600
-    r.set_labels(item["number"], ["claim:repo-factory"], remove=["claim:agent"], have=item["labels"])
-    c = r.comment_with_marker(item["number"], MINE, lease_body(until, branch, prev),
-                              comments=comments)
-    return {"until": until, "comment": c.get("id"), "branch": branch}
-
-
-def renew(r: Repo, number: int, branch: str, now: float, hours: float) -> dict:
-    """repo-factory' lease, moved on (edits its own comment)."""
-    until = now + float(hours) * 3600
-    return {"until": until, **r.comment_with_marker(number, MINE, lease_body(until, branch))}
-
-
-def unclaim(r: Repo, number: int, add=(), ended: str | None = None,
-            branch: str = "-") -> None:
-    """``claim:repo-factory`` off (plus ``add``); with ``ended``, repo-factory's lease comment is edited to
-    say how the work ended, its lease set to now (so nobody reads it as live)."""
-    r.set_labels(number, list(add), remove=["claim:repo-factory"])
-    if ended and r.find_marker(number, MINE):            # only repo-factory's own existing lease
-        r.comment_with_marker(number, MINE, (
-            f"<!-- repo-factory:claim lease_until={iso(time.time())[:16]}Z branch={branch}{MINE}\n"
-            f"repo-factory worked on this on branch `{branch}`: {ended}\n\n_{SIGNATURE}_\n"))
-
-
-LAST_FAIL = re.compile(r"stopped in the \*\*(\w+)\*\* stage: (.*?)(?: The partial work is on "
-                       r"branch `[^`]*`\.)? Cost \$", re.S)
-
-
-def previous_failure(comments: list[dict]) -> dict | None:
-    """The newest failed attempt since the newest reset, from repo-factory's own comment: ``{"stage",
-    "why"}``, or None (the first attempt)."""
-    last = None
-    for c in comments:
-        body = c.get("body") or ""
-        if RESET in body:
-            last = None
-        elif FAILED.search(body):
-            m = LAST_FAIL.search(body)
-            last = {"stage": m.group(1), "why": m.group(2).strip()[:1500]} if m else None
-    return last
-
-
-def sentence(s: str) -> str:
-    s = (s or "").strip()
-    return s if not s or s[-1] in ".!?…" else s + "."
-
-
-def fail_comment(k: int, stage: str, why: str, usd: float, max_attempts: int,
-                 branch: str | None, n: int) -> str:
-    last = k >= max_attempts or stage in NO_RETRY
-    tail = ("repo-factory could not fix this, so it stops here and labels it `needs-you`. Remove "
-            "`needs-you` to let it try again, or fix it by hand following AGENTS.md."
-            if last else "repo-factory will try once more on its next poll.")
-    part = f" The partial work is on branch `{branch}`." if branch else ""
-    return (f"{marker(k, 'failed', n)} stage={stage} -->\n"
-            f"repo-factory tried to fix this (attempt {k} of {max_attempts}) and stopped in the "
-            f"**{stage}** stage: {sentence(triage.sanitize(why, 600))}{part} Cost ${usd:.2f}."
-            f"\n\n{tail}\n\n"
-            f"_{SIGNATURE}_\n")
 
 
 # -- the fix's trees: tests and checks, sandboxed -----------------------------------------------
@@ -373,7 +237,7 @@ def norm(s: str) -> str:
 def fails_for(expect: str, detail: str) -> bool:
     """The failure output carries the stated expectation: the phrase itself, or every word of
     it of three letters or more (the harness's check against a test that fails for another
-    reason, §6.2)."""
+    reason)."""
     e, d = norm(expect), norm(detail)
     if not e:
         return False
@@ -384,7 +248,7 @@ def fails_for(expect: str, detail: str) -> bool:
 
 
 def scope_violations(changed: list[str]) -> list[str]:
-    """What a fix's diff may never touch (§6.2): workflows, the policy, the licence and
+    """What a fix's diff may never touch: workflows, the policy, the licence and
     notice, a file outside the repo, a secret-shaped file."""
     from ..loop.secrets import BAD_FILES
     bad = []
@@ -394,6 +258,9 @@ def scope_violations(changed: list[str]) -> list[str]:
             bad.append(f"{f}: outside the repository")
         elif any(f == x or f.startswith(x) for x in FORBIDDEN):
             bad.append(f"{f}: a fix never changes this file")
+        elif any(f.startswith(d) or f"/{d}" in f"/{f}" for d in NEVER_DIRS) or name in NEVER_NAMES:
+            bad.append(f"{f}: an agent's, an editor's or CI's file: a fix never changes one; "
+                       "if the fix needs it, change it yourself")
         else:
             for what, pat, ok in BAD_FILES:
                 if pat.search(name) and not (ok and ok.search(name)):
@@ -453,25 +320,30 @@ def doc(item: dict) -> str:
     body = item.get("body") or "(no description)"
     t = f"Title: {item['title']}\n\n{body}"
     return (f'<<<document name="issue #{item["number"]}">>>\n'
-            f"{triage._doc(t)[:12000]}\n<<<end>>>")
+            f"{_doc(t)[:12000]}\n<<<end>>>")
 
 
 class Fix:
-    """One fix of one issue, in its own process. ``harness``: a test double for the sessions
-    (as v5's); ``venv``, ``tests``, ``check``: replaceable runners (tests)."""
-
-    refresh: int | None = None                       # set for a refresh (current.py) only
+    """One fix of one issue, in its own process. Nothing is written on the issue: the attempts
+    live in ``fixes.json``, your ``go`` is read again from the issue's events, and the switch,
+    the pauses and the monthly limit are read again before every session and before the push;
+    never a force-push. ``harness``: a test double for the sessions (as v5's); ``venv``,
+    ``tests``, ``check``: replaceable runners (tests)."""
 
     def __init__(self, loop, full: str, number: int, *, harness=None, tests=None, check=None,
-                 venv=None, now=None, exam=None, refresh: int | None = None):
+                 venv=None, now=None, exam=None):
         from ..maintain import policy as P
-        from .poll import gh_for, settings, targets
+        from .watch import gh_for, published, settings
         self.loop, self.full, self.number = loop, full, int(number)
         self.gh = gh_for(loop)
         self.r = Repo(self.gh, full)
+        try:  # the default branch, read once: "main" when it cannot be read
+            self.r.default_branch()
+        except GitHubError:
+            pass
         self.s = settings(loop.cfg)
         self.pol = P.load(self.gh, full)
-        self.t = next((t for t in targets(loop) if t["repo"] == full),
+        self.t = next((t for t in published(loop) if t["repo"] == full),
                       {"repo": full, "idea": None, "product": full.split("/")[1],
                        "one_liner": ""})
         self.item = self.r.issue(self.number)
@@ -480,13 +352,6 @@ class Fix:
         self.task = task_dir(loop.cfg.tasks_dir, full, self.number)
         self.work = loop.cfg.layout.maintain / "work" / full.replace("/", "-") / str(number)
         self.branch = branch_name(self.number, self.item["title"])
-        # a refresh re-does repo-factory's pull request ``refresh`` on its own branch (current.py)
-        self.refresh = int(refresh) if refresh else None
-        self.pull: dict = {}
-        if self.refresh:
-            self.pull = self.r.pull(self.refresh)
-            self.branch = self.pull["head_ref"] or self.branch
-        self.hours = float(self.pol["revise"]["lease_hours"])
         self.max_attempts = int(self.pol["revise"]["max_attempts"])
         self.kind = kind_of(self.item) or "bug"
         self.t0 = now or time.time()
@@ -513,8 +378,9 @@ class Fix:
     # -- plumbing ---------------------------------------------------------------------------
     @property
     def cap(self) -> float | None:
+        # 0 is a cap of nothing (loop.yaml's schema refuses it), never "no cap"
         caps = [float(x) for x in (self.pol["revise"].get("max_usd"), self.s.get("max_usd"))
-                if x not in (None, "", 0)]
+                if x is not None and x != ""]
         return min(caps) if caps else None
 
     def venv(self) -> Path:
@@ -592,18 +458,59 @@ class Fix:
                   wall_s=round(time.time() - t0, 1),
                   **({"why": out} if isinstance(out, str) else {}),
                   **({"prompts": used} if used else {}))
-        if not self.refresh:                       # a refresh holds no lease: the PR is the lock
-            self.renew()
         return out
+
+    # -- what is read again before anything is spent or pushed --------------------------------
+    def still_wanted(self) -> str | None:
+        """Why this fix must not go on now, or None: maintenance switched off for the repo, the
+        repo or the loop paused, or maintenance's money spent."""
+        from . import pauses, spend, switch
+        home = self.loop.cfg.home
+        if not switch.is_on(home, self.full):
+            return f"maintenance was switched off for {self.full}"
+        if pauses.get(home, self.full):
+            return f"maintenance was paused for {self.full}"
+        if self.loop.cfg.paused():
+            return "the loop was paused"
+        return spend.reached(self.loop)
+
+    def owners_go(self) -> str | None:
+        """Why the issue is not the signed-in person's word, or None: it must be
+        open, its ``go`` must have been put on by the login maintenance acts for (the
+        issue's events), never by anyone else, and nobody else may have changed its title or
+        body since (``consent.why_not``)."""
+        from . import consent
+        from .identity import login_of
+        if self.item["state"] != "open" or "go" not in self.item["labels"]:
+            return "the issue is no longer open and labelled go"
+        from .watch import acting_login
+        me = {x for x in (login_of(self.loop.gh), getattr(self.gh, "login_name", None),
+                          acting_login(self.gh)) if x}
+        try:
+            return consent.why_not(self.r, self.item, me)
+        except GitHubError as e:
+            return f"the issue's events could not be read: {str(e)[:200]}"
+
+    def where_it_runs(self) -> str | None:
+        """Why the fix may not run or be pushed here, read now: sessions would
+        sign in with Claude Code's own sign-in file (``signin.py``), or a workflow on main may
+        run off GitHub's own runners, where the fix's pull request would run its code
+        (``runners.py``); or None."""
+        from . import doctor, signin
+        held = signin.blocks(self.loop.cfg)
+        if held:
+            return held
+        try:
+            off = doctor.hosted_now(self.r)
+        except GitHubError as e:
+            return f"where main's workflows run could not be read: {str(e)[:200]}"
+        if off:
+            return ("a workflow on main may run off GitHub's own runners, where this fix's pull "
+                    "request would run its code: " + "; ".join(off)[:400])
+        return None
 
     def skip(self, name: str, why: str) -> None:
         self.emit("v5_stage", stage=name, status="skipped", usd=0.0, wall_s=0.0, why=why)
-
-    def renew(self) -> None:
-        try:
-            renew(self.r, self.number, self.branch, time.time(), self.hours)
-        except GitHubError:
-            pass                                   # the lease is advisory; the PR is the lock
 
     def session(self, stage: str, text: str, resume: dict | None = None) -> dict:
         from ..costs import ledger
@@ -618,6 +525,13 @@ class Fix:
                 raise Stop(stage, f"the fix's cap ${self.cap:.2f} is reached "
                                   f"(spent ${self.usd:.2f})", partial=stage != "reproduce")
             want = left if want is None else min(want, left)
+        from . import spend
+        why = self.still_wanted()
+        if why:
+            raise Stop(stage, why, outcome="skipped")
+        month = spend.left(self.loop)              # this month's (and today's) money left
+        if month is not None:
+            want = month if want is None else min(want, month)
         sess = {"id": str(uuid.uuid4())}             # the CLI takes only a UUID
         if resume and resume.get("id"):
             sess.update(resume=resume["id"], base_cost_usd=resume.get("cost") or 0)
@@ -661,11 +575,11 @@ class Fix:
             return {}
         return d if isinstance(d, dict) else {}
 
-    def remote(self, *args: str, check: bool = True) -> str:
-        """A git call that reaches GitHub, with maintenance's identity: through the token file
+    def git_auth(self) -> tuple[list[str], dict | None]:
+        """Maintenance's identity for a git call that reaches GitHub: through the token file
         when there is one (``Gh.git_auth``), through a token narrowed to pushing this one
-        repository when repo-factory acts as its own app (``identity.narrow``), else as git is set
-        up (the owner's login). The host does the push; no session ever holds the token."""
+        repository when repo-factory acts as its own app (``identity.narrow``), else as git is
+        set up (the owner's login). The host does the push; no session ever holds the token."""
         from . import identity
         g = identity.narrow(self.gh, "push")
         auth = g.git_auth()
@@ -676,7 +590,7 @@ class Fix:
             if not isinstance(e, AppError):
                 raise
             raise ReviseError(str(e)) from None
-        return git(*auth, *args, cwd=self.repo, check=check, env=env)
+        return auth, env
 
     def author(self) -> list[str]:
         """``git -c`` arguments for a commit: the bot's name and noreply address when repo-factory
@@ -684,7 +598,10 @@ class Fix:
         from . import identity
         return identity.git_author(self.gh)
 
-    def changed(self, base: str = "origin/main") -> list[str]:
+    def changed(self, base: str | None = None) -> list[str]:
+        """What the workspace changes against the commit the fix started from (recorded at
+        the checkout, before any session: a ref a session moved changes nothing here)."""
+        base = base or getattr(self, "base", None) or f"origin/{self.r.base}"
         out = git("diff", "--name-only", "--no-renames", base, cwd=self.repo).split()
         out += git("ls-files", "--others", "--exclude-standard", cwd=self.repo).split()
         return sorted({f for f in out if not f.startswith(".repo-factory/")})
@@ -695,7 +612,9 @@ class Fix:
             shutil.rmtree(self.work)
         self.work.mkdir(parents=True)
         self.gh("repo", "clone", self.full, str(self.repo), "--", "-q")
-        git("checkout", "-q", "-B", self.branch, "origin/main", cwd=self.repo)
+        gitcmd.pin(self.repo)
+        git("checkout", "-q", "-B", self.branch, f"origin/{self.r.base}", cwd=self.repo)
+        self.base = git("rev-parse", "HEAD", cwd=self.repo).strip()
         excl = self.repo / ".git" / "info" / "exclude"
         excl.parent.mkdir(parents=True, exist_ok=True)
         with open(excl, "a") as f:
@@ -703,7 +622,7 @@ class Fix:
 
     def do_reproduce(self) -> None:
         """The test first: one that reproduces a bug or security report on main, or for any
-        other kind one that specifies the requested behaviour (AU3 findings 5 and 7). Either
+        other kind one that specifies the requested behaviour. Either
         must fail on main for the stated reason."""
         name = "reproduce" if self.kind in REPRODUCE else "specify"
         text = self.prompt(name, issue=doc(self.item))
@@ -718,7 +637,7 @@ class Fix:
                            f"{sess.get('reason') or 'no reason'})")
             test = got.get("test")
             if not test:
-                why = triage.sanitize(got.get("why") or "the session named no test", 400)
+                why = sanitize(got.get("why") or "the session named no test", 400)
                 raise Stop("reproduce", why, outcome="cannot_reproduce")
             test = str(test).strip().lstrip("./")
             why = self.judge_test(test, got)
@@ -730,7 +649,7 @@ class Fix:
 
     def judge_test(self, test: str, got: dict) -> str | None:
         """Why the reproducing test is not accepted, or None: it is one test file of the
-        product's own suite (EX-PLAN §8.1: a repo that kept its acceptance suite has it under
+        product's own suite (a repo that kept its acceptance suite has it under
         ``tests/acceptance/``; a newer one under its own tests directory), the only change,
         and on main it fails (not errors) for the stated reason."""
         from ..v5.exam import is_test_path
@@ -760,7 +679,7 @@ class Fix:
         if not fails_for(got.get("expect") or "", detail):
             last = detail.strip().splitlines()[-1][:300] if detail.strip() else "no output"
             return (f"`{test}` fails, but not with the stated expectation "
-                    f"({triage.sanitize(got.get('expect') or '(none given)', 160)}): {last}")
+                    f"({sanitize(got.get('expect') or '(none given)', 160)}): {last}")
         self.failure = detail.strip()[-1500:]
         return None
 
@@ -776,15 +695,13 @@ class Fix:
                             "test)") if self.test else self.prompt("fix", "docs"))
         if "check" in [str(x.get("name") if isinstance(x, dict) else x)
                        for x in self.item.get("labels") or []]:
-            # EX-PLAN §6.3: a check of repo-factory's that may have judged a build wrongly
+            # a check of repo-factory's that may have judged a build wrongly
             test += "\n\n" + self.prompt("fix", "check")
-        if self.refresh:
-            test += "\n\n" + self.refresh_note()
         if getattr(self, "previous", None):
             # a retry on the same inputs fails the same way: it hears why the last one stopped
             test += "\n\n" + self.prompt("fix", "previous", stage=self.previous["stage"],
                                            why='<<<document name="the last attempt">>>\n'
-                                               f"{triage._doc(self.previous['why'])}\n<<<end>>>")
+                                               f"{_doc(self.previous['why'])}\n<<<end>>>")
         self.fix_session = self.session("build", self.prompt("fix", issue=doc(self.item),
                                                              test=test))
         self.fix = self.note("fix.json")
@@ -842,7 +759,7 @@ class Fix:
         self.main_problems = problems(res)
         self.agents_main = {"sha": sha, "ok": bool(res.get("ok")), "at": time.time(),
                             "check": CHECK_VERSION,
-                            "summary": triage.sanitize(res.get("summary") or "", 300)}
+                            "summary": sanitize(res.get("summary") or "", 300)}
 
     def do_readiness(self) -> str:
         """No worse than main: each problem the check finds on the fix that it did not find on
@@ -879,7 +796,7 @@ class Fix:
             p = self.repo / f
             if p.is_file():
                 hits += [f"{f}:{n} {k}" for n, k, _ in scan_text(p.read_text(errors="replace"))]
-        # the provenance scan (EX-PLAN §4.6) over the product's prose this fix changed
+        # the provenance scan over the product's prose this fix changed
         users = {p.relative_to(self.repo).as_posix() for p in jargon.product_files(self.repo)}
         words = jargon.scan(self.repo, {}, [self.repo / f for f in changed if f in users])
         if bad or hits or words:
@@ -887,29 +804,76 @@ class Fix:
                 [*(f"scope: {b}" for b in bad), *(f"secret-shaped text in {h}" for h in hits),
                  *(f"build jargon in {w['file']}:{w['line']} ({w['kind']})" for w in words)])[:900],
                 partial=False)
-        git("add", "-A", cwd=self.repo)
-        commit(self.repo, f"Fix #{self.number}: {self.item['title']}\n\n"
-               f"{triage.sanitize(self.fix.get('what') or 'The fix.', 900)}\n\n"
-               f"Fixes #{self.number}\n", author=self.author())
-        if self.refresh:
-            return self.deliver_refresh(changed)
-        self.remote("push", "-q", "-f", "-u", "origin", self.branch)
-        for old in self.remote("ls-remote", "--heads", "origin", f"{self.branch}-attempt*",
-                               check=False).split():
-            if old.startswith("refs/heads/"):
-                self.remote("push", "-q", "origin", "--delete", old[len("refs/heads/"):],
-                            check=False)
-        pr = self.r.create_pr(f"Fix #{self.number}: {self.item['title']}", self.branch,
+        return self.deliver_quiet(changed)  # nothing of the session's tree is pushed from
+
+    def message(self) -> str:
+        return (f"Fix #{self.number}: {safe_title(self.item['title'])}\n\n"
+                f"{sanitize(self.fix.get('what') or 'The fix.', 900)}\n\n"
+                f"Fixes #{self.number}\n")
+
+    @property
+    def outbox(self) -> Path:
+        """The host's own clone for the push: beside the workspace, never given to a
+        session."""
+        return self.work / "outbox"
+
+    def deliver_quiet(self, changed: list[str]) -> dict:
+        """Quiet maintenance's push: only while the fix is still wanted and the issue still
+        carries your ``go`` (both read again now). The host clones the repository afresh into
+        its own folder at the commit the fix started from, carries the changed files over as
+        files (``carry.py``), checks the scope again on that tree, commits there and pushes to
+        the address it builds from the repository's name, onto a ``repo-factory/`` branch that
+        does not exist yet (a later attempt takes the next free name: nothing is ever
+        force-pushed or overwritten); then the pull request. No git that reaches GitHub ever
+        runs in the session's tree, and nothing is written on the issue."""
+        from . import carry
+        why = self.still_wanted()
+        if not why:
+            try:
+                self.item = self.r.issue(self.number)
+                why = self.owners_go() or self.where_it_runs()
+            except GitHubError as e:
+                why = f"the issue could not be read again: {e}"
+        if why:
+            raise Stop("deliver", why, outcome="skipped")
+        auth, env = self.git_auth()
+        try:
+            dest = carry.clone(self.full, self.outbox, self.base, auth, env)
+            moved = carry.carry(self.repo, dest, changed)
+        except carry.CarryError as e:
+            raise Stop("deliver", str(e), partial=False) from None
+        bad = scope_violations(moved)
+        if bad:
+            raise Stop("deliver", "; ".join(f"scope: {b}" for b in bad)[:900], partial=False)
+        if not moved:
+            raise Stop("deliver", "the fix changed nothing once carried over", partial=False)
+        changed = moved
+        commit(dest, self.message(), author=self.author())
+        taken = carry.taken(dest, self.full, self.branch, auth, env)
+        branch, k = self.branch, 1
+        while branch in taken:
+            k += 1
+            branch = f"{self.branch}-{k}"
+        why = self.still_wanted()                 # the clone took a while: once more
+        if why:
+            raise Stop("deliver", why, outcome="skipped")
+        try:
+            head = carry.push(dest, self.full, branch, auth, env)
+        except carry.CarryError as e:
+            raise Stop("deliver", str(e)) from None
+        self.branch = branch
+        pr = self.r.create_pr(f"Fix #{self.number}: {safe_title(self.item['title'])}", branch,
                               self.pr_body(changed))
         self.r.set_labels(pr["number"], ["repo-factory", self.kind], have=[])
-        self.emit("delivered", node=self.sessions, branch=self.branch, out=str(self.repo),
+        self.emit("delivered", node=self.sessions, branch=branch, out=str(dest),
                   report=pr.get("url"), changed=True)
-        return pr
+        return {**pr, "head": head, "branch": branch}
 
-    def charter_problems(self, changed: list[str], base: str = "origin/main") -> list[str]:
-        """The project's charter on this diff (PJ-PLAN.md §5.3): a promise's sentence gone
+    def charter_problems(self, changed: list[str], base: str | None = None) -> list[str]:
+        """The project's charter on this diff: a promise's sentence gone
         from the README, a dependency added where the charter says standard library only."""
         from ..projects.charter_check import for_fix
+        base = base or getattr(self, "base", None) or f"origin/{self.r.base}"
 
         def at_base(f: str) -> str | None:
             try:
@@ -927,28 +891,29 @@ class Fix:
         miss = f.get("miss") if f.get("miss") in MISSES else "verify"
         flow = f.get("flow") if re.fullmatch(r"F\d{1,2}", str(f.get("flow") or "")) else None
         v = self.verified
-        repro = (f"`{self.test}` (failed on main: {triage.sanitize(self.expect, 200)})"
+        repro = (f"`{self.test}` (failed on main: {sanitize(self.expect, 200)})"
                  if self.test else "a documentation issue: AGENTS.md's commands are the check")
         mins = round((time.time() - self.t0) / 60)
         meta = (f"{META} issue={self.number} kind={self.kind} miss={miss}"
                 + (f" flow={flow}" if flow else "") + (f" test={self.test}" if self.test else "")
                 + " -->")
         return "\n".join([
-            f"Fix #{self.number}: {self.item['title']}", "",
-            f"**What:** {triage.sanitize(f.get('what') or 'see the diff', 900)}",
-            f"**Why it happened:** {triage.sanitize(f.get('why') or 'not stated', 300)}",
+            f"Fix #{self.number}: {safe_title(self.item['title'])}", "",
+            f"**What:** {sanitize(f.get('what') or 'see the diff', 900)}",
+            f"**Why it happened:** {sanitize(f.get('why') or 'not stated', 300)}",
             f"**Reproduced by:** {repro}",
             f"**Verified:** {v.get('passed', 0)} tests passed (the product's own and the "
             f"acceptance suite, sandboxed), {v.get('open', 0)} known open item(s), nothing that "
             f"passed on main fails · AGENTS.md's commands as written (quick start, the "
             f"product's own tests, the acceptance suite): "
-            f"{triage.sanitize(self.ready.get('summary') or 'not run', 160)}",
+            f"{sanitize(self.ready.get('summary') or 'not run', 160)}",
             *([checks.line(self.exam_res)] if self.exam_res else []),
             f"**Documents:** AGENTS.md {agents}" + "".join(f" · {d}" for d in docs),
             f"**Cost:** ${self.usd:.2f}, {mins} min, {self.sessions} model sessions", "",
             f"Fixes #{self.number}", "",
-            "Opened by repo-factory (automated). The owner reviews and merges; nothing merges itself "
-            "unless `.github/repo-factory.yml` says so.", "", meta, ""])
+            "Opened by repo-factory (automated). The owner reviews and merges; nothing merges "
+            "itself unless the owner switched on merging repo-factory's own bug and docs fixes "
+            "for this repository.", "", meta, ""])
 
     # -- the run ----------------------------------------------------------------------------
     def run(self) -> dict:
@@ -957,10 +922,13 @@ class Fix:
         self.den = self.task / ".den"
         if not (self.task / "loop.json").is_file():          # run by hand, not by the tick
             write_task(self.loop.cfg, self.full, self.item, self.t["product"], self.branch)
-        comments = self.r.comments(self.number)
-        k = attempts(comments) + 1
-        self.attempt, self.n = k, seq(comments)
-        self.previous = previous_failure(comments) if not self.refresh else None
+        from . import fixes  # repo-factory's own record, never the issue's comments
+        mine = fixes.get(self.loop.cfg.home, self.full, self.number)
+        k = fixes.attempts(mine) + 1
+        self.attempt = k
+        self.previous = ({"stage": str(mine.get("stage") or "?"),
+                          "why": str(mine.get("why"))[:1500]}
+                         if mine.get("outcome") == "failed" and mine.get("why") else None)
         (self.den / RESULT).unlink(missing_ok=True)          # the last run's outcome
         from ..events import START_TYPES, read_events
         rid = 1 + sum(1 for e in read_events(log_path(self.den)) if e["type"] in START_TYPES)
@@ -977,22 +945,13 @@ class Fix:
         out: dict = {"repo": self.full, "issue": self.number, "attempt": k}
         with ledger.activate(ledger.ledger_path(self.den), rid, events=self.log):
             try:
-                if self.refresh:
-                    if self.pull.get("state") != "open":
-                        raise Stop("start", f"pull request #{self.refresh} is no longer open",
-                                   outcome="skipped")
-                    if self.item["state"] != "open":
-                        raise Stop("start", f"issue #{self.number} is closed",
-                                   outcome="already")
-                elif self.item["state"] != "open" or "go" not in self.item["labels"]:
-                    raise Stop("start", "the issue is no longer open and labelled go",
-                               outcome="skipped")
+                why = self.still_wanted() or self.owners_go() or self.where_it_runs()
+                if why:
+                    raise Stop("start", why, outcome="skipped")
                 self.checkout()
                 why = None
                 self.check_main()               # AGENTS.md runs on main, or nothing is spent
                 self.baseline = statuses(self.tests(self.suite()))    # main, before any change
-                if self.refresh:
-                    self.already_on_main()
                 if self.exam_mode != "off":
                     self.exam_base = self.exam_on(self.repo)
                 if self.kind == "docs":
@@ -1012,26 +971,25 @@ class Fix:
                     self.skip("reverify", "verify found nothing")
                 self.stage("readiness", self.do_readiness)
                 pr = self.stage("deliver", self.do_deliver)
-                out.update(outcome="refreshed" if self.refresh else "pr", pr=pr["number"],
-                           url=pr["url"], test=self.test, why=why,
-                           **({"head": pr["head"]} if self.refresh else {}))
-                (self.done_refresh if self.refresh else self.done_pr)(pr)
+                out.update(outcome="pr", pr=pr["number"], url=pr["url"], test=self.test,
+                           why=why, head=pr["head"], branch=pr["branch"], kind=self.kind)
             except Stop as e:
                 out.update(outcome=e.outcome, stage=e.stage, why=e.why)
-                (self.refresh_stop if self.refresh else self.done_stop)(e)
-            except Exception as e:                     # noqa: BLE001 - said on the issue
+            except Exception as e:                     # noqa: BLE001 - said on the page
                 why = f"{type(e).__name__}: {e}"
                 out.update(outcome="failed", stage="error", why=why)
-                (self.refresh_stop if self.refresh else self.done_stop)(Stop("error", why))
-        if self.refresh:
-            out["refresh"] = self.refresh
         out.update(usd=self.usd, tokens={"in": self.tok_in, "out": self.tok_out},
                    sessions=self.sessions, wall_s=round(time.time() - self.t0, 1))
         if getattr(self, "agents_main", None):
             out["agents_main"] = self.agents_main
         # the result first: a page that reads the finished log finds it
         (self.den / RESULT).write_text(json.dumps({**out, "finished": time.time()}, indent=1))
-        good = out["outcome"] in ("pr", "refreshed", "already")
+        from ..loop.secrets import scrub  # the project's page reads it; the issue hears nothing
+        w = (str(out.get("why") or "").replace(str(self.work), ".")
+             .replace(str(Path.home()), "~"))
+        fixes.ended(self.loop.cfg.home, self.full, self.number,
+                    {**out, "why": scrub(w) if w else None})
+        good = out["outcome"] == "pr"
         self.emit("build_finished", status="ok" if good else "error",
                   cost_usd=round(self.usd, 4), wall_s=out["wall_s"],
                   error=None if good else f"{out.get('stage')}: {out.get('why')}"[:400])
@@ -1039,182 +997,12 @@ class Fix:
             shutil.rmtree(self.work, ignore_errors=True)
         return out
 
-    def done_pr(self, pr: dict) -> None:
-        unclaim(self.r, self.number, ended=f"it proposed a fix in #{pr['number']}.",
-                branch=self.branch)
-        m = marker(self.attempt, "pr", self.n)
-        self.r.comment_with_marker(self.number, m, (
-            f"{m} pr={pr['number']} -->\n"
-            f"Proposed fix in #{pr['number']} (${self.usd:.2f}). {self.who_merges()}"
-            f"\n\n_{SIGNATURE}_\n"), edit=False)
-
-    def who_merges(self) -> str:
-        """Who merges this fix, in one sentence, as the repo's policy says."""
-        from .automerge import may_merge_kind
-        m = self.pol.get("merge") or {}
-        if m.get("factory_patch") == "ci-green" and may_merge_kind(self.kind, m):
-            return ("repo-factory merges it once every check on it is green, as `.github/repo-factory.yml` › "
-                    "`merge.factory_patch: ci-green` says; label it `hold` to keep it for you.")
-        return "The owner reviews and merges it; nothing merges by itself."
-
-    def done_stop(self, e: Stop) -> None:
-        try:
-            if e.outcome == "skipped":                   # nothing was tried: no attempt
-                unclaim(self.r, self.number, ended=f"{e.why}; nothing was done.",
-                        branch=self.branch)
-                return
-            if e.outcome == "cannot_reproduce":
-                unclaim(self.r, self.number, add=["cannot-reproduce"],
-                        ended="it could not reproduce it (see below).", branch=self.branch)
-                m = marker(self.attempt, "cannot-reproduce", self.n)
-                self.r.comment_with_marker(
-                    self.number, m,
-                    (f"{m} -->\n"
-                     f"repo-factory could not reproduce this as a failing test: "
-                     f"{sentence(triage.sanitize(e.why, 600))} Cost ${self.usd:.2f}.\n\nIt is "
-                     "labelled "
-                     "`cannot-reproduce` and left alone. Add detail and remove the label to let "
-                     f"repo-factory try again.\n\n_{SIGNATURE}_\n"), edit=False)
-                return
-            branch = None
-            if e.partial and self.repo.is_dir():
-                branch = f"{self.branch}-attempt{self.attempt}"
-                try:
-                    git("add", "-A", cwd=self.repo)
-                    if git("status", "--porcelain", cwd=self.repo).strip():
-                        commit(self.repo, f"Partial fix of #{self.number} (attempt "
-                                          f"{self.attempt})", author=self.author())
-                    self.remote("push", "-q", "-f", "origin", f"HEAD:refs/heads/{branch}")
-                except ReviseError:
-                    branch = None
-            why = e.why.replace(str(self.work), ".").replace(str(Path.home()), "~")
-            # a retry helps only where a model made the failure; repo-factory's own error would just
-            # happen again on the same inputs, so it goes to the owner at once
-            last = self.attempt >= self.max_attempts or e.final or e.stage in NO_RETRY
-            unclaim(self.r, self.number, add=["needs-you"] if last else [],
-                    ended=f"attempt {self.attempt} stopped in the {e.stage} stage (see below).",
-                    branch=self.branch)
-            self.r.comment_with_marker(
-                self.number, marker(self.attempt, "failed", self.n),
-                fail_comment(self.attempt, e.stage, why, self.usd, self.max_attempts, branch,
-                             self.n), edit=False)
-        except GitHubError as ge:
-            self.emit("v5_stage", stage="deliver", status="failed",
-                      why=f"could not report on the issue: {ge}"[:300])
-
-
-    # -- a refresh (current.py): the same stages on the new main, on the same pull request ---
-    def refresh_note(self) -> str:
-        """What the build session hears of the earlier fix: its diff, as data."""
-        try:
-            diff = self.r.pr_diff(self.refresh, 12000)
-        except GitHubError:
-            diff = "(the earlier diff could not be read)"
-        return (f"This issue was fixed once already, in pull request #{self.refresh}, on an "
-                "older `main`. `main` has moved since, and that change no longer applies "
-                "cleanly. Make the fix again on the current code. The earlier change, for "
-                f'reference:\n<<<document name="pull request #{self.refresh}">>>\n'
-                f"{triage._doc(diff)}\n<<<end>>>")
-
-    def already_on_main(self) -> None:
-        """The pull request's reproducing test, taken from its branch, run on the new main:
-        when it passes there, the fix is on main already and nothing more is spent."""
-        from .release import meta
-        test = (meta(self.pull.get("body") or "") or {}).get("test")
-        if not test or test.startswith("/") or ".." in Path(test).parts:
-            return
-        self.remote("fetch", "-q", "origin", f"refs/heads/{self.branch}", check=False)
-        try:
-            text = git("show", f"FETCH_HEAD:{test}", cwd=self.repo)
-        except ReviseError:
-            return
-        p = self.repo / test  # stored-shape: not test returned above
-        old = p.read_text() if p.is_file() else None
-        p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(text)
-        try:
-            res = self.tests([test, "--runxfail"])
-        finally:
-            if old is None:
-                p.unlink()
-            else:
-                p.write_text(old)
-        st = {k: v for k, v in statuses(res).items() if k.split("::")[0] == test}
-        if st and all(v == "passed" for v in st.values()):
-            raise Stop("refresh", f"its test `{test}` passes on `main` as it is now",
-                       outcome="already")
-
-    def deliver_refresh(self, changed: list[str]) -> dict:
-        """The re-done fix onto the pull request's own branch, only while its head is the one
-        repo-factory read (``--force-with-lease``), and the pull request's body brought up to date."""
-        old = self.pull["head"]
-        self.remote("push", "-q", f"--force-with-lease=refs/heads/{self.branch}:{old}",
-                    "origin", f"HEAD:refs/heads/{self.branch}")
-        head = git("rev-parse", "HEAD", cwd=self.repo).strip()
-        self.r.edit_pr(self.refresh, body=self.pr_body(changed))
-        url = self.pull.get("url") or f"https://github.com/{self.full}/pull/{self.refresh}"
-        self.emit("delivered", node=self.sessions, branch=self.branch, out=str(self.repo),
-                  report=url, changed=True)
-        return {"number": self.refresh, "url": url, "head": head}
-
-    def refresh_mark(self) -> dict:
-        """The pull request's status comment's record, for the next edit of it."""
-        from . import current as C
-        try:
-            got = C.read_mark(self.r.comments(self.refresh))
-        except GitHubError:
-            got = {}
-        return {"refreshes": got.get("refreshes") or 1, "head": got.get("head"),
-                "cap": C.refresh_max(self.loop.cfg), "labels": self.pull.get("labels") or [],
-                "issue": self.number}
-
-    def done_refresh(self, pr: dict) -> None:
-        from . import current as C
-        b = self.refresh_mark()
-        b["head"] = pr["head"]
-        C.say(self.r, self.refresh, b, (
-            f"Re-done on the new `main` (refresh {b['refreshes']} of {b['cap']}, "
-            f"${self.usd:.2f}; not counted as an attempt): the same stages as the first time, "
-            "readiness included, pushed to this branch. CI runs again on it."))
-
-    def refresh_stop(self, e: Stop) -> None:
-        """A refresh that ended without a push: closed when the fix is on main already;
-        ``needs-you`` with the reason when it failed; as it was when there is nothing to do."""
-        from . import current as C
-        try:
-            if e.outcome == "skipped":
-                return
-            b = self.refresh_mark()
-            if e.outcome == "already":
-                C.say(self.r, self.refresh, b, (
-                    f"Closed by repo-factory: this fix is on `main` already ({e.why}), so there is "
-                    "nothing left to merge."))
-                self.r.edit_pr(self.refresh, state="closed")
-                if self.item["state"] == "open":
-                    m = marker(self.attempt, "already", self.n)
-                    self.r.comment_with_marker(self.number, m, (
-                        f"{m} pr={self.refresh} -->\nFixed on `main` already: "
-                        f"{sentence(triage.sanitize(e.why, 300))} repo-factory closed #{self.refresh}, "
-                        "whose change is no longer needed, and closes this issue. Reopen it if "
-                        f"it is not fixed.\n\n_{SIGNATURE}_\n"), edit=False)
-                    self.r.close(self.number, reason="completed")
-                return
-            why = triage.sanitize(e.why.replace(str(self.work), ".")
-                                  .replace(str(Path.home()), "~"), 500)
-            C.give_up(self.r, self.refresh, b, (
-                f"This conflicts with `main`, and re-doing it there stopped in the "
-                f"**{e.stage}** stage: {sentence(why)} Cost ${self.usd:.2f}."))
-        except GitHubError as ge:
-            self.emit("v5_stage", stage="deliver", status="failed",
-                      why=f"could not report on the pull request: {ge}"[:300])
-
 
 # -- AGENTS.md: a repo-level condition, said on the repo's row -----------------------------------
 # Readiness compares the fix with main, so a missing or broken AGENTS.md holds no fix (until
 # 2026-10-16 it held the whole queue: Driftwatch for 72 hours, including the docs fix that would
-# have repaired it; AU3 finding 4). The row says what is wrong and what fixes it.
+# have repaired it). The row says what is wrong and what fixes it.
 MISSING = "AGENTS.md is missing"
-AGENTS_OK = "<!-- repo-factory:agents-md-ok v1 -->"
 
 
 def agents_state(r: Repo, rec: dict, now: float) -> dict:
@@ -1250,38 +1038,6 @@ def agents_state(r: Repo, rec: dict, now: float) -> dict:
     return {**prev, "state": st, "why": why, "at": now, "since": since}
 
 
-def stopped_only_for_agents_md(comments: list[dict]) -> bool:
-    """Every failed attempt since the newest reset stopped because AGENTS.md was missing."""
-    fails = []
-    for c in comments:
-        body = c.get("body") or ""
-        if RESET in body:
-            fails = []
-        elif FAILED.search(body):
-            fails.append(body)
-    return bool(fails) and all(MISSING in b and "stage=readiness" in b for b in fails)
-
-
-def cause_gone(r: Repo, items: list[dict]) -> list[int]:
-    """Once AGENTS.md is back: a comment on each issue labelled ``needs-you`` only because it
-    was missing, saying the cause is gone (labels stay the owner's: removing ``needs-you`` lets
-    repo-factory try again). Once per issue (the marker)."""
-    out = []
-    for i in items:
-        if i["is_pr"] or "needs-you" not in i["labels"]:
-            continue
-        comments = r.comments(i["number"])
-        if not stopped_only_for_agents_md(comments) or r.find_marker(i["number"], AGENTS_OK,
-                                                                     comments):
-            continue
-        r.comment_with_marker(i["number"], AGENTS_OK, (
-            f"{AGENTS_OK}\nThe cause of the stop above is gone: AGENTS.md is on `main` now. "
-            "Remove `needs-you` to let repo-factory try again from attempt 1.\n\n"
-            f"_{SIGNATURE}_\n"), comments=comments, edit=False)
-        out.append(i["number"])
-    return out
-
-
 def agents_rows(full: str, rec: dict) -> list[dict]:
     """The repo's one AGENTS.md row while it is missing or does not run (advice: fixes go
     on, and each is checked against main). A file that is there is never "missing": its
@@ -1299,13 +1055,12 @@ def agents_rows(full: str, rec: dict) -> list[dict]:
                                                     if a["state"] == "broken" else "")}]
 
 
-# -- the poll's side: start, watch, and the reset marker ----------------------------------------
-def command(cfg, full: str, number: int, refresh: int | None = None) -> list[str]:
+# -- the poll's side: start and watch -----------------------------------------------------------
+def command(cfg, full: str, number: int) -> list[str]:
     m = cfg.get("maintain") or {}
     base = list(m.get("revise_command") or [sys.executable, "-m", "repo_factory.cli", "maintain",
                                             "revise"])
-    return base + [full, str(int(number)), "--home", str(cfg.home)] \
-        + (["--refresh", str(int(refresh))] if refresh else [])
+    return base + [full, str(int(number)), "--home", str(cfg.home)]
 
 
 def alive(pid: int | None, task: Path | None = None, start: int | None = None) -> bool:
@@ -1339,21 +1094,13 @@ def write_task(cfg, full: str, item: dict, product: str, branch: str) -> Path:
     return d
 
 
-def start(cfg, full: str, number: int, task: Path, refresh: int | None = None) -> dict:
+def start(cfg, full: str, number: int, task: Path) -> dict:
     from .. import proc
     from ..models import build_env
-    cmd = command(cfg, full, number, refresh)
+    cmd = command(cfg, full, number)
     p = proc.spawn_detached(cmd, cwd=task, log=Path(task) / ".den" / "build.log",
                             env=build_env(cfg), banner=f"repo-factory maintain: {' '.join(cmd)}")
     return {**proc.ident(p.pid), "started": time.time(), "task": str(task)}
-
-
-def start_refresh(loop, r: Repo, t: dict, issue: int, pr: int) -> dict:
-    """The refresh of repo-factory's pull request ``pr`` (fixing ``issue``), detached, in the fix's own
-    task folder: the Builds list shows it as that fix's next run (``current.py`` asks)."""
-    item = r.issue(issue)
-    task = write_task(loop.cfg, r.full, item, t["product"], branch_name(issue, item["title"]))
-    return {**start(loop.cfg, r.full, issue, task, refresh=pr), "refresh": pr}
 
 
 def result(task: Path) -> dict | None:
@@ -1361,104 +1108,3 @@ def result(task: Path) -> dict | None:
         return json.loads((Path(task) / ".den" / RESULT).read_text())
     except (OSError, ValueError):
         return None
-
-
-def step(loop, r: Repo, t: dict, items: list[dict], pol: dict, rec: dict, now: float,
-         slots: list[int]) -> dict:
-    """The poll's revise step for one repo: forget fix processes that ended (one that died
-    without a word gets the failure comment), then, when a slot is free and nothing of this
-    repo runs, claim the head of the queue and start its fix. ``slots``: a one-element list,
-    the fixes that may still start in this poll (shared across repos)."""
-    out: dict = {"started": [], "ended": []}
-    revs = dict(rec.get("revises") or {})
-    prs_for = linked(items)
-    for n, x in list(revs.items()):
-        if x.get("refresh") or alive(x.get("pid"), start=x.get("start")):
-            continue                           # a refresh's end is current.py's to read
-        res = result(Path(x["task"]))
-        if res is None or (res.get("finished") or 0) < (x.get("started") or 0) - 5:
-            if prs_for.get(int(n)):       # GitHub is the record: its PR is open, the work done
-                res = {"outcome": "pr", "pr": prs_for[int(n)][0], "why": None}
-            else:
-                res = {"outcome": abandon(r, int(n), x, pol),
-                       "why": "the fix process stopped without finishing"}
-        out["ended"].append({"number": int(n), **{k: res.get(k) for k in ("outcome", "pr", "why")}})
-        if res.get("agents_main"):                  # what a fix found running AGENTS.md on main
-            rec["agents_main"] = res["agents_main"]
-        del revs[n]
-    rec["revises"] = revs
-    leases: dict[int, dict | None] = {}
-
-    def lease(n):
-        if n not in leases:
-            leases[n] = lease_of(r.comments(n))
-        return leases[n]
-    # AGENTS.md: the repo's row says when it is missing or does not run (it holds nothing)
-    was = (rec.get("agents_md") or {}).get("state")
-    ag = agents_state(r, rec, now)
-    if ag:
-        ag.pop("held", None)
-        if ag["state"] == "ok":
-            if was in ("missing", "broken") or MISSING in ((rec.get("doctor") or {})
-                                                          .get("problems") or []):
-                rec.pop("doctor", None)            # its weekly finding is stale: check now
-            if was in ("missing", "broken") or not ag.get("swept"):
-                try:
-                    said = cause_gone(r, items)
-                    ag["swept"] = True
-                    if said:
-                        out["cause_gone"] = said
-                except GitHubError:
-                    pass                           # the next poll tries again
-        rec["agents_md"] = ag
-    if revs or slots[0] <= 0:
-        return out
-    max_att = int(pol["revise"]["max_attempts"])
-    prs = [p for p in items if p["is_pr"]]
-    for item in queue(items, pol, now, lease):
-        # GitHub's issue list lags behind a merge by seconds: the one issue, read fresh, must
-        # still be in the queue (open, go, unclaimed) before anything is spent on it
-        fresh = r.issue(item["number"])
-        if fresh["state"] != "open" or not queue([fresh, *prs], pol, now, lease):
-            continue
-        item = fresh
-        comments = r.comments(item["number"])
-        if attempts(comments) >= max_att:
-            # needs-you was set after the last attempt, and someone removed it: try again
-            r.comment_with_marker(item["number"], f"{RESET} n={len(comments)}", (
-                f"{RESET} n={len(comments)} -->\n`needs-you` was removed, so repo-factory tries this "
-                f"again from attempt 1.\n\n_{SIGNATURE}_\n"), comments=comments, edit=False)
-            comments = r.comments(item["number"])
-        branch = branch_name(item["number"], item["title"])
-        claim(r, item, branch, now, float(pol["revise"]["lease_hours"]), comments)
-        task = write_task(loop.cfg, r.full, item, t["product"], branch)
-        x = start(loop.cfg, r.full, item["number"], task)
-        revs[str(item["number"])] = x
-        out["started"].append(item["number"])
-        slots[0] -= 1
-        break
-    rec["revises"] = revs
-    return out
-
-
-def abandon(r: Repo, number: int, x: dict, pol: dict) -> str:
-    """A fix process that died without finishing: its attempt counts as failed (``failed``),
-    unless the issue was closed meanwhile (``skipped``: the claim goes, nothing is counted)."""
-    try:
-        comments = r.comments(number)
-        ls = lease_of(comments) or {}
-        if r.issue(number)["state"] != "open":           # merged or closed meanwhile: no attempt
-            unclaim(r, number, ended="the issue was closed before this fix finished.",
-                    branch=ls.get("branch") or "-")
-            return "skipped"
-        k, n = attempts(comments) + 1, seq(comments)
-        last = k >= int(pol["revise"]["max_attempts"])
-        unclaim(r, number, add=["needs-you"] if last else [],
-                ended=f"attempt {k} stopped without finishing (see below).",
-                branch=ls.get("branch") or "-")
-        r.comment_with_marker(number, marker(k, "failed", n), fail_comment(
-            k, "process", "the fix process stopped without finishing (a restart or a crash)",
-            0.0, int(pol["revise"]["max_attempts"]), None, n), comments=comments, edit=False)
-    except GitHubError:
-        pass                                   # the next poll sees the lease run out
-    return "failed"

@@ -3,8 +3,9 @@ knows these names.
 
 The **home** (``home()``: ``--home``, else ``$REPO_FACTORY_HOME``, else ``~/.repo-factory``)
 holds the settings, the ledger, the daemon's control files, the sign-in tokens, the owner's
-prompt versions and, by default, the tasks folder (``Layout``). Nothing is written outside the
-home, the tasks folder and a published repository.
+prompt versions, by default the tasks folder (``Layout``), and the venvs and caches builds
+use (``cache()``). Nothing is written outside the home, the tasks folder and a published
+repository (an install from before keeps its old ``~/.cache/repo_factory``).
 
 Standard library only.
 """
@@ -23,6 +24,14 @@ def home(explicit: str | Path | None = None) -> Path:
     """``explicit`` (``--home``), else ``$REPO_FACTORY_HOME``, else ``~/.repo-factory``,
     resolved."""
     return Path(explicit or os.environ.get(HOME_ENV) or DEFAULT_HOME).expanduser().resolve()
+
+
+def cache() -> Path:
+    """Where the venvs, the uv caches and the shell prefix go: ``<home>/cache``. An install
+    from before this kept them in ``~/.cache/repo_factory``: when that folder is there it is
+    still used as it is, never moved (delete it to start over in the home)."""
+    old = Path(os.environ.get("HOME") or Path.home()) / ".cache" / "repo_factory"
+    return old if old.is_dir() else home() / "cache"
 
 
 @dataclass(frozen=True)

@@ -2,7 +2,7 @@
 
 The paired unit is one base build, a (pack, seed). Rows within a build are never treated as
 independent samples. Inference is conditional on the packs; generalisation is argued only
-from held-out packs. Moved from ``hsuite/`` (S-5b): ``/history`` reads them."""
+from held-out packs. Moved from ``hsuite/``: ``/history`` reads them."""
 
 from __future__ import annotations
 

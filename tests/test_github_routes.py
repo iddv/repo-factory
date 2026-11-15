@@ -330,9 +330,9 @@ def test_refresh_key_and_remove_are_jobs_the_page_polls(world):
     assert v["state"] == "none" and v["app"] is None and v["job"]["state"] == "done"
     assert fake.installation is None and not store.key_path.exists()
     # the next maintenance identity is the login again
-    from repo_factory.maintain import poll
+    from repo_factory.maintain import watch
 
-    assert poll.gh_for(lp, "owner/plots") is lp.gh
+    assert watch.gh_for(lp, "owner/plots") is lp.gh
 
 
 def test_uninstalled_on_github_is_said_clearly_and_falls_back_to_nothing(world):
@@ -343,9 +343,9 @@ def test_uninstalled_on_github_is_said_clearly_and_falls_back_to_nothing(world):
     G.app_for().refresh()
     fake.uninstall()
     G.app_for().forget()
-    from repo_factory.maintain import identity, poll
+    from repo_factory.maintain import identity, watch
 
-    g = poll.gh_for(lp, "owner/plots")
+    g = watch.gh_for(lp, "owner/plots")
     assert g is not lp.gh
     d = identity.describe(g, repos=["owner/plots"])
     assert d["status"] == "fail" and "uninstalled" in d["line"]

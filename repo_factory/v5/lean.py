@@ -1,20 +1,20 @@
-"""The lean flow (track LEAN, from EV7 and EV8): Brief → Build → Harden → Check → Fix once →
-Publish. Its stage list is ``stages.LEAN``; a policy with ``flow: lean`` (``policies/lean``)
-runs it, chosen per build with ``repo-factory build --policy policies/lean`` or the loop's
-``build.flow: lean``. Today's flow (``v5``) stays the default.
+"""The lean flow: Brief → Build → Harden → Check → Fix once → Publish. Its stage list is
+``stages.LEAN``; a policy with ``flow: lean`` (``policies/lean``) runs it, chosen per build
+with ``repo-factory build --policy policies/lean`` or the loop's ``build.flow: lean``.
+Today's flow (``v5``) stays the default.
 
 - **Brief** (``scope``): today's scope step, its prompt unchanged. SCOPE.md stays in the
   round; the build reads it in its prompt.
 - **Build**: one Claude Code session on the pitch plus SCOPE.md, with the owner's house rules
   and nothing else of repo-factory's (no "what ships" list: the harden step does that).
-- **Harden** (a prompt stage, ``prompts/harden.md``): EV7's harden prompt, adapted:
-  robustness, what the security review holds a release for (bounded bodies, connection
-  timeouts, caps on what a caller who is not signed in can store), the tests that prove it
-  (one end-to-end test per flow of the definition of done), CI, and the docs a user needs,
-  every interface the product exposes among them (LEAN3); no invented features or settings.
+- **Harden** (a prompt stage, ``prompts/harden.md``): an earlier experiment's harden
+  prompt, adapted: robustness, what the security review holds a release for (bounded bodies,
+  connection timeouts, caps on what a caller who is not signed in can store), the tests that
+  prove it (one end-to-end test per flow of the definition of done), CI, and the docs a user
+  needs, every interface the product exposes among them; no invented features or settings.
   It works economically (reads the code once, the whole suite once at the end), with no turn
-  cap. It hands repo-factory its
-  map of flows to tests in ``.repo-factory/flows.json``, which goes to the round.
+  cap. It hands repo-factory its map of flows to tests in ``.repo-factory/flows.json``, which
+  goes to the round.
 - **Check** (code, ``lean_check``): the objective, non-negotiable gates only. The security
   probe (today's prompt; its probes confirm what it finds), then the harness with no model:
   the README's quick start as written, loopback by default (the address the quick start
@@ -187,7 +187,7 @@ class LeanRun(Run):
         return prompt(self.policy, name)
 
     def scope_rules(self) -> str:
-        """The lean brief's two rules (EV8): the pitch's own nouns are the definition of
+        """The lean brief's two rules: the pitch's own nouns are the definition of
         done; no settings, roles or workflows the pitch didn't ask for."""
         return self.own_prompt("scope_rules")
 
@@ -195,7 +195,7 @@ class LeanRun(Run):
         """The pitch plus SCOPE.md, with the owner's house rules; not the list of what a
         product ships (that is the harden step's). A scoped build also gets its stopping
         rule (``prompts/build_rules.md``): done when the brief's definition of done holds
-        (LEAN: 77-92 turns on a broad brief). No turn cap: the rule is where to stop, not a
+        (builds took 77-92 turns on a broad brief). No turn cap: the rule is where to stop, not a
         limit that cuts work off."""
         text = scope_mod.build_prompt(
             self.idea, md, VANILLA_SUFFIX, self.policy, product_rules=False

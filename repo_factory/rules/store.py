@@ -180,7 +180,7 @@ class RuleStore:
         self, rule_id: str, reason: str, by: str = "arbiter", embargo: bool = False
     ) -> bool:
         """A held rule that caught a real bug becomes visible, so the fix loop can use it
-        (build v3 §2). Recorded in ``history.jsonl`` as a visibility change. Returns False
+        (build v3). Recorded in ``history.jsonl`` as a visibility change. Returns False
         if the rule was not held."""
         with self.lock:
             r = self.rules[rule_id]

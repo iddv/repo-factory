@@ -57,11 +57,12 @@ on a Claude plan that is usage, not a bill.
 local test repository): three typed tasks. A command-line habit tracker built in an hour
 ($10.16) and passed the gate. A small reading-list web page built in 49 minutes ($11.51) and
 was held for one open high-severity security finding; one "Ask for changes" fixed it in 3
-minutes ($0.43), its exploit test now passing, and it passed. A Markdown-notes-to-HTML tool hit
-its $12 cap before its security review and was held for two real problems (its tests needed a
-browser the sandbox could not download; its README used the command before installing it); its
-automatic repair round did not clear them. About $34 in all, including runs lost to a usage
-limit.
+minutes ($0.43), its exploit test now passing, and it passed. A Markdown-notes-to-HTML tool
+(written in Node) hit its $12 cap before its security review ran, and was held by the check's
+own environment, not by the product: the check skipped the README's install line and then
+could not find the command it installs, and its tests needed a browser download the sandbox
+does not allow. Both are now "not measured", and a build whose security review did not run is
+now held for that. About $34 in all, including runs lost to a usage limit.
 
 ### Where it is weak
 
@@ -74,7 +75,8 @@ limit.
 - **A build can end "ok" and be bad** (NoteHatch's first), and can run for six hours.
 - **Half the maintenance fix runs failed**, and the fixes that worked waited weeks for a person.
 - **The sample is small:** ten small Python products with few dependencies, one owner, one
-  machine, one week. Linux only.
+  machine, one week. Linux only. The brief asks for Python unless your task names another
+  language; other languages (Node above all) are less tested, and their checks measure less.
 
 **"Isn't this just Claude Code in a loop?"** Mostly, yes. The builder is one ordinary Claude
 Code session. What is added is the part around it: a brief first, an exam written by a session
@@ -85,10 +87,11 @@ experiment.
 
 ## What it needs
 
-Linux, Python 3.12, [uv](https://docs.astral.sh/uv/), `git`,
-[Claude Code](https://docs.claude.com/en/docs/claude-code) signed in (a Claude plan or an API
-key), [bubblewrap](https://github.com/containers/bubblewrap) (`bwrap`), and, only to publish,
-the GitHub CLI (`gh`) logged in.
+Linux, Python 3.12, [uv](https://docs.astral.sh/uv/), `git`, Node.js with npm (to build the
+page from a checkout), [Claude Code](https://docs.claude.com/en/docs/claude-code) signed in (a
+Claude plan or an API key), [bubblewrap](https://github.com/containers/bubblewrap) (`bwrap`),
+about 5 GB of free memory while a build runs, and, only to publish, the GitHub CLI (`gh`)
+logged in.
 
 ## Install
 
@@ -98,7 +101,7 @@ page):
 ```
 git clone https://github.com/iddv/repo-factory && cd repo-factory
 python3 scripts/build_ui.py && uv tool install --python 3.12 .
-repo-factory doctor      # one line each: Claude Code, bubblewrap, git, gh
+repo-factory doctor      # one line each: Claude Code, bubblewrap, git, gh, memory
 repo-factory ui          # the page on 127.0.0.1:8790, and a sign-in link
 ```
 
@@ -106,6 +109,13 @@ Before your first build, if you signed in to Claude Code with its own sign-in, r
 `claude setup-token` and keep the token it prints in Settings › Claude. Otherwise builds copy
 your sign-in file into each session, where a build's own commands can read it; `doctor`'s
 Claude line says which way builds sign in.
+
+A task can also come from a GitHub issue **you** opened, or labelled `build` yourself:
+`repo-factory loop add --from-issue owner/repo#12`, or **Build from an issue** on the page. Its
+text goes into the brief as quoted data; anyone else's issue is refused. When the checks hold a
+build, it writes one lesson about what went wrong; the lesson waits for you, and the next briefs
+carry it once you switch it on (the page's **Lessons**). A lesson that names a package, a host
+or a command-line flag is not kept.
 
 With a release, it will be three commands: `uv tool install <the wheel's address on the
 Releases page>`, `repo-factory doctor`, `repo-factory ui`. Then read
@@ -115,10 +125,14 @@ Releases page>`, `repo-factory doctor`, `repo-factory ui`. Then read
 
 | Setting | Default |
 |---|---|
-| Publish | **Asks first:** a ready build waits at "Ready: publish?" until you press |
+| Publish | **Asks first:** a ready build waits at "Ready: publish?" until you press. Publishing starts the product's own CI on your account (one Linux job; a workflow that may run off GitHub's own runners, `pull_request_target` or a write token holds the publish) |
 | Visibility | **Private**; only you make a repository public |
 | Spend | **$25 a build, $50 a day**; either can be changed or set to none |
-| Maintenance | **Off** until you switch it on for a repository |
+| Maintenance | **Off** until you switch it on for a repository; then it fixes only issues **you** labelled `go` (and nobody edited since), each as a pull request, and writes nothing on any issue; no fix while builds sign in with Claude Code's own sign-in file (run `claude setup-token`) or while a workflow may run off GitHub's own runners; **$20 a month** and **$5 a fix** |
+| Merging its own fixes | **Off**; a second switch per repository, which asks first: only a fix whose issue says `bug` (its test in the diff) or `docs` (documents only), never a change to a manifest, a lock file, build or test settings, `.github/` or an agent's or editor's file, green CI |
+| Releasing after a merge | **Off**; a third switch per repository, whatever the policy file says |
+| Lessons | **On, and each new lesson waits:** a held build writes at most one lesson (a few cents); it goes into later briefs only once you switch it on |
+| Issues | Only an issue **you** opened, or labelled `build` yourself, becomes a task; its text is data |
 | The page | Loopback only (127.0.0.1); writes need a sign-in token |
 
 ## The threat model, in a paragraph
@@ -129,7 +143,10 @@ network namespace. The sandbox holds no GitHub credential; the host does every p
 remains:** egress to the internet is open during a build, so code can send what it can read
 (the workspace) anywhere; a package installed during a build runs its install code inside the
 sandbox; a model can name a dependency that is hostile; and the exam and the gate are the same
-system as the builder. **Read a product before you make it public or run it elsewhere.**
+system as the builder. Maintenance gives a session someone else's words (an issue you labelled
+`go`): its pull request runs the fix's code in the product's CI at once (only ever on GitHub's
+own runners), and with merging on, a fix you have not read can be merged (bugs and docs, judged
+by the diff). **Read a product before you make it public or run it elsewhere.**
 [SECURITY.md](SECURITY.md) has the full table and how to report a problem privately.
 
 ## Contributing

@@ -1,4 +1,5 @@
-"""repo-factory's own identity on GitHub: a GitHub App made by this install (GA-PLAN.md, MAINTAIN D1).
+"""repo-factory's own identity on GitHub: a GitHub App made by this install (decision D1 in
+docs/maintain.md).
 
 Settings › Publishing › GitHub creates an app named ``repo-factory-<login>`` through GitHub's manifest flow:
 the page posts ``manifest()`` to github.com, GitHub sends the browser back to repo-factory on
@@ -84,7 +85,7 @@ NEVER = (
     "pages",
 )
 # What each call asks for (the review's rule: the fewest permissions, one repository):
-#   maintain: the poll on one repo (labels, comments, pull requests, releases, CI reads);
+#   maintain: the poll on one repo (reads, its own pull requests and labels, releases, CI);
 #   issues: filing and reading issues (factory issues, Projects); push: a fix's git push;
 #   fix: the fix process's API calls (the issue, the pull request, its CI); read: reads.
 SCOPES = {
@@ -463,7 +464,7 @@ def manifest(host: str, port: int | None, login: str | None, mount: str = "") ->
 
 
 def post_url(state: str, org: str | None = None) -> str:
-    """Where the form goes: the account's app page, or an organisation's (decision D8)."""
+    """Where the form goes: the account's app page, or an organisation's."""
     where = f"/organizations/{org}/settings/apps/new" if org else "/settings/apps/new"
     return f"{WEB}{where}?state={state}"
 
@@ -983,7 +984,7 @@ def link(app_id: str | int, pem: str, store: Store | None = None, now=None) -> d
         return store.read() or {}
 
 
-# -- the background jobs (no request waits on GitHub: PA's rule) ---------------------------
+# -- the background jobs (no request waits on GitHub) --------------------------------------
 SPAWN_ENV = "REPO_FACTORY_GITHUB_SPAWN"  # 0: run a job inline (tests)
 JOBS = ("exchange", "refresh", "key", "link", "remove")
 

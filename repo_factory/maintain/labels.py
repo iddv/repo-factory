@@ -1,10 +1,12 @@
-"""The label scheme (MAINTAIN.md §2): 22 labels in kind, flow, claim, priority, outcome and
-learning groups, one hue per group. Labels are the protocol: only people with triage or write
-access can set them, so ``go`` is the owner's signature and issue text never is.
+"""The label scheme: 20 labels in kind, flow, priority, outcome and learning groups, one hue
+per group. Labels are the protocol: only people with triage or write access can set them, so
+``go`` is the owner's signature and issue text never is.
 
 ``labels_yaml()`` is the repo's ``.github/labels.yml``; ``apply`` creates or updates labels
-through ``gh label create --force``, skipping the ones already right, and deletes nothing unless
-``prune`` is asked for (never by CI, never by the backfill)."""
+through ``gh label create --force``, skipping the ones already right, and deletes nothing. The
+switch-on's setup passes ``missing_only``: a label the repository already has (its own
+``bug``, ``question``) keeps its colour and description; the setup's ``sync_labels.py`` does
+the same."""
 
 from __future__ import annotations
 
@@ -23,13 +25,6 @@ LABELS: list[tuple[str, str, str, str]] = [
     ("needs-info", "fbca04", "flow", "Waiting for the reporter to answer a question"),
     ("go", "e99c1b", "flow", "Approved: money may be spent fixing this"),
     ("needs-you", "d93f0b", "flow", "repo-factory tried and could not; the owner must look"),
-    (
-        "claim:repo-factory",
-        "5319e7",
-        "claim",
-        "repo-factory is working on this (see its lease comment)",
-    ),
-    ("claim:agent", "8a63d2", "claim", "Another agent is working on this (see its comment)"),
     ("p1", "b60205", "priority", "Now: data loss, security, install broken"),
     ("p2", "e11d21", "priority", "Soon: a documented flow is wrong"),
     ("p3", "f9a5a5", "priority", "Later: cosmetic, nice to have"),
@@ -45,8 +40,8 @@ NAMES = [n for n, _, _, _ in LABELS]
 KINDS = [n for n, _, g, _ in LABELS if g == "kind"]
 PRIORITIES = [n for n, _, g, _ in LABELS if g == "priority"]
 
-# GitHub's default labels that ours do not replace by name. D13: the backfill PR lists the
-# commands to prune them; nothing deletes them automatically.
+# GitHub's default labels that ours do not replace by name: the setup PR lists the commands
+# to remove them; nothing deletes them automatically.
 PRUNE_SUGGESTED = ["enhancement", "invalid", "documentation"]
 KEEP_SUGGESTED = ["help wanted", "good first issue"]
 
@@ -56,8 +51,8 @@ def labels_yaml() -> str:
     repo's stdlib-only ``sync_labels.py`` read it without a YAML parser."""
     lines = [
         "# The label scheme repo-factory and any agent follow (AGENTS.md › Maintenance protocol).",
-        "# Synced by .github/workflows/labels.yml and `repo-factory maintain labels`: created or",
-        "# updated, never deleted. One label per line; edit it here, in a pull request.",
+        "# Synced by .github/workflows/labels.yml: a label missing here is created; one the",
+        "# repository already has keeps its colour. Never deleted. Edit it here, in a pull request.",
         "labels:",
     ]
     group = None
@@ -84,16 +79,21 @@ def current(gh, repo: str) -> dict[str, dict]:
     return {x["name"]: x for x in json.loads(out or "[]")}
 
 
-def apply(gh, repo: str, prune: bool = False, dry_run: bool = False) -> dict:
+def apply(gh, repo: str, dry_run: bool = False, missing_only: bool = False) -> dict:
     """Make the repo's labels match ``LABELS``. One ``gh label create --force`` per label that
-    is missing or differs; nothing when everything is already right. ``prune`` deletes labels
-    that are not ours (an explicit choice; never the default)."""
+    is missing or differs; nothing when everything is already right, and nothing deleted.
+    ``missing_only`` (the switch-on's setup): only missing labels are created; one the
+    repository already has keeps its colour and description, and is listed in ``differs`` when
+    they are not ours."""
     have = current(gh, repo)
-    res = {"created": [], "updated": [], "unchanged": [], "pruned": [], "extra": []}
+    res = {"created": [], "updated": [], "unchanged": [], "extra": [], "differs": []}
     for name, color, _, desc in LABELS:
         old = have.get(name)
         if old and old.get("color", "").lower() == color and (old.get("description") or "") == desc:
             res["unchanged"].append(name)
+            continue
+        if old and missing_only:
+            res["differs"].append(name)  # yours: left as it is
             continue
         if not dry_run:
             gh(
@@ -110,11 +110,6 @@ def apply(gh, repo: str, prune: bool = False, dry_run: bool = False) -> dict:
             )
         res["updated" if old else "created"].append(name)
     res["extra"] = sorted(n for n in have if n not in NAMES)
-    if prune:
-        for n in res["extra"]:
-            if not dry_run:
-                gh("label", "delete", n, "--repo", repo, "--yes")
-            res["pruned"].append(n)
     return res
 
 

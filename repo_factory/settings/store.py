@@ -156,20 +156,38 @@ DEFAULTS: dict = {
         "max_per_build": None,
         "max_identical": 2,
     },
-    # Maintaining the published repos through GitHub (off: not offered yet). The tick polls
-    # each one every poll_s and triages new issues with a no-tools call (at most
-    # triage_max_per_poll a poll); the page's GitHub reads are kept cache_s. repos: more
-    # owner/name repos beyond the loop's published builds. gh_command null: publish's gh.
-    # At most concurrency fixes at once, counted in the build slots; max_usd null: no cap per
-    # fix (the repo's revise.max_usd applies as well; the smaller wins); net allowlist: a fix
-    # session reaches only net_hosts (public: anything public, as builds do); lesson_label: a
-    # merged fix of a user-found bug is labelled lesson. revise_command: tests only (the
-    # detached fix process, as build.command). token_env_file: a 0600 file with GH_TOKEN= (a
-    # fine-grained token) that maintenance's gh uses instead of the login; null: the login.
-    # identity: auto (repo-factory's own GitHub App once it is created and installed, else
-    # the token file, else the login), app, token or login. Publishing always uses the login.
-    # doctor_days: how often each repo's AGENTS.md and workflows are checked for drift and
-    # self-hosted runners; 0: never.
+    # The page's server: writes need the page's sign-in token (false only for tests and a
+    # machine of one user; read by ui/server.py, set here by hand)
+    "api": {"require_token": True},
+    # Lessons from your own builds (lessons/home.py): after a build the gate holds, one
+    # no-tools call (model; null: the Claude Code CLI's default) writes at most one lesson
+    # into <home>/lessons.yaml, capped at max_usd per call. A new lesson waits for your press
+    # (the Lessons page); the next briefs carry the lessons you switched on, newest first, at
+    # most max_in_brief. false: no post-mortem and nothing packed.
+    "lessons": {
+        "enabled": True,
+        "model": "claude-sonnet-5-5",
+        "max_in_brief": 8,
+        "max_usd": 0.25,
+    },
+    # Maintaining the published repos through GitHub. Off until you switch it on for a
+    # repository, on its project's page (``<home>/maintain/repos.json``); ``enabled`` is not
+    # read any more (it switched the old all-repos poll). Every poll_s the tick reads each repo
+    # switched on and not paused: it fixes the open issues whose go label you put on (a pull
+    # request each), lists everything else under "Waiting for you", and writes nothing on any
+    # issue; merging its own fixes is a second switch per repo, off by default. The page's
+    # GitHub reads are kept cache_s. gh_command null: publish's gh. At most concurrency fixes
+    # at once, counted in the build slots. net allowlist: a fix session reaches only net_hosts
+    # (public: anything public, as builds do). revise_command: tests only (the detached fix
+    # process, as build.command). token_env_file: a 0600 file with GH_TOKEN= (a fine-grained
+    # token) that maintenance's gh uses instead of the login; null: the login. identity: auto
+    # (repo-factory's own GitHub App once it is created and installed, else the token file,
+    # else the login), app, token or login. Publishing always uses the login. doctor_days: how
+    # often each repo's AGENTS.md and workflows are checked for drift and runners that are not
+    # GitHub's own (read at least once, and again when main moves: they stop fixes);
+    # 0: never. triage_model, triage_max_per_poll, lesson_label, refresh_max and
+    # policy_command are read by nothing: they stay only so an older loop.yaml still loads.
+    # exam: a fix reports the release's checks.
     "maintain": {
         "enabled": False,
         "poll_s": 900,
@@ -181,25 +199,33 @@ DEFAULTS: dict = {
         "token_env_file": None,
         "identity": "auto",
         "concurrency": 1,
-        "max_usd": None,
+        # max_usd: one fix's cap; monthly_usd: everything maintenance spends in a calendar
+        # month (fixes and proposals; Settings › Spend). null: no cap; 0 is a wrong value
+        "max_usd": 5.0,
+        "monthly_usd": 20.0,
+        # proposals: each week, for each repo maintenance is on for, one no-tools call asks
+        # what could be improved; the project's page lists them and nothing is built from
+        # one until you press it
+        "proposals": True,
+        "proposals_model": "claude-sonnet-5-5",
         "net": "allowlist",
+        # the Claude API and the Python package index only: a fix's task is an issue's text,
+        # and GitHub's hosts would let a session that brings its own token send what it reads
+        # there (add them yourself: docs/maintain.md says what that opens)
         "net_hosts": [
             "api.anthropic.com",
             "pypi.org",
             "files.pythonhosted.org",
-            "github.com",
-            "api.github.com",
-            "objects.githubusercontent.com",
         ],
+        # fixes start while sessions sign in with Claude Code's own sign-in file (copied into
+        # each session): false until you choose it (maintain/signin.py)
+        "allow_signin_file": False,
         "lesson_label": True,
         "doctor_days": 7,
         "revise_command": None,
-        # refresh_max: how many times repo-factory re-does one of its fix PRs on a main
-        # that moved under it with a conflict (current.py); not an attempt; 0: never
         "refresh_max": 2,
         # recheck_command: tests only (Re-check, the read the page starts, detached)
         "recheck_command": None,
-        # policy_command: tests only (the merge policy PR the switch opens, detached)
         "policy_command": None,
         # exam: on a product fix PR, report runs the latest release's checks asset
         # against the branch and posts the result, require fails the PR on a
@@ -282,6 +308,13 @@ def _merge(base: dict, over: dict) -> dict:
     return out
 
 
+def _text(f: Path) -> str | None:
+    try:
+        return f.read_text()
+    except OSError:
+        return None
+
+
 _parsed: dict = {}  # loop.yaml by path: (its text, the settings with defaults, problems)
 
 
@@ -306,13 +339,23 @@ class Config:
     def __init__(self, root: str | Path | None = None, overrides: dict | None = None):
         self.home = home(root)
         self.layout = paths.Layout(self.home)
+        self.overrides = overrides
         f = self.layout.settings
+        self.text = _text(f)  # what loop.yaml said when this was read (None: no file)
         data, self.problems = _settings(f)
         self.data = _merge(data, overrides or {}) if overrides else data
         from .schema import describe
 
         if self.problems:
             _say_once(f, describe(self.problems))
+
+    def changed(self) -> bool:
+        """loop.yaml says something else now than when this was read."""
+        return _text(self.layout.settings) != self.text
+
+    def reread(self) -> Config:
+        """The settings as loop.yaml says them now, with the same overrides."""
+        return Config(self.home, self.overrides)
 
     def __getitem__(self, k):
         return self.data[k]

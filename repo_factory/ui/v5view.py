@@ -27,15 +27,15 @@ STAGES = (
     "deliver",
 )
 OPTIONAL = ("scope", "readiness")  # shown only for runs that have them (older logs don't)
-# The simple flow's steps (BF-DESIGN §4): a round of it shows these, never today's
+# The simple flow's steps: a round of it shows these, never today's
 SIMPLE = ("plan", "build", "check", "fix", "deliver")
-# The lean flow's (track LEAN): its round lists them in build_started
+# The lean flow's: its round lists them in build_started
 LEAN = ("scope", "build", "harden", "check", "fix", "deliver")
 # A retired stage an old round ran keeps its place in that round's strip: the stage it came
-# after. mutants: removed (AU1 #4).
+# after. mutants: removed.
 RETIRED = {"mutants": "verify"}
 SEVERITIES = ("critical", "high", "medium", "low")
-VANILLA_LIMIT = 3.0  # §0: v5 may cost up to 3x the vanilla build
+VANILLA_LIMIT = 3.0  # build v5's 3x rule: v5 may cost up to 3x the vanilla build
 
 
 def _json(p: Path) -> dict:
@@ -146,7 +146,7 @@ def stages(
                 "started": s.get("started"),
                 "runs": s.get("runs"),
                 "why": s.get("why"),
-                # CAP-PLAN §3: MCP calls per server, the stage's capabilities, live counts
+                # MCP calls per server, the stage's capabilities, live counts
                 "tools_by_server": s.get("tools_by_server"),
                 "capabilities": s.get("capabilities"),
                 "skills": s.get("skills"),
@@ -350,7 +350,7 @@ EVIDENCE = {
 
 
 def evidence_file(taskdir: Path, st: dict, name: str) -> Path | None:
-    """A report in the round's evidence (``exam/evidence/``, EX-PLAN §4.4): where the
+    """A report in the round's evidence (``exam/evidence/``): where the
     security and readiness reports and the assumptions are since the exam moved out of the
     product; None for a round from before."""
     p = run_dir(taskdir, st) / "exam" / "evidence" / EVIDENCE.get(name, name)

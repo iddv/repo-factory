@@ -1,7 +1,7 @@
-"""The honesty check as a measure (EX-PLAN §4.6): the product's README and AGENTS.md judged by
-a model, its replacements applied, then checked again. Only the corpus's replay with a model
-uses it now; at publish the honesty prompt is one review pass whose replacements are applied
-and listed, never a hold (``describe.review``; the owner, 2026-10-16)."""
+"""The honesty check as a measure: the product's README and AGENTS.md judged by a model, its
+replacements applied, then checked again. Only the corpus's replay with a model uses it now;
+at publish the honesty prompt is one review pass whose replacements are applied and listed,
+never a hold (``describe.review``)."""
 
 from __future__ import annotations
 
@@ -21,9 +21,9 @@ def honesty(
 ) -> dict:
     """Check the product's own text, README and AGENTS.md (what an agent is told the product
     is), and repo-factory's own ``release`` text (the repo description and the release notes:
-    ``RELEASE``), judged against the idea's ``claims`` (the interpretations in force,
-    NG-PLAN.md); apply the model's replacements to README and AGENTS.md; check again. NOTICE
-    is repo-factory's fixed text and is not read (EX-PLAN §4.6). Every issue left says who wrote the
+    ``RELEASE``), judged against the idea's ``claims`` (the interpretations in force); apply
+    the model's replacements to README and AGENTS.md; check again. NOTICE is repo-factory's
+    fixed text and is not read. Every issue left says who wrote the
     text it quotes (``author``: ``repo-factory`` for RELEASE and the files in ``factory_files``, else
     ``product``); repo-factory's text is never rewritten here. ``{"ok",
     "issues" (left), "fixed" (applied), "usd"}``."""

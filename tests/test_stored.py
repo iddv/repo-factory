@@ -1,7 +1,6 @@
-"""The loop's stored JSON through its contracts (RCA 2026-10-23, A1; repo-factory-notes
-plans/CTR-DESIGN.md §2): every registered type round-trips and never raises, its odd values
-cover its fields, every JSON column of ``loop.db`` has one, and the ledger reads and writes
-each idea's fields through them."""
+"""The loop's stored JSON through its contracts: every registered type round-trips and never
+raises, its odd values cover its fields, every JSON column of ``loop.db`` has one, and the
+ledger reads and writes each idea's fields through them."""
 
 from __future__ import annotations
 

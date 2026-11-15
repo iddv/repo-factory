@@ -2,7 +2,7 @@
 
 A verified v1 still isn't well set up to become a product if anyone on the network can
 exhaust its memory, it starts LAN-exposed with demo data, or nobody can install it from its
-README (the h2h review). This stage checks that by doing it, then repairs what it can:
+README. This stage checks that by doing it, then repairs what it can:
 
 1. **security**: a fresh full-tools session on a copy of the build writes a threat model
    (entry points, who reaches them, assets), probes the running product (authN/authZ,
@@ -23,7 +23,7 @@ README (the h2h review). This stage checks that by doing it, then repairs what i
    encoded an old unsafe default (``harvest``).
 4. Delivery (``finalize``) re-checks the delivered tree and writes the security and
    readiness reports (``render_security``, ``render_readiness``) into the evidence, beside
-   the tree, never in it (EX-PLAN §4.4).
+   the tree, never in it.
 
 The record is ``Run.ready`` (saved with the run's state) and ``<run>/readiness.json``."""
 
@@ -407,7 +407,7 @@ def deterministic(root: Path, run=None) -> dict[str, dict]:
 
 
 def check_adopted(run, root: Path | None = None) -> dict:
-    """``exam.adopt`` (EX-PLAN §4.3): every finding a ``fix(<id>)`` commit names comes with a
+    """``exam.adopt``: every finding a ``fix(<id>)`` commit names comes with a
     test of the product's own (``exam.adoption``, from git). Amber with the findings'
     titles when one doesn't; the readiness repair is asked for the missing tests."""
     from . import exam
@@ -514,7 +514,7 @@ def norm_checks(obj: dict) -> dict:
             continue
         st = str(c.get("status") or "").strip().lower()
         st = {"na": "n/a", "n.a.": "n/a", "not applicable": "n/a", "yellow": "amber"}.get(st, st)
-        # EX-PLAN §5.2: a step that needs what the sandbox lacks (systemd, Docker, root,
+        # A step that needs what the sandbox lacks (systemd, Docker, root,
         # the internet) is not verifiable here: never red
         nv = st.replace(" ", "_").replace("-", "_") in ("not_verifiable", "unverifiable")
         st = "n/a" if nv else st if st in STATUS else "amber"
@@ -543,7 +543,7 @@ def norm_checks(obj: dict) -> dict:
 # -- the sessions ---------------------------------------------------------------------------
 def prepare(run, name: str, purpose: str, stage: str = "readiness") -> tuple[Path, Path]:
     """For one session: a copy of the build (bound at /work/product) and its exam
-    workspace (bound read-write at /work/exam, EX-PLAN §3.1) with the verifier's helpers at
+    workspace (bound read-write at /work/exam) with the verifier's helpers at
     ``_verify/`` (probes reuse its driver), the spec, and an empty ``_verify/scenarios/``.
     A resumed step whose session already ran keeps what the session worked in. Returns
     ``(product copy, exam workspace)``."""
@@ -825,8 +825,8 @@ def run_commands(
     deliver: bool = False,
     rec: dict | None = None,
 ):
-    """The README's commands of ``src`` (the tree as it will be delivered: nothing of repo-factory's
-    is in it, EX-PLAN §4.2). The quick start and the restart run in ``commands.run``'s
+    """The README's commands of ``src`` (the tree as it will be delivered: nothing of
+    repo-factory's is in it). The quick start and the restart run in ``commands.run``'s
     sandbox, cached by the tree's content and the phases, in memory and on disk
     (``ready/cmdcache/``: a step redone after an interruption doesn't run them again). The
     test commands are the exam record's ``own`` section (``exam.run(readme=True)``, the
@@ -1157,7 +1157,7 @@ def extra_fixed(run, ws: Path, items: list[dict], commits: list[dict]) -> list[s
 
 def proposals_dir(run) -> Path:
     """Where the readiness repair may propose a scenario's new start-up (bound read-write at
-    /work/exam-proposals, EX-PLAN §3.5); the exam itself is read-only for it."""
+    /work/exam-proposals); the exam itself is read-only for it."""
     return run.root / "ready" / "proposals"
 
 
@@ -1258,7 +1258,10 @@ def step(run) -> bool:
     nxt = rd.get("next") or "security"
     if nxt == "security":
         start = float(cfg(run, "start_usd") or 0.3)
-        if not run.budget.allows(start):
+        # money kept for the review since the first session (Budget.keep): the session
+        # before may have run a little over its own allowance, as real sessions do
+        kept = getattr(run.budget, "keep", {}).get("readiness")
+        if not run.budget.allows(start / 2 if kept else start):
             why = (
                 f"the build's cap: ${run.budget.spent():.2f} spent of ${run.budget.cap:.2f}, "
                 f"the stage needs ${start:.2f} to start"
@@ -1573,7 +1576,7 @@ def _rate(x: dict) -> str:
 
 
 def not_verifiable(res: dict, items: dict) -> str:
-    """The README steps and checks the sandbox can't run, by what they need (EX-PLAN §5.2):
+    """The README steps and checks the sandbox can't run, by what they need:
     "needs systemd: 2 commands" ...; empty when there are none."""
     ex = res.get("extract") or {}
     needs: dict[str, int] = {}

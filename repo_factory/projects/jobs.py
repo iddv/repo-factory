@@ -1,6 +1,6 @@
-"""A project's background jobs: a charter draft, an evolve run (PJ-PLAN.md §4.3).
+"""A project's background jobs: a charter draft, an evolve run.
 
-No request waits on a model (PA's rule): a press starts ``repo-factory projects <what> <id>`` in a
+No request waits on a model: a press starts ``repo-factory projects <what> <id>`` in a
 process of its own and returns at once; the page polls the job's state, ``{state, since,
 finished, error}``, kept in the ledger's ``meta`` under ``project_job:<what>:<id>``. A job
 whose process died (``proc.record_alive``: a recycled pid is not it) is ``failed``.

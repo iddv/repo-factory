@@ -1,4 +1,4 @@
-"""Settings › Publishing › Projects (PJ-PLAN.md §5.4, PJ-9): every setting readable with its check, written
+"""Settings › Publishing › Projects: every setting readable with its check, written
 factory-wide to loop.yaml or per project, refused in words; the autonomy preview counts what would
 flow with one setting changed (no write, no model); Spend's per-project rows."""
 
@@ -138,26 +138,14 @@ def test_every_change_idea_is_listed_with_its_project(tmp_path):
     assert {c["class"] for c in out["changes"]} == {"patch", "minor"}
 
 
-def test_pause_resume_and_archive_a_project(tmp_path):
+def test_a_paused_or_archived_project_is_listed_so(tmp_path):
     from repo_factory.projects import evolve
 
     lp, p, app = world(tmp_path)
-    body = {
-        "kind": "pause_project",
-        "subject": {"kind": "new"},
-        "origin": "ui",
-        "fields": {"project": p["id"], "state": "paused"},
-    }
-    code, out = call(app, "POST", "/api/act", None, body)
-    assert code == 200 and out["say"].startswith("Paused: Receipts.")
-    q = Projects(lp.ledger).must(p["id"])
+    ps = Projects(lp.ledger)
+    q = ps.update(p["id"], state="paused")
     assert q["state"] == "paused" and evolve.due(lp, q, time.time() + 30 * 86400) is None
-    assert call(app, "POST", "/api/act", None, body)[0] == 409  # already paused
-    code, lst = call(app, "GET", "/api/projects")
-    assert lst["projects"][0]["health"] == "paused"
-    body["fields"]["state"] = "archived"
-    assert call(app, "POST", "/api/act", None, body)[0] == 200
-    code, lst = call(app, "GET", "/api/projects")
+    assert app.projects_record()["projects"][0]["health"] == "paused"
+    ps.update(p["id"], state="archived")
+    lst = app.projects_record()
     assert lst["projects"] == [] and lst["archived"] == 1
-    notes = [e["note"] for e in Projects(lp.ledger).events(p["id"], limit=2)]
-    assert notes == ["archived (ui)", "paused (ui)"]

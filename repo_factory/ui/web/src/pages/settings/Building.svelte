@@ -11,6 +11,7 @@
   const rules = $derived(read<Rules>(RULES, 30000));
   const models = $derived(read<Models>(MODELS, 30000));
   const flow = $derived(String(ruleValue(rules.data, "build.flow") ?? "v5"));
+  const lessons = $derived(ruleValue(rules.data, "lessons.enabled") !== false);
   let said = $state("");
   let error = $state("");
 
@@ -36,6 +37,14 @@
     {/each}
   </fieldset>
   <p class="muted small">v5 is the flow the record is from. Lean is shorter and cheaper, and has no record yet.</p>
+</section>
+<section class="sec">
+  <h3>Lessons</h3>
+  <label class="switch" id="lessons-enabled">
+    <input type="checkbox" checked={lessons} onchange={(e) => void save(`lessons ${e.currentTarget.checked ? "on" : "off"}`, () => setRule("lessons.enabled", e.currentTarget.checked))} />
+    Learn from held builds
+  </label>
+  <p class="muted small">When the checks hold a build, one short call writes what went wrong as one line. A new lesson waits for you: later briefs carry only the lessons you switched on (<a href="#/lessons">Lessons</a>). Off: no lesson is written or carried.</p>
 </section>
 <section class="sec">
   <h3>The models</h3>

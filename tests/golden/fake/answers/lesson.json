@@ -1,0 +1,5 @@
+{
+ "lesson": "Run the product's whole test suite once more after the last change, and fix what fails.",
+ "why": "The product's own tests failed at the end of the build.",
+ "same_as": null
+}

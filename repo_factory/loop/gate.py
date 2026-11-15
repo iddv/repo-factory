@@ -13,20 +13,24 @@ the exam moved out delivered SECURITY.md and READINESS.md in its tree instead.
 - completeness: no flow in the definition of done is broken (SCOPE.md's, or for a spec that
   passed through, the flows drawn from its own text; with neither it is a gap);
 - it listens on localhost and the README's quick start works as written (``SAFE_ITEMS``: the
-  harness's ``commands`` run; the session's install items are advisory, AU1 #6).
+  harness's ``commands`` run; the session's install items are advisory).
 
-There is no ``p_hidden`` check any more (AU1 #5): it was arithmetic on the claims, not a
+There is no ``p_hidden`` check any more: it was arithmetic on the claims, not a
 measurement, and in 36 recorded rounds it never held a build. A ``gate.json`` from before
 still lists it; it is shown as it was recorded.
 
-Only the product holds a build (AU1 #1). What repo-factory itself failed to measure is a **gap**,
-never a hold: a flow of the definition of done the harness could not measure (``environment``:
-its sandbox fails the flow on the build and on the verifier's own copy, ``Run.triage``;
-``unchecked``: no scenario checked it), and a security review that did not run (a cap or a
-cut-off build). No round of the product could change those, so the gate judges the rest and
-says what it could not measure: the verdict's ``gaps``, shown beside the checks and written
-into the release notes. A round where nothing at all was measured (no flow, no security
-review: a cut-off build) leaves nothing to judge, and holds on completeness."""
+Only the product holds a build, with one exception. What repo-factory itself failed to
+measure is a **gap**, never a hold: a flow of the definition of done the harness could not
+measure (``environment``: its sandbox fails the flow on the build and on the verifier's own
+copy, ``Run.triage``; ``unchecked``: no scenario checked it). No round of the product could
+change those, so the gate judges the rest and says what it could not measure: the verdict's
+``gaps``, shown beside the checks and written into the release notes. A round where nothing at
+all was measured (no flow, no security review: a cut-off build) leaves nothing to judge, and
+holds on completeness.
+
+The exception: **a security review that did not run holds the build** (``security``, with
+why it did not run and what to press), and Publish anyway never overrides it. It is the one
+check a reader cannot redo by reading the README, and a tight cap made it the common case."""
 
 from __future__ import annotations
 
@@ -39,20 +43,20 @@ from .. import gitcmd
 from ..events import load_state
 from ..harness import links
 
-GATE_FILE = "gate.json"  # the verdict beside its round (UXI-1): .den/v5/r<N>/gate.json
+GATE_FILE = "gate.json"  # the verdict beside its round: .den/v5/r<N>/gate.json
 # The scorecard items that hold a build when red: it listens on localhost unless configured
 # (the checks session's, still: the harness sees only ports, not the address bound), and the
 # README's quick start works as written (``commands``: the harness runs it on a fresh copy).
 # The session's own ``install``, ``empty_start`` and ``first_admin`` are advisory rows of the
 # scorecard: it said "install green" in 31 of 32 scorecards while the harness's quick start
-# was red in 22 of 34 (AU1 #6).
+# was red in 22 of 34.
 SAFE_ITEMS = ("bind_localhost", "commands")
 # v5's finding statuses (readiness.py): fixed (a test checks it), passes (its test passes
 # after other fixes), unconfirmed (its probe passed in the harness: not reproduced) are
 # closed; open, and addressed (changed with no test to show it), are not.
 CLOSED = ("fixed", "passes", "unconfirmed")
 # A flow's status (``Run.completeness``) that says the harness could not measure it: a gap,
-# never a hold (AU1 #1), with what the gap line says of it
+# never a hold, with what the gap line says of it
 NOT_MEASURED = {
     "environment": "the sandbox fails {} in both copies",
     "unchecked": "no scenario checked {}",
@@ -61,6 +65,9 @@ NOTHING_MEASURED = (
     "nothing was measured: no flow was checked and the security review did "
     "not run; Retry builds it again"
 )
+# The security hold when the review did not run: these words start its detail, so a stored
+# verdict (gate.json keeps only ok and detail) is still known for what it is
+UNREVIEWED = "the security review did not run"
 NO_DOD = (
     "not scored: no definition of done (the scope wrote none and none could be drawn from the spec)"
 )
@@ -85,11 +92,21 @@ def completeness_check(
                 + said.format("it" if len(names) == 1 else "them")
             )
     n = sum(1 for _, _, s in flows if s in NOT_MEASURED)
+    measured = len(flows) - n
+    # nothing measured, or fewer than half, is not complete (a hold Publish anyway may
+    # override): the gap alone would let a product nobody could exercise say "Ready"
+    thin = bool(flows) and measured * 2 < len(flows)
     out = {
-        "ok": not broken,
+        "ok": not broken and not thin,
         "detail": f"{done}/{total} flows work end to end"
         + (f"; not yet: {', '.join(broken)}" if broken else "")
-        + (f"; {n} not measured" if n else ""),
+        + (f"; {n} not measured" if n else "")
+        + (
+            f"; only {measured} of {len(flows)} flows could be measured, too few to call it "
+            "complete"
+            if thin
+            else ""
+        ),
     }
     if gaps:
         out["gap"] = "; ".join(gaps)
@@ -147,7 +164,7 @@ def evaluate(task: Path, *, build: int | None = None) -> dict:
     files = delivered_files(out, branch) if branch and (out / ".git").exists() else set()
     checks.update(record_checks(root, files))
     v = _verdict(checks, rnd, branch, str(out), st.get("cost_usd"))
-    # EX-PLAN §7: the gate reads records, so its verdict is the builder's version's
+    # The gate reads records, so its verdict is the builder's version's
     from .recheck import built_by
 
     v["judged_by"] = built_by(root)
@@ -200,8 +217,8 @@ def _records_sig(task: Path, rnd) -> tuple:
 
 
 def now(task, rnd: int | None) -> dict:
-    """The gate on round ``rnd`` as the **installed** repo-factory judges it (``evaluate``), cached
-    on its records (ASKF). Publish anyway's dialog and its press both read this, so what the
+    """The gate on round ``rnd`` as the **installed** repo-factory judges it (``evaluate``),
+    cached on its records. Publish anyway's dialog and its press both read this, so what the
     owner is shown is what the press checks, whatever version judged the build when it
     stopped. ``stored``-only differences (an upgrade that changed a check) show in the dialog;
     they never refuse the press."""
@@ -219,7 +236,7 @@ def now(task, rnd: int | None) -> dict:
 
 
 def judged(task, rnd: int | None, stored: dict | None) -> dict:
-    """The gate Publish anyway's dialog and press both read (ASKF): ``now`` when the round's
+    """The gate Publish anyway's dialog and press both read: ``now`` when the round's
     records are there, else the ``stored`` verdict as it was recorded (a round from before
     the records moved under ``.den/v5``)."""
     if task and rnd and (Path(task) / ".den" / "v5" / f"r{rnd}").is_dir():
@@ -245,10 +262,14 @@ def cant_revise(g: dict | None, task, now: dict | None = None) -> str | None:
     ``unchecked`` in the round's ``findings.json``) and the gate as the installed repo-factory judges
     the round (``now``, ``judged``) holds on nothing a revise could change: no round of the
     product changes it, so neither the owner's Revise nor the automatic repair round is
-    offered (ASKF; a verdict stored before AU1 #1 still holds on such a flow). It ends with the
-    press that helps: Publish anyway or Close, or Re-check when today's gate holds on nothing.
-    None: a revise may help (Repo Recall on 2026-10-28: today's gate held it on a README
-    command, which the console's round 6 fixed)."""
+    offered (a verdict stored before gaps stopped holding still holds on such a flow). It ends
+    with the press that helps: Publish anyway or Close, or Re-check when today's gate holds on
+    nothing. None: a revise may help (Repo Recall on 2026-10-28: today's gate held it on a
+    README command, which the console's round 6 fixed)."""
+    sec = ((g or {}).get("checks") or {}).get("security")
+    if is_unreviewed(sec):
+        # a revise round carries the review from the round it revises: it never runs it
+        return f"revise can't fix this: {(sec or {}).get('detail')}"
     bad, rnd = failing(g), (g or {}).get("round")
     if bad != ["completeness"] or not task or not rnd:
         return None
@@ -293,6 +314,24 @@ def with_item(rd: Path, files: set, item: dict, at: Path) -> dict:
     return record_checks(at, files)
 
 
+def unreviewed(why) -> str:
+    """The security hold's detail when the review did not run: why, then what to press."""
+    why = str(why or "").strip()
+    capped = "cap" in why or "budget" in why
+    then = (
+        "raise the cap in Settings › Spend, then Retry"
+        if capped
+        else "Retry builds it again with the review"
+    )
+    return f"{UNREVIEWED} ({why or 'no reason was recorded'}); {then}"
+
+
+def is_unreviewed(check: dict | None) -> bool:
+    """A failing security check that says the review did not run (live or stored)."""
+    c = check or {}
+    return not c.get("ok") and str(c.get("detail") or "").startswith(UNREVIEWED)
+
+
 def record_checks(root: Path, files: set | None = None) -> dict:
     """The gate's checks that read the round's records (``<den>/v5/r<N>/``, or a corpus
     entry's copy): documents, security, tests, safe_defaults, completeness.
@@ -305,7 +344,7 @@ def record_checks(root: Path, files: set | None = None) -> dict:
     def put(name, ok, detail):
         checks[name] = {"ok": bool(ok), "detail": detail}
 
-    # EX-PLAN §4.4: the reports are the round's evidence, beside the tree (a round from
+    # The reports are the round's evidence, beside the tree (a round from
     # before the exam moved out delivered them into it instead)
     ev = root / "exam" / "evidence"
     have = [n for n in ("security.md", "readiness.md") if (ev / n).is_file()]
@@ -328,10 +367,8 @@ def record_checks(root: Path, files: set | None = None) -> dict:
     ready = _json(root / "readiness.json") or {}
     sec = ready.get("security") or {}
     if not sec.get("ran"):
-        # a factory gap (AU1 #1): a cap or a cut-off build, nothing the product can change
-        why = str(sec.get("why") or "").strip()
-        put("security", True, "not reviewed: the security review did not run")
-        checks["security"]["gap"] = "the security review did not run" + (f" ({why})" if why else "")
+        # a hold, never overridden (the operator's decision): a cap or a cut-off build
+        put("security", False, unreviewed(sec.get("why")))
     else:
         open_ = [
             f
@@ -354,6 +391,11 @@ def record_checks(root: Path, files: set | None = None) -> dict:
         t is not None and t.get("status") == "green",
         (t or {}).get("why") or "no result for the documented test commands",
     )
+    if t is not None and t.get("status") != "green" and t.get("not_verifiable"):
+        # the check's environment kept them from running (a download, a skipped install):
+        # repo-factory's gap, not the product's hold
+        checks["tests"]["ok"] = True
+        checks["tests"]["gap"] = str(t.get("why") or "the test commands were not measured")
     red = [i for k, i in final.items() if k in SAFE_ITEMS and i.get("status") == "red"]
     seen = [k for k in SAFE_ITEMS if k in final]
     put(
@@ -391,8 +433,8 @@ def record_checks(root: Path, files: set | None = None) -> dict:
     elif not sec.get("ran"):
         put("completeness", False, NOTHING_MEASURED)
     else:
-        # EV7: no definition of done (none in the scope, none drawn from the spec) is repo-factory's
-        # own gap, not the product's (AU1 #1, as FX1's environment gaps)
+        # No definition of done (none in the scope, none drawn from the spec) is repo-factory's
+        # own gap, not the product's, like a gap in the check's environment
         put("completeness", True, "not scored: no definition of done")
         checks["completeness"]["gap"] = NO_DOD
     return checks
@@ -400,8 +442,8 @@ def record_checks(root: Path, files: set | None = None) -> dict:
 
 # Publish anyway: the holds the owner may override, by default, as
 # ``publish.anyway.may_override``. These are never overridable, whatever the setting says:
-# nothing delivered, an open critical or high security finding (a review that did not run is
-# a gap, not a hold), a secrets hit, and a product that listens beyond loopback by
+# nothing delivered, an open critical or high security finding or a security review that
+# did not run, a secrets hit, and a product that listens beyond loopback by
 # default (a red ``bind_localhost``: a network exposure, treated like security).
 # (wording, the honesty check and the jargon scan, are never holds)
 MAY_OVERRIDE = ("tests", "completeness", "safe_defaults")
@@ -409,10 +451,21 @@ NEVER = {
     "delivered": "nothing was delivered: there is nothing to publish",
     "security": "an open critical or high security finding is never overridden",
     "secrets": "secrets are never pushed",
+    "workflow": "a workflow that could run on your own runner, run a stranger's change with "
+    "secrets, or write to the repository is never pushed: Ask for changes to fix it",
     "bind_localhost": "it listens beyond loopback by default: a network exposure is "
     "never overridden",
 }
-PREPUSH = {"honesty check": "honesty", "jargon scan": "jargon", "secrets scan": "secrets"}
+NEVER_UNREVIEWED = (
+    "the security review did not run: a build is never published without it, whatever "
+    "publish.anyway.may_override says"
+)
+PREPUSH = {
+    "honesty check": "honesty",
+    "jargon scan": "jargon",
+    "secrets scan": "secrets",
+    "workflow check": "workflow",
+}
 
 
 def prepush_holds(reason: str | None) -> list[str]:
@@ -435,7 +488,9 @@ def override_plan(checks: dict, prepush: list[str], may_override=None) -> dict:
         if c.get("ok"):
             continue
         detail = c.get("detail") or ""
-        if k in NEVER:
+        if k == "security" and is_unreviewed(c):
+            refused.append((k, NEVER_UNREVIEWED))
+        elif k in NEVER:
             refused.append((k, NEVER[k]))
         elif k == "safe_defaults" and "bind_localhost" in (c.get("red") or []):
             refused.append(("bind_localhost", NEVER["bind_localhost"]))
@@ -458,7 +513,7 @@ def override_plan(checks: dict, prepush: list[str], may_override=None) -> dict:
 
 
 def gaps_of(checks: dict) -> list[str]:
-    """What the factory could not measure (AU1 #1), from the checks' ``gap``: never a hold."""
+    """What the factory could not measure, from the checks' ``gap``: never a hold."""
     return [f"{k}: {v['gap']}" for k, v in (checks or {}).items() if (v or {}).get("gap")]
 
 

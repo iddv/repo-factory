@@ -240,6 +240,9 @@ RULES: dict[str, tuple] = {
         for k in ("insight", "differentiation", "grounding", "durability", "breadth")
     },
     "pitch.interpret_claims": ("bool",),
+    "lessons.enabled": ("bool",),
+    "lessons.max_in_brief": ("int", 0, 20),
+    "lessons.max_usd": ("usd",),
     "exam.reruns": ("int", 0, 10),
     "exam.intermittent_hold_min": ("int", 1, 5),
     "exam.flaky_retire": ("bool",),
@@ -254,15 +257,16 @@ RULES: dict[str, tuple] = {
     "maintain.enabled": ("bool",),
     "maintain.poll_s": ("int", 60, 86400),
     "maintain.cache_s": ("int", 0, 86400),
-    "maintain.triage_max_per_poll": ("int", 1, 86400),
     "maintain.repos": ("repos",),
     "maintain.concurrency": ("int", 0, 8),
     "maintain.max_usd": ("usd",),
+    "maintain.monthly_usd": ("usd",),
+    "maintain.proposals": ("bool",),
+    "maintain.proposals_model": ("model",),
     "maintain.net": ("enum", ("allowlist", "public")),
-    "maintain.lesson_label": ("bool",),
+    "maintain.allow_signin_file": ("bool",),
     "maintain.doctor_days": ("int", 0, 90),
     "maintain.identity": ("enum", ("auto", "app", "token", "login")),
-    "maintain.refresh_max": ("int", 0, 5),
     "maintain.exam": ("enum", ("report", "require", "off")),
     # a token file is named in loop.yaml by hand; the page only removes the setting
     # (Remove this token setting, once GitHub refused the token): {key, clear: true}
@@ -289,6 +293,10 @@ SENSITIVE = {
     "builds, fixes and briefs log in with the API key in repo-factory's "
     "environment, at API prices. Off, a build is held until you sign "
     "in to your Claude plan.",
+    "maintain.allow_signin_file": "Fixes may start while builds sign in with Claude Code's own "
+    "sign-in file: that file is copied into each fix session, where the text of an issue steers "
+    "a session with tools that could read it. A login token (claude setup-token, kept in "
+    "Settings › Claude) is never a file in a session.",
     "maintain.token_env_file": "Maintenance stops using this token file and acts as the identity "
     "shown instead. The file itself stays where it is: delete it, and "
     "the token on GitHub, yourself.",
@@ -296,18 +304,16 @@ SENSITIVE = {
 HOST = re.compile(r"(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}")
 # Settings › Publishing › Maintenance's keys (under ``maintain``), in the order the page sends them
 MAINTAIN = (
-    "enabled",
     "poll_s",
-    "cache_s",
-    "triage_max_per_poll",
-    "repos",
     "concurrency",
     "max_usd",
+    "monthly_usd",
+    "proposals",
+    "proposals_model",
     "net",
-    "lesson_label",
+    "allow_signin_file",
     "doctor_days",
     "identity",
-    "refresh_max",
 )
 _WORDS = {True: "true", False: "false", None: "empty"}
 
@@ -343,9 +349,32 @@ def rule_view(rule: tuple) -> dict:
     }
 
 
+# What a request may never write, whatever its token (loop.yaml by hand still can, and the
+# loop reads it as it says): making repositories public without a press, and switching on the
+# parts that are in the code but not in this version.
+REFUSED = {
+    ("publish.approval", "auto"): "publish.approval: auto (making a repository public without "
+    "your press) is not something the page sets; publishing asks you first",
+    ("maintain.enabled", True): "maintain.enabled: maintenance is switched on per repository, "
+    "on its project's page, not for all of them at once",
+    ("projects.enabled", True): "projects.enabled: projects are not in this version",
+}
+
+
+def refused(key: str, value) -> str | None:
+    """Why a request may not write ``key: value`` (``REFUSED``), or None."""
+    v = value.strip().lower() if isinstance(value, str) else value
+    if isinstance(v, str) and v in ("true", "on", "yes"):
+        v = True
+    return REFUSED.get((key, v)) if isinstance(v, str | bool) else None
+
+
 def check(key: str, value):
     """A loop.yaml value from a request, checked against ``RULES``; ValueError says why, in
     words. Never a model."""
+    why = refused(key, value)
+    if why:
+        raise ValueError(why)
     rule = RULES.get(key)
     if rule is None:
         raise ValueError(
@@ -462,6 +491,9 @@ def _folder(key: str, value) -> str:
 
 def project_value(key: str, value):
     """A Settings › Publishing › Projects value from a request, checked; ValueError says why (in words)."""
+    why = refused(f"projects.{key}", value)
+    if why:
+        raise ValueError(why)
     rule = PROJECTS.get(key)
     if rule is None:
         raise ValueError(f"projects.{key} is not a setting this page writes")

@@ -7,6 +7,7 @@
   import Claude from "./Claude.svelte";
   import GitHub from "./GitHub.svelte";
   import Publishing from "./Publishing.svelte";
+  import Maintenance from "./Maintenance.svelte";
   import Spend from "./Spend.svelte";
   import { PAGES } from "./settings";
 
@@ -29,6 +30,7 @@
     {:else if page === "github"}<GitHub />
     {:else if page === "building"}<Building />
     {:else if page === "publishing"}<Publishing />
+    {:else if page === "maintenance"}<Maintenance />
     {:else if page === "spend"}<Spend />
     {:else if page === "appearance"}<Appearance />
     {/if}

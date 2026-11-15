@@ -1,4 +1,4 @@
-"""The drift doctor on GitHub (MAINTAIN.md §3 "How it stays current", §6.4): each maintained
+"""The drift doctor on GitHub (see docs/maintain.md, "The drift doctor"): each maintained
 repo's ``main`` is checked without a model and without a clone whenever main moved (the poll
 reads its head conditionally every ``maintain.poll_s``), after a backfill, on the owner's
 Re-check (``recheck.py``), and at least every ``maintain.doctor_days`` days; what is wrong
@@ -8,8 +8,10 @@ becomes one row on Today, with its age, until it is fixed.
 CLAUDE.md, the policy, the label file and each workflow), lays them out in a scratch directory
 with every other path as an empty file, and runs ``agentsmd.check`` on it: commands in AGENTS.md
 the README lacks, architecture rows that point nowhere, modules the table does not name, a
-missing file, and **any workflow whose ``runs-on`` names a self-hosted runner** (product CI
-runs on GitHub-hosted runners only; the machine repo-factory runs on never serves a product repo).
+missing file, and **any workflow that may run anywhere but GitHub's own hosted runners**
+(``runners.py``: every ``runs-on`` label ``ubuntu-*``, ``windows-*`` or ``macos-*``; an
+expression, a group, any other label or a reusable workflow cannot be told). Such a workflow
+stops fixes, not only merging: a fix's pull request would run model-written code there.
 
 The result lives in the poll's disposable cache (``rec["doctor"]``); Today's rows and the build
 page's Maintenance box ("AGENTS.md current" or the list) read it from there."""
@@ -25,10 +27,28 @@ from .github import Repo
 
 READ = ("AGENTS.md", "README.md", "CLAUDE.md", ".github/repo-factory.yml", ".github/labels.yml")
 MAX_PATHS = 5000
-SELF_HOSTED = "self-hosted runner"
+SELF_HOSTED = "not a GitHub-hosted runner"  # in agentsmd.check's line for such a workflow
 
 
-def check_repo(r: Repo, ref: str = "main") -> list[str]:
+def hosted_now(r: Repo, ref: str | None = None) -> list[str]:
+    """The workflows on ``ref`` that may run off GitHub's own runners, read now (the tree and
+    each workflow file): what a fix's start and its push check, whatever the doctor's last
+    result says."""
+    from ..runners import not_hosted
+
+    out = []
+    for p in r.tree(ref):
+        path = p.get("path") or ""
+        if (
+            p.get("type") == "blob"
+            and path.startswith(".github/workflows/")
+            and path.endswith((".yml", ".yaml"))
+        ):
+            out += [f"{path}: {why}" for why in not_hosted(r.file(path, ref) or "")]
+    return out
+
+
+def check_repo(r: Repo, ref: str | None = None) -> list[str]:
     """``agentsmd.check`` on the repo's ``ref`` as GitHub has it. ``[]``: current."""
     paths = r.tree(ref)[:MAX_PATHS]
     with tempfile.TemporaryDirectory(prefix="repo-factory-doctor-") as d:
@@ -103,6 +123,7 @@ def rows(full: str, rec: dict) -> list[dict]:
     hosted = d.get("self_hosted") or []
     drift = [p for p in probs if p not in hosted]
     base = f"https://github.com/{full}"
+    branch = rec.get("base") if isinstance(rec.get("base"), str) else "main"
     # checked: when the result was computed (the row says its age), at which commit of main
     seen = {"checked": d.get("at"), "head": (d.get("head") or "")[:7] or None}
     out = []
@@ -113,7 +134,7 @@ def rows(full: str, rec: dict) -> list[dict]:
                 "number": None,
                 "title": hosted[0],
                 "problems": hosted,
-                "url": f"{base}/tree/main/.github/workflows",
+                "url": f"{base}/tree/{branch}/.github/workflows",
                 "updated": d.get("at"),
                 "created": d.get("at"),
                 **seen,
@@ -127,7 +148,7 @@ def rows(full: str, rec: dict) -> list[dict]:
                 "title": f"AGENTS.md has drifted: {len(drift)} problem"
                 + ("s" if len(drift) != 1 else ""),
                 "problems": drift[:10],
-                "url": f"{base}/blob/main/AGENTS.md",
+                "url": f"{base}/blob/{branch}/AGENTS.md",
                 "updated": d.get("at"),
                 "created": d.get("at"),
                 **seen,

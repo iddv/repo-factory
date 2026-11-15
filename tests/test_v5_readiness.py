@@ -1,7 +1,7 @@
 """The readiness stage (docs/design/build-v5.md, Addendum C), offline: the security review
 and the operational checks through a scripted harness, findings flowing to the readiness
 repair by severity and budget, the scorecard, the security and readiness reports in the
-round's evidence (EX-PLAN §4.4: never in the delivered tree), no build-process words in the
+round's evidence (never in the delivered tree), no build-process words in the
 product's prose, the scope prompt's breadth and safe defaults, the cap and the UI."""
 
 import json
@@ -441,7 +441,7 @@ def test_the_scorecard_and_the_deliverables(built):
 
 
 def test_the_tree_is_the_products_and_the_checks_are_in_the_evidence(built):
-    """EX-PLAN §4: the delivered tree holds what the build agent wrote; repo-factory's scenarios,
+    """The delivered tree holds what the build agent wrote; repo-factory's scenarios,
     the reviewers' probes and helpers, the results and the reports are the evidence."""
     t, h, out = built
     o = Path(out["out"])
@@ -581,8 +581,20 @@ def test_the_round_is_skipped_below_its_minimum_and_the_stage_below_its_start(tm
         in (ev(out) / "security.md").read_text()
     )
     assert "Readiness repair: not run (the build's cap" in (o / "REPORT.md").read_text()
-    # with less than start_usd left, the stage doesn't start; SECURITY.md says so
-    t2, h2, out2 = ready_build(tmp_path / "b", max_usd=0.8)  # $0.55 + $0.30 > $0.80
+    # the review's money is kept aside from the first session on: at $0.80 the stages before
+    # it stop short, in words, and the review still runs ($0.55 + $0.30 > $0.80 skipped it)
+    t1, h1, out1 = ready_build(tmp_path / "a", max_usd=0.8)
+    assert "security" in [r[0] for r in h1.runs]
+    before = [
+        e
+        for e in read_events(Path(out1["events"]))
+        if e["type"] == "v5_stage" and e.get("status") == "capped" and e["stage"] != "readiness"
+    ]
+    assert before and all("$0.30 kept for the security review" in e["why"] for e in before)
+    sec1 = json.loads((Path(out1["den"]) / "v5" / "r1" / "readiness.json").read_text())
+    assert sec1["security"]["ran"]
+    # with less than start_usd under the cap at all, the stage doesn't start; SECURITY.md says so
+    t2, h2, out2 = ready_build(tmp_path / "b", max_usd=0.1)
     assert "security" not in [r[0] for r in h2.runs]
     sec = (ev(out2) / "security.md").read_text()
     assert "**This version has not had a security review**" in sec

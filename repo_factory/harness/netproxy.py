@@ -44,8 +44,8 @@ def allowlist(hosts) -> callable:
     """A host check for ``Proxy(hosts=...)``: a name is allowed when it is one of ``hosts``
     or a subdomain of one (``api.github.com`` under ``github.com`` only when ``github.com``
     is listed). An IP literal is never on a list of names. Case and a trailing dot don't
-    matter. Used by maintenance's fix sessions (MAINTAIN.md §6.2: an injected "fetch this"
-    fails here)."""
+    matter. Used by maintenance's fix sessions (an injected "fetch this" fails
+    here)."""
     names = {str(h).strip().lower().rstrip(".") for h in hosts or () if str(h).strip()}
 
     def ok(host: str) -> bool:

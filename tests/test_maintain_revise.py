@@ -1,417 +1,66 @@
-"""Maintenance's fixing half (MAINTAIN.md §11, M3): the queue, claim and lease, the reproduce
-stage, the fix on a fixture product, the scope check, the pull request, failures and
-``needs-you``, the release on merge with its lesson label, Cut a ticket, the network
-allowlist, and the fix rows in the UI. A fake GitHub behind a fake ``gh`` (a local bare repo
-is the origin), a scripted session harness, fixture issues: no model, no network."""
+"""Maintenance's fix of one issue you labelled ``go``: the reproduce stage, the fix on a fixture
+product, verify and repair, the release's checks, the scope check, the pull request, the
+release after a merge, Open issue, the network allowlist, the fix rows in the UI, and the
+GitHub client underneath. Nothing is ever written on the issue. A fake GitHub behind a fake
+``gh`` (a local bare repo is the origin), a scripted session harness, fixture issues: no model,
+no network."""
 
-import json
 import os
-import re
-import shutil
 import socket
 import subprocess
-import sys
 import tempfile
 import time
 from pathlib import Path
 
 import pytest
 
-from repo_factory.gh import Gh
 from repo_factory.harness import netproxy
-from repo_factory.harness.base import HarnessResult
-from repo_factory.maintain import github, policy, poll, release, revise
+from repo_factory.maintain import fixes as fixes_record
+from repo_factory.maintain import github, policy, release, revise, switch, watch, words
 from repo_factory.ui import api
 
-from .loop_common import make_loop
-from .test_maintain_triage import NOW, FakeGitHub, stamp
+from .maintain_common import (
+    OWNER,
+    REPO,
+    S5,
+    TEST,
+    FakeGitHub,
+    Scripted,
+    fix,
+    fixes,
+    fixture_issues,
+    ghub,
+    issue,
+    names_test,
+    note,
+    published,
+    stand_in,
+)
 
 pytestmark = pytest.mark.usefixtures("maintenance_on")
 
-REPO = "o/plots"
-TEST = "tests/acceptance/test_huge_numeric_id_gets_404.py"
-GIT = ["git", "-c", "user.name=t", "-c", "user.email=t@localhost"]
-
-
-# -- a fixture product with one known open item -------------------------------------------------
-APP = '''"""Plots: the HTTP answer for a plot id."""
-PLOTS = {1: "A-01"}
-
-
-def lookup(id_text):
-    n = int(id_text)
-    if n > 2 ** 63:
-        raise OverflowError("id too large for the store")
-    return PLOTS.get(n)
-
-
-def status(id_text):
-    try:
-        found = lookup(id_text)
-    except OverflowError:
-        return 500
-    return 200 if found else 404
-'''
-MARKED = '''"""A huge numeric id in a URL gets a 404, not a server error (SECURITY.md S5)."""
-from app import status
-
-
-def test_huge_id_is_404():
-    st = status("9" * 30)
-    assert st == 404, f"huge id answered {st}"
-
-
-# Known open item: expected to fail until it is fixed (tests/acceptance/README.md).
-import pytest as _pytest_open  # noqa: E402
-_marks = globals().get('pytestmark', [])
-pytestmark = (list(_marks) if isinstance(_marks, (list, tuple)) else [_marks]) + [
-    _pytest_open.mark.xfail(strict=False, reason='Known security issue (low): huge id')]
-'''
-FILES = {
-    "app.py": APP,
-    "tests/test_app.py": "from app import status\n\n\ndef test_known_plot():\n"
-    "    assert status('1') == 200\n",
-    "tests/acceptance/conftest.py": "import sys\nfrom pathlib import Path\n"
-    "sys.path.insert(0, str(Path(__file__).parents[2]))\n",
-    "tests/acceptance/test_unknown_plot_is_404.py": '"""An unknown plot is a 404."""\nfrom app import status\n\n\n'
-    "def test_unknown():\n    assert status('7') == 404\n",
-    TEST: MARKED,
-    "tests/acceptance/README.md": "# Acceptance tests\n\nRun them with `python -m pytest tests/acceptance`.\n\n"
-    "## Known open items\n\nThese tests are marked as expected failures.\n\n"
-    "- `test_huge_numeric_id_gets_404.py`: Known security issue (low): huge id\n",
-    "AGENTS.md": "# AGENTS.md — Plots\n\n## Setup, run, test\n\n```sh\n"
-    "python -m pip install pytest==8.3.3 && python -m pytest tests/acceptance\n```\n",
-    "SECURITY.md": "| S5 | low | A huge numeric id in a URL causes a 500 error | open |\n",
-    "CHANGELOG.md": "# Changelog\n\n## Unreleased\n\n## 0.1.0\n\n- First release.\n",
-    ".github/workflows/ci.yml": "name: ci\n",
-    ".gitignore": "__pycache__/\n*.pyc\n",
-}
-
-
-def make_origin(tmp: Path) -> Path:
-    src, bare = tmp / "product", tmp / "origin.git"
-    for rel, text in FILES.items():
-        p = src / rel
-        p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(text)
-    subprocess.run(["git", "init", "-q", "-b", "main", str(src)], check=True)
-    subprocess.run([*GIT, "add", "-A"], cwd=src, check=True)
-    subprocess.run([*GIT, "commit", "-q", "-m", "Plots 0.1.0"], cwd=src, check=True)
-    subprocess.run(["git", "clone", "-q", "--bare", str(src), str(bare)], check=True)
-    return bare
-
-
-class FakeHub(FakeGitHub):
-    """M2's fake GitHub plus what a fix and a release write: pull requests, issues, tags,
-    compare, the pulls of a commit, releases; ``repo clone`` clones the local bare repo."""
-
-    def __init__(self, *a, origin=None, **kw):
-        super().__init__(*a, **kw)
-        self.origin, self.tag_list, self.compare_commits = origin, [], []
-        self.commit_prs, self.releases, self.next_number = {}, [], 100
-
-    def __call__(self, args, cwd=None):
-        a = list(args)
-        if a[:2] == ["repo", "clone"]:
-            p = subprocess.run(
-                ["git", "clone", "-q", str(self.origin), a[3]], capture_output=True, text=True
-            )
-            return p.returncode, p.stdout, p.stderr
-        method = a[a.index("-X") + 1] if "-X" in a else "GET"
-        payload = (
-            json.loads(Path(a[a.index("--input") + 1]).read_text()) if "--input" in a else None
-        )
-        path = a[-1].split("?")[0]
-        base = f"repos/{self.repo}"
-        ok = lambda obj: (0, json.dumps(obj), "")  # noqa: E731
-        if path in (f"{base}/pulls", f"{base}/issues") and method == "POST":
-            self.calls.append((method, a[-1], payload))
-            self.next_number += 1
-            n = self.next_number
-            url = f"https://github.com/{self.repo}/{'pull' if 'pulls' in path else 'issues'}/{n}"
-            self.issues[n] = {
-                "number": n,
-                "title": payload["title"],
-                "body": payload["body"],
-                "user": {"login": "owner"},
-                "author_association": "OWNER",
-                "labels": [{"name": x} for x in payload.get("labels") or []],
-                "state": "open",
-                "created_at": stamp(time.time()),
-                "updated_at": stamp(time.time()),
-                "html_url": url,
-                **(
-                    {
-                        "pull_request": {},
-                        "head": {"ref": payload["head"], "sha": "f00"},
-                        "draft": payload.get("draft", False),
-                    }
-                    if "pulls" in path
-                    else {}
-                ),
-            }
-            return ok(self.issues[n])
-        if path == f"{base}/tags":
-            self.calls.append((method, a[-1], None))
-            return ok([{"name": t, "commit": {"sha": "t" + t}} for t in self.tag_list])
-        m = re.fullmatch(re.escape(base) + r"/compare/(.+)\.\.\.(.+)", path)
-        if m:
-            self.calls.append((method, a[-1], None))
-            return ok(
-                {
-                    "commits": [
-                        {"sha": s, "commit": {"message": f"commit {s}"}}
-                        for s in self.compare_commits
-                    ]
-                }
-            )
-        m = re.fullmatch(re.escape(base) + r"/commits/(\w+)/pulls", path)
-        if m:
-            self.calls.append((method, a[-1], None))
-            return ok([self.issues[n] for n in self.commit_prs.get(m.group(1), [])])
-        if path == f"{base}/releases" and method == "POST":
-            self.calls.append((method, a[-1], payload))
-            self.releases.append(payload)
-            self.tag_list.append(payload["tag_name"])
-            return ok(
-                {
-                    "tag_name": payload["tag_name"],
-                    "html_url": f"https://github.com/{self.repo}/releases/tag/{payload['tag_name']}",
-                }
-            )
-        return super().__call__(args, cwd)
-
-    def comments_of(self, n):
-        return [c["body"] for c in self.comments.get(n, [])]
-
-
-def issue(n, title, labels=(), created=None, assignees=(), body="It breaks."):
-    return {
-        "number": n,
-        "title": title,
-        "body": body,
-        "user": {"login": "reporter"},
-        "author_association": "NONE",
-        "labels": [{"name": x} for x in labels],
-        "created_at": stamp(created or NOW - 86400),
-        "updated_at": stamp(NOW - 600),
-        "comments": 0,
-        "assignees": [{"login": x} for x in assignees],
-    }
-
-
-S5 = issue(14, "A huge numeric id in a URL gives a 500 instead of 404", ["bug", "p2", "go"])
-
 
 @pytest.fixture
-def world(tmp_path):
-    fake = FakeHub(
-        [S5], policy_text=policy.render({"status": "maintained"}), origin=make_origin(tmp_path)
-    )
-    lp = make_loop(tmp_path, maintain={"revise_command": [sys.executable, "-c", "pass"]})
-    lp._gh = Gh(run=fake)
-    i, _ = lp.ledger.add("allotment plots", "typed", title="Plotkeeper")
-    lp.ledger.update(
-        i["id"],
-        state="published",
-        pitch={"product": "Plotkeeper", "one_liner": "Allotment plots."},
-        publish={"repo": REPO, "url": f"https://github.com/{REPO}"},
-    )
-    return lp, fake, i["id"]
-
-
-# -- the sessions and the test runner -------------------------------------------------------------
-class Scripted:
-    """A session harness: each call runs the next step on the workspace (``step(ws, prompt)``)
-    and costs ``usd``."""
-
-    name = "scripted"
-
-    def __init__(self, *steps, usd=0.4):
-        self.steps, self.usd, self.prompts = list(steps), usd, []
-
-    def run(self, prompt, workspace, timeout_s, **kw):
-        import uuid
-
-        uuid.UUID(kw["session"]["id"])  # the CLI refuses anything else
-        self.prompts.append(prompt)
-        ws = Path(workspace)
-        step = self.steps.pop(0) if self.steps else (lambda ws, p: None)
-        step(ws, prompt)
-        return HarnessResult(
-            artifact_dir=ws,
-            tool_calls=1,
-            input_tokens=0,
-            output_tokens=0,
-            cost_usd=self.usd,
-            transcript_path=ws / "transcript.jsonl",
-            exit_ok=True,
-            session_id=f"s{len(self.prompts)}",
-            model="fake",
-        )
-
-
-def note(ws, name, obj):
-    (ws / ".repo-factory").mkdir(exist_ok=True)
-    (ws / ".repo-factory" / name).write_text(json.dumps(obj))
-
-
-def names_test(expect="huge id answered 500", test=TEST, existing=True):
-    return lambda ws, p: note(
-        ws,
-        "reproduce.json",
-        {"test": test, "existing": existing, "expect": expect, "why": "500, not 404"},
-    )
-
-
-def fixes(ws, p, extra=None):
-    app = ws / "app.py"
-    app.write_text(app.read_text().replace("        return 500", "        return 404"))
-    sec = ws / "SECURITY.md"
-    sec.write_text(sec.read_text().replace("| open |", f"| fixed (`{TEST}`) |"))
-    ch = ws / "CHANGELOG.md"
-    ch.write_text(
-        ch.read_text().replace(
-            "## Unreleased\n", "## Unreleased\n\n- A huge id is a 404, not a server error.\n"
-        )
-    )
-    note(
-        ws,
-        "fix.json",
-        {
-            "what": "status() answers 404 for an id too large for the store.",
-            "why": "lookup() raises OverflowError, which became a 500.",
-            "agents_md": "unchanged",
-            "miss": "security",
-            "flow": "F2",
-        },
-    )
-    if extra:
-        extra(ws)
-
-
-def pytest_runner(root, targets):
-    """``run_pytest``'s result shape, from plain pytest on a copy (the real one runs in the
-    sandbox with a venv; here: this interpreter, no network either way)."""
-    from repo_factory.harness.venv import parse_junit
-
-    with tempfile.TemporaryDirectory() as tmp:
-        work = Path(tmp) / "a"
-        shutil.copytree(
-            root, work, ignore=shutil.ignore_patterns(".git", "__pycache__", ".repo-factory")
-        )
-        junit = work / ".j.xml"
-        p = subprocess.run(
-            [
-                sys.executable,
-                "-m",
-                "pytest",
-                "-q",
-                "-p",
-                "no:cacheprovider",
-                "--rootdir",
-                str(work),
-                f"--junitxml={junit}",
-                "-o",
-                "junit_family=xunit1",
-                *targets,
-            ],
-            cwd=work,
-            capture_output=True,
-            text=True,
-            env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
-        )
-        tests, errors, details = parse_junit(junit, work) if junit.exists() else ({}, [], {})
-    return {"tests": tests, "errors": errors, "details": details, "returncode": p.returncode}
-
-
-def no_asset(tree):
-    return {"why": "release v0.1.0 has no checks asset", "tag": "v0.1.0", "ran": False}
-
-
-def fix(lp, harness, check=None, number=14, exam=no_asset):
-    return revise.Fix(
-        lp,
-        REPO,
-        number,
-        harness=harness,
-        tests=pytest_runner,
-        check=check
-        or (lambda root: {"ok": True, "summary": "passed: 1 commands, 0 problems", "output": ""}),
-        venv="/nonexistent",
-        exam=exam,
-    )
+def world(tmp_path, monkeypatch):
+    """Issue 14, labelled go by you, on a repository maintenance is switched on for."""
+    lp, fake, iid = published(tmp_path, [S5])
+    stand_in(monkeypatch, REPO, fake.origin)
+    fake.label(14, "go", OWNER)
+    switch.set_on(lp.cfg.home, REPO, True)
+    return lp, fake, iid
 
 
 def labels(fake, n):
     return set(fake.labels_of(n))
 
 
-# -- the queue and the claim -----------------------------------------------------------------------
-def item(n, labs, created=0.0, assignees=(), is_pr=False, body=""):
-    return {
-        "number": n,
-        "title": f"t{n}",
-        "labels": list(labs),
-        "assignees": list(assignees),
-        "is_pr": is_pr,
-        "created": created,
-        "body": body,
-        "state": "open",
-    }
+def on_issue(fake, n=14):
+    """Every write that touched issue ``n``: none, ever."""
+    return [(m, p) for m, p in fake.writes() if f"/issues/{n}" in p]
 
 
-def test_the_queue_orders_p1_first_and_skips_what_is_taken():
-    pol = policy.parse(policy.render({"status": "maintained"}))
-    items = [
-        item(1, ["bug", "go", "p3"], 1),
-        item(2, ["bug", "go", "p1"], 5),
-        item(3, ["bug", "go", "p2"], 2),
-        item(4, ["bug", "go"], 0),
-        item(5, ["bug", "go", "p1"], 9, assignees=["owner"]),  # a person's claim
-        item(6, ["bug", "go", "p1", "needs-you"], 0),
-        item(7, ["bug", "go", "p1", "claim:agent"], 0),  # live lease
-        item(8, ["bug", "go", "p1", "claim:agent"], 3),  # expired lease
-        item(9, ["bug", "go", "p1"], 0),  # an open PR fixes it
-        item(10, ["feature", "go", "p1"], 0),  # the owner's go
-        item(13, ["question", "go", "p1"], 0),  # a decision
-        item(11, ["bug", "p1"], 0),  # no go
-        item(12, ["bug", "go", "p1", "cannot-reproduce"], 0),
-        item(40, ["repo-factory"], is_pr=True, body="Fixes #9"),
-    ]
-    leases = {7: {"until": NOW + 3600}, 8: {"until": NOW - 60}}
-    got = [i["number"] for i in revise.queue(items, pol, NOW, lambda n: leases.get(n))]
-    assert got == [10, 8, 2, 3, 1, 4]
-    assert revise.queue(items, policy.parse(policy.render({"status": "as-is"})), NOW) == []
-    assert revise.queue(items, policy.MISSING, NOW) == [], "a missing policy fixes nothing"
-
-
-def test_claim_posts_the_lease_and_renew_edits_it(world):
-    lp, fake, _ = world
-    r = github.Repo(lp.gh, REPO)
-    fake.comments[14] = [
-        {
-            "id": 5,
-            "body": "<!-- repo-factory:claim lease_until=2026-01-01T00:00Z "
-            "branch=agent/14-x -->  Working on this.",
-            "user": {"login": "a"},
-            "created_at": stamp(NOW - 9000),
-            "updated_at": stamp(NOW - 9000),
-        }
-    ]
-    got = revise.claim(r, r.issue(14), "repo-factory/14-huge", NOW, 6)
-    assert "claim:repo-factory" in labels(fake, 14)
-    mine = [c for c in fake.comments[14] if revise.MINE in c["body"]]
-    assert len(mine) == 1 and "branch=repo-factory/14-huge" in mine[0]["body"]
-    assert "previous claim's lease expired" in mine[0]["body"], "a take-over says so"
-    assert fake.comments[14][0]["body"].endswith("Working on this."), (
-        "another agent's comment is left alone"
-    )
-    ls = revise.lease_of(r.comments(14))
-    assert ls["mine"] and abs(ls["until"] - got["until"]) < 61
-    revise.renew(r, 14, "repo-factory/14-huge", NOW + 3600, 6)
-    mine = [c for c in fake.comments[14] if revise.MINE in c["body"]]
-    assert len(mine) == 1 and revise.lease_of(r.comments(14))["until"] > got["until"]
+def prs(fake):
+    return [p for p in fake.issues.values() if "pull_request" in p]
 
 
 # -- reproduce --------------------------------------------------------------------------------------
@@ -432,13 +81,9 @@ def test_reproduce_rejects_a_passing_test_and_another_reason_then_cannot_reprodu
     assert out["outcome"] == "cannot_reproduce" and out["stage"] == "reproduce", out
     assert "not with the stated expectation" in out["why"]
     assert "already exists" in h.prompts[1] or "passes on the current code" in h.prompts[1]
-    assert "cannot-reproduce" in labels(fake, 14) and "claim:repo-factory" not in labels(fake, 14)
-    assert any("result=cannot-reproduce" in b for b in fake.comments_of(14))
-    assert not fake.releases and not [p for p in fake.issues.values() if "pull_request" in p]
-    # a cannot-reproduce issue leaves the queue until the owner removes the label
-    pol = policy.parse(fake.policy_text)
-    items = github.Repo(lp.gh, REPO).issues()
-    assert revise.queue(items, pol, time.time()) == []
+    assert not fake.releases and not prs(fake)
+    assert on_issue(fake) == [] and fake.comments_of(14) == []
+    assert fixes_record.get(lp.cfg.home, REPO, 14)["outcome"] == "cannot_reproduce"
 
 
 def test_a_session_that_ends_without_an_answer_is_a_failure_not_cannot_reproduce(world):
@@ -446,8 +91,7 @@ def test_a_session_that_ends_without_an_answer_is_a_failure_not_cannot_reproduce
     out = fix(lp, Scripted(lambda ws, p: None)).run()
     assert out["outcome"] == "failed" and out["stage"] == "reproduce", out
     assert "ended without an answer" in out["why"]
-    assert "cannot-reproduce" not in labels(fake, 14)
-    assert "repo-factory will try once more" in fake.comments_of(14)[-1]
+    assert on_issue(fake) == []
 
 
 def test_a_new_test_that_fails_for_the_reason_is_kept_and_other_edits_reverted(world):
@@ -502,12 +146,10 @@ def test_the_fix_reaches_deliver_unmarks_the_open_item_and_opens_the_pr(world):
     ).stdout
     assert log.startswith("Fix #14: A huge") and "Fixes #14" in log
     assert "Claude" not in log and "Co-Authored" not in log
-    # on the issue: the claim gone, one comment pointing at the PR
-    assert "claim:repo-factory" not in labels(fake, 14)
-    assert any("result=pr n=" in b and f"#{out['pr']}" in b for b in fake.comments_of(14))
-    lease = [b for b in fake.comments_of(14) if revise.MINE in b]
-    assert len(lease) == 1 and f"it proposed a fix in #{out['pr']}." in lease[0]
-    assert revise.lease_of(github.Repo(lp.gh, REPO).comments(14))["until"] <= time.time() + 60
+    # nothing on the issue: no label, no comment; the record is repo-factory's own
+    assert on_issue(fake) == [] and fake.comments_of(14) == []
+    rec = fixes_record.get(lp.cfg.home, REPO, 14)
+    assert rec["outcome"] == "pr" and rec["pr"] == out["pr"]
     assert "**Verified:** 3 tests passed (the product's own and the acceptance suite" in body
     # spend: the loop's ledger (maintenance) and the task's event log (the build page)
     assert lp.spend()["today"]["maintain"] == pytest.approx(0.8)
@@ -564,7 +206,7 @@ def test_require_stops_a_fix_that_breaks_a_released_check(world):
     out = f.run()
     assert out["outcome"] == "failed" and out["stage"] == "readiness", out
     assert "passed on main and fail on the fix: q2" in out["why"]
-    assert not [p for p in fake.issues.values() if "pull_request" in p], "no PR"
+    assert not prs(fake), "no PR"
 
 
 def test_a_release_without_the_checks_asset_says_so_in_the_pr(world):
@@ -614,7 +256,7 @@ def test_the_scope_check_holds_a_diff_touching_a_workflow(world):
     assert out["outcome"] == "failed" and out["stage"] == "reverify", out
     assert "a fix never changes this file" in out["why"]
     assert "out of scope" in h.prompts[2], "the repair round was told"
-    assert not [p for p in fake.issues.values() if "pull_request" in p], "no PR"
+    assert not prs(fake), "no PR"
     assert revise.scope_violations(
         [
             ".github/workflows/x.yml",
@@ -656,7 +298,7 @@ def test_a_regression_goes_to_one_repair_round_then_passes(world):
     assert out["sessions"] == 3
 
 
-def test_failures_count_up_to_needs_you_and_removing_it_resets(world):
+def test_the_next_attempt_hears_why_the_last_one_stopped(world):
     lp, fake, _ = world
 
     def bad_check(root):  # AGENTS.md runs on main; the fixed tree breaks it
@@ -668,79 +310,23 @@ def test_failures_count_up_to_needs_you_and_removing_it_resets(world):
             "output": "FAIL  `python -m pytest` exited 1",
         }
 
-    r = github.Repo(lp.gh, REPO)
     out1 = fix(lp, Scripted(names_test(), fixes), check=bad_check).run()
     assert out1["outcome"] == "failed" and out1["stage"] == "readiness"
-    assert "needs-you" not in labels(fake, 14) and "claim:repo-factory" not in labels(fake, 14)
-    assert "repo-factory will try once more" in fake.comments_of(14)[-1]
-    assert "-attempt1`" in fake.comments_of(14)[-1], "the partial work is pushed"
-    out2 = fix(lp, Scripted(names_test(), fixes), check=bad_check).run()
-    assert out2["attempt"] == 2 and "needs-you" in labels(fake, 14)
-    from repo_factory.events import load_state
-
-    st = load_state(revise.task_dir(lp.cfg.tasks_dir, REPO, 14))
-    assert st["build"] == 2 and st["v5"]["stages"]["build"]["runs"] == 1, "each run its own"
-    assert "labels it `needs-you`" in fake.comments_of(14)[-1]
-    assert revise.attempts(r.comments(14)) == 2
-    pol = policy.parse(fake.policy_text)
-    assert revise.queue(r.issues(), pol, time.time()) == [], "needs-you leaves the queue"
-    # the owner removes needs-you (Try again): the next poll posts the reset and starts over
-    r.set_labels(14, remove=["needs-you"])
-    rec, slots = {}, [1]
-    got = revise.step(lp, r, poll.targets(lp)[0], r.issues(), pol, rec, time.time(), slots)
-    assert got["started"] == [14] and slots == [0]
-    assert any(revise.RESET in b for b in fake.comments_of(14))
-    assert revise.attempts(r.comments(14)) == 0
-    assert "claim:repo-factory" in labels(fake, 14) and rec["revises"]["14"]["pid"]
+    h = Scripted(names_test(), fixes)
+    out2 = fix(lp, h, check=bad_check).run()
+    assert out2["attempt"] == 2
+    assert "python -m pytest" in h.prompts[1], "the build session hears the last stop"
+    assert fixes_record.waits(fixes_record.get(lp.cfg.home, REPO, 14), 2)
+    assert on_issue(fake) == [] and not prs(fake)
 
 
-def test_a_fix_process_that_dies_without_a_word_counts_as_a_failed_attempt(world):
+def test_a_closed_issue_starts_nothing(world):
+    """GitHub's issue list lags a merge by seconds: the fix process reads the issue again and
+    a closed one is no attempt."""
     lp, fake, _ = world
-    r = github.Repo(lp.gh, REPO)
-    pol = policy.parse(fake.policy_text)
-    rec, slots = {}, [1]
-    got = revise.step(lp, r, poll.targets(lp)[0], r.issues(), pol, rec, time.time(), slots)
-    assert got["started"] == [14]
-    task = Path(rec["revises"]["14"]["task"])
-    assert json.loads((task / "loop.json").read_text())["kind"] == "fix"
-    assert "Fix #14 in Plotkeeper" in (task / "spec.md").read_text()
-    pid = rec["revises"]["14"]["pid"]
-    for _ in range(100):  # the fake fix process (python -c pass) exits
-        if not revise.alive(pid):
-            break
-        time.sleep(0.05)
-    keep = dict(rec["revises"])
-    got = revise.step(lp, r, poll.targets(lp)[0], r.issues(), pol, rec, time.time(), [0])
-    assert got["ended"][0]["outcome"] == "failed" and rec["revises"] == {}
-    assert "fix process stopped" in fake.comments_of(14)[-1]
-    assert "claim:repo-factory" not in labels(fake, 14)
-    # one that died after opening its PR (before it wrote its result): the PR says it is done
-    n = len(fake.comments_of(14))
-    fake.add_pr(30, "Fix #14: huge id", "owner", labels=["repo-factory"], association="OWNER")
-    fake.issues[30]["body"] = "Fixes #14"
-    rec["revises"] = keep
-    got = revise.step(lp, r, poll.targets(lp)[0], r.issues(), pol, rec, time.time(), [0])
-    assert got["ended"][0] == {"number": 14, "outcome": "pr", "pr": 30, "why": None}
-    assert len(fake.comments_of(14)) == n, "no failure comment"
-
-
-def test_a_stale_issue_list_after_a_merge_starts_nothing(world):
-    """GitHub's issue list lags a merge by seconds: it still says open and go. The poll reads
-    the one issue fresh before it claims, the fix process checks again, and a fix that died
-    on an issue closed meanwhile is no attempt."""
-    lp, fake, _ = world
-    r = github.Repo(lp.gh, REPO)
-    pol = policy.parse(fake.policy_text)
-    stale = r.issues()
     fake.issues[14]["state"] = "closed"  # merged a moment ago
-    got = revise.step(lp, r, poll.targets(lp)[0], stale, pol, {}, time.time(), [1])
-    assert got["started"] == [] and "claim:repo-factory" not in labels(fake, 14)
     out = fix(lp, Scripted()).run()
-    assert out["outcome"] == "skipped" and fake.comments_of(14) == [], "not even a lease"
-    fake.issues[14]["labels"].append({"name": "claim:repo-factory"})
-    revise.abandon(r, 14, {}, pol)
-    assert "claim:repo-factory" not in labels(fake, 14)
-    assert not any("result=failed" in b for b in fake.comments_of(14))
+    assert out["outcome"] == "skipped" and fake.writes() == []
 
 
 def test_one_fix_at_a_time_and_fixes_share_the_build_slots(world):
@@ -750,26 +336,15 @@ def test_one_fix_at_a_time_and_fixes_share_the_build_slots(world):
         REPO, {"revises": {"14": {"pid": os.getpid(), "task": "x", "started": time.time()}}}
     )
     assert [x["number"] for x in lp.revising()] == [14]
-    assert poll.free_slots(lp, cache) == 0, "maintain.concurrency 1, one running"
+    assert watch.free_slots(lp, cache) == 0, "maintain.concurrency 1, one running"
     lp.cfg.data["maintain"]["concurrency"] = 3
     lp.cfg.data["concurrency"] = 2
-    assert poll.free_slots(lp, cache) == 1, "the build slots cap it"
+    assert watch.free_slots(lp, cache) == 1, "the build slots cap it"
     lp.cfg.data["concurrency"] = 1
     assert lp.start_builds() == [], "the running fix takes the only build slot"
 
 
-def test_the_tick_starts_a_fix_and_never_while_paused(world):
-    lp, fake, _ = world
-    lp.cfg.pause_file.write_text("x")
-    assert "maintain" not in lp.tick()
-    assert "claim:repo-factory" not in labels(fake, 14)
-    lp.cfg.pause_file.unlink()
-    out = lp.tick()
-    rv = out["maintain"]["repos"][0]["revise"]
-    assert rv["started"] == [14] and "claim:repo-factory" in labels(fake, 14)
-
-
-# -- release and the lesson label -------------------------------------------------------------------
+# -- the release after a merge ------------------------------------------------------------------
 def test_bump_picks_patch_or_minor_and_versions_parse():
     assert release.bump((0, 1, 0), {"bug"}) == (0, 1, 1)
     assert release.bump((0, 1, 3), {"bug", "feature"}) == (0, 2, 0)
@@ -780,7 +355,7 @@ def test_bump_picks_patch_or_minor_and_versions_parse():
     )
 
 
-def test_release_after_a_merge_labels_the_lesson_and_is_idempotent(world):
+def test_a_release_after_a_merge_writes_only_the_tag_and_is_idempotent(world):
     lp, fake, _ = world
     fake.tag_list = ["v0.1.0"]
     fake.add_pr(
@@ -804,39 +379,26 @@ def test_release_after_a_merge_labels_the_lesson_and_is_idempotent(world):
             "generate_release_notes": True,
         }
     ]
-    assert "lesson" in labels(fake, 14)
-    c = [b for b in fake.comments_of(14) if release.LESSON in b]
-    assert len(c) == 1 and f"miss=security flow=F4 test={TEST}" in c[0]
+    assert on_issue(fake) == [], "no lesson label, no comment"
     # the next poll: main has nothing past v0.1.1
     fake.compare_commits = []
     assert release.step(r, pol) is None
     assert release.newest(fake.tag_list) == ((0, 1, 1), "v0.1.1")
     assert len(fake.releases) == 1
-    # a feature makes a minor; a ticket repo-factory opened is no lesson
-    fake.issues[15] = issue(15, "Export as CSV", ["feature"], body="x\n" + revise.TICKET)
+    # a feature makes a minor
+    fake.issues[15] = issue(15, "Export as CSV", ["feature"], body="x\n" + words.TICKET)
     fake.add_pr(21, "Fix #15", "owner", labels=["repo-factory", "feature"], association="OWNER")
     fake.issues[21]["body"] = (
         "Fixes #15\n<!-- repo-factory:revise-meta issue=15 kind=feature test=t.py -->"
     )
     fake.compare_commits, fake.commit_prs = ["c2"], {"c2": [21]}
     out = release.step(r, pol)
-    assert out["tag"] == "v0.2.0" and out["lessons"] == []
+    assert out["tag"] == "v0.2.0" and "lessons" not in out
     off = policy.parse(policy.render({"status": "maintained", "release": {"on_merge": "off"}}))
     assert release.step(r, off) is None
 
 
-def test_the_poll_releases_and_the_box_shows_it(world):
-    lp, fake, _ = world
-    fake.tag_list, fake.compare_commits = ["v0.1.0"], ["c1"]
-    fake.add_pr(20, "Docs", "owner", labels=["docs"], association="OWNER")
-    fake.commit_prs = {"c1": [20]}
-    fake.issues[14]["labels"] = [{"name": "bug"}]  # nothing to fix this time
-    out = poll.maintain_tick(lp)
-    assert out["repos"][0]["release"]["tag"] == "v0.1.1"
-    assert github.Cache(lp.cfg.home).repo(REPO)["release"]["tag"] == "v0.1.1"
-
-
-# -- Cut a ticket (a press, or a Claude Code proposal confirmed) -------------------------------------
+# -- Open issue (a press, or a Claude Code proposal confirmed) -------------------------------------
 def test_cut_ticket_validates_checks_and_runs_through_the_fake_gh(world):
     from repo_factory import registry as R
 
@@ -858,7 +420,7 @@ def test_cut_ticket_validates_checks_and_runs_through_the_fake_gh(world):
     ):
         with pytest.raises(R.ActionError):
             R.validate("cut_ticket", {"issue": "x", "text": "y", "labels": ["bug"], **bad})
-    # Ask for changes (AR-PLAN.md §2.5) needs the instructions, and on a published build its
+    # Ask for changes needs the instructions, and on a published build its
     # check sends the owner to an issue
     with pytest.raises(R.ActionError, match="needs instructions"):
         R.validate("revise", {})
@@ -888,7 +450,7 @@ def test_cut_ticket_validates_checks_and_runs_through_the_fake_gh(world):
     assert out["say"].startswith(f"Opened #{n} on {REPO}")
     new = fake.issues[n]
     assert new["title"] == "Huge numeric id returns 500" and labels(fake, n) == {"bug", "p2", "go"}
-    assert revise.TICKET in new["body"]
+    assert words.TICKET in new["body"]
     # a repo whose policy fixes nothing gets the issue without go, and the card says so
     fake.policy_text = policy.render({"status": "as-is"})
     a_._maint = None
@@ -926,7 +488,7 @@ def test_the_sandbox_reads_the_allowlist_from_the_environment(monkeypatch):
 
 
 # -- the UI -------------------------------------------------------------------------------------------
-def test_a_fix_is_a_build_row_of_kind_fix_and_the_header_counts_it(world):
+def test_a_fix_is_a_build_row_of_kind_fix_and_the_header_counts_it(world, monkeypatch):
     lp, fake, _ = world
     out = fix(lp, Scripted(names_test(), fixes)).run()
     a_ = api.App(lp.cfg.tasks_dir, "fake", lp.cfg.home)
@@ -942,10 +504,17 @@ def test_a_fix_is_a_build_row_of_kind_fix_and_the_header_counts_it(world):
     page = a_.build_page(Path(row["dir"]))
     stages = [s["stage"] for s in page["state"]["v5"]["stages"]]
     assert stages == ["reproduce", "build", "verify", "repair", "reverify", "readiness", "deliver"]
+    # a poll that still sees the pull request open keeps it "fixed"
+    monkeypatch.setattr(revise, "start", lambda *a, **k: pytest.fail("no second fix"))
+    time.sleep(1.1)
+    watch.tick(lp)
+    row = next(b for b in a_.snapshot()["builds"] if b.get("kind") == "fix")
+    assert row["status"] == "fixed"
     # the owner merges it; the next poll no longer sees it open
     fake.issues[out["pr"]]["state"] = "closed"
+    fake.issues[14]["labels"] = [{"name": "bug"}]  # nothing left to fix
     time.sleep(1.1)
-    poll.maintain_tick(lp)
+    watch.tick(lp, now=time.time() + 1000)
     row = next(b for b in a_.snapshot()["builds"] if b.get("kind") == "fix")
     assert row["status"] == "closed" and "merged or closed" in row["reason"]
 
@@ -957,14 +526,13 @@ def test_settings_write_the_fix_keys():
     assert settings.check("maintain.max_usd", "12.5") == 12.5
     assert settings.check("maintain.max_usd", None) is None
     assert settings.check("maintain.net", "public") == "public"
-    assert settings.check("maintain.lesson_label", False) is False
     for k, v in (
         ("concurrency", 9),
         ("concurrency", True),
         ("max_usd", -1),
         ("max_usd", "x"),
         ("net", "anything"),
-        ("lesson_label", "yes"),
+        ("lesson_label", False),  # read by nothing: not a setting the app writes
     ):
         with pytest.raises(ValueError):
             settings.check(f"maintain.{k}", v)
@@ -983,9 +551,8 @@ def test_no_attribution_in_what_factory_posts():
 
 
 def test_a_feature_or_task_is_specified_not_reproduced(world):
-    """AU3 findings 5 and 7: an accepted feature (Beliefline #8) or a maintenance task
-    (Beliefline #6) names no failing behaviour; its test specifies what it asks for, and must
-    still fail on main for the stated reason."""
+    """An accepted feature or a maintenance task names no failing behaviour; its test
+    specifies what it asks for, and must still fail on main for the stated reason."""
     lp, fake, _ = world
     for n, kind in ((15, "feature"), (16, "task")):
         fake.issues[n] = {
@@ -993,9 +560,52 @@ def test_a_feature_or_task_is_specified_not_reproduced(world):
             "state": "open",
             "html_url": f"https://github.com/{REPO}/issues/{n}",
         }
+        fake.label(n, "go", OWNER)
         h = Scripted(names_test(), fixes)
         fix(lp, h, number=n).run()
         assert h.prompts[0].startswith("You are specifying a requested change"), kind
     h = Scripted(names_test(), fixes)
     fix(lp, h).run()  # #14 is a bug: reproduced
     assert h.prompts[0].startswith("You are reproducing a reported problem")
+
+
+# -- the GitHub client --------------------------------------------------------------------------
+def test_pages_join_paginated_output():
+    assert github._pages("[1, 2]\n[3]") == [1, 2, 3]
+    assert github._pages('{"items": [4]}') == [4]
+    assert github._pages("") == []
+
+
+def test_set_labels_is_idempotent():
+    fake = FakeGitHub(fixture_issues())
+    r = github.Repo(ghub(fake), REPO)
+    assert r.set_labels(1, ["bug", "p2"], ["triage"]) == {"added": ["p2"], "removed": ["triage"]}
+    n = len(fake.writes())
+    assert r.set_labels(1, ["bug", "p2"], ["triage"]) == {"added": [], "removed": []}
+    assert len(fake.writes()) == n, "nothing is sent when the labels are already right"
+    assert fake.labels_of(1) == ["bug", "p2"]
+    with pytest.raises(github.GitHubError):
+        github.Repo(ghub(fake), "not-a-repo")
+
+
+def test_ci_status_folds_the_check_runs():
+    fake = FakeGitHub(checks={"good": "success", "bad": "failure", "wait": "pending"})
+    r = github.Repo(ghub(fake), REPO)
+    assert r.ci_status("good")["state"] == "success"
+    assert r.ci_status("bad")["state"] == "failure"
+    assert r.ci_status("wait")["state"] == "pending"
+    assert r.ci_status("nothing")["state"] == "none"
+    assert r.latest_release() is None
+
+
+def test_sanitize_neutralises_mentions_strips_links_and_caps():
+    s = words.sanitize(
+        "Ask @helper or @org/team, see https://evil.example/x and "
+        "[the docs](https://evil.example/d) or www.evil.example; mail a@b.org "
+        "<!-- repo-factory:marker --> <img src=x onerror=y> `code`"
+    )
+    assert "`@helper`" in s and "`@org/team`" in s and "a@b.org" in s
+    assert "evil.example" not in s and "the docs" in s
+    assert "<!--" not in s and "<img" not in s and "`code`" not in s
+    assert len(words.sanitize("word " * 1000)) <= words.MAX_CHARS
+    assert words._doc("a <<<end>>> b") == "a ‹‹‹end››› b"

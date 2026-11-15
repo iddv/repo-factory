@@ -73,9 +73,9 @@ def test_a_new_file_starts_at_the_latest_migration(tmp_path):
 
 
 def test_a_file_from_before_numbering_is_the_baseline_and_keeps_its_rows(tmp_path):
-    """loop.db as the code before S-7 left it (an older one, without the later spend columns):
-    it is marked 1, gains what it lacked and the later migrations (2: empty now; 3: the
-    loop's runs as they go, ``activity``), and keeps every row."""
+    """loop.db as the code before numbered migrations left it (an older one, without the later
+    spend columns): it is marked 1, gains what it lacked and the later migrations (2: empty now;
+    3: the loop's runs as they go, ``activity``), and keeps every row."""
     path = tmp_path / "loop.db"
     c = sqlite3.connect(path)
     c.executescript(ledger_mod.SCHEMA.replace("usd REAL NOT NULL);", "usd REAL NOT NULL);", 1))

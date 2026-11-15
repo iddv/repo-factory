@@ -46,14 +46,12 @@ CONFIRM_CLASS = (
     "cancel",
     "restart_revise",
     "accept_claim",
-    "charter_change",
     "github_app_create",
     "github_app_key",
     "github_app_remove",
     "github_app_link",
     "github_disconnect",
     "claude_login_forget",
-    "maintain_merge_policy",
 )
 UNDOABLE = ("stop_round", "cancel")  # the flash offers Undo
 # repo-factory's own GitHub App: the page and the command line only; never an agent's token
@@ -71,11 +69,8 @@ GITHUB_KINDS = (
 # the Claude login builds use: the page and the command line only, as GITHUB_KINDS
 CLAUDE_KINDS = ("claude_login_keep", "claude_login_forget")
 CLAUDE_REFUSAL = "{kind} is the owner's: the Claude login is set up from Settings › Claude"
-# the owner's writes to a product's repository outside a fix: the page and the command line
-# only, as GITHUB_KINDS
-OWNER_KINDS = ("maintain_merge_policy",)
 # what an agent's token never runs: the owner's own, and a hand build's stop
-AGENT_HIDDEN = ("stop", *GITHUB_KINDS, *OWNER_KINDS, *CLAUDE_KINDS)
+AGENT_HIDDEN = ("stop", *GITHUB_KINDS, *CLAUDE_KINDS)
 
 _log = logging.getLogger("repo_factory.registry")
 # ``api/act {check: true}`` checks a press's fields and runs nothing
@@ -942,11 +937,23 @@ def r_restart_revise(ctx, f, s):
 def r_cut_ticket(ctx, f, s):
     row = s.row or {}
     labels = list(f.get("labels") or [])
+    # go starts a fix, as you: only your press on the page or the command line
+    # puts it on. An agent's token opens the issue without it, and says so.
+    agent = bool(AGENT_ORIGIN.fullmatch(str(ctx.origin or "")))
+    agent_go = agent and "go" in labels
+    if agent_go:
+        labels.remove("go")
     r = ctx.app.maintain_issue_create(
         {"repo": row["repo"], "title": f.get("issue"), "body": f.get("text"), "labels": labels}
     )
     said = f"Opened #{r['number']} on {row['repo']}: {r['url']}"
-    if r.get("dropped_go"):
+    if agent_go:
+        said += (
+            " (without go: an agent's token never puts go on an issue; label it go yourself on "
+            "GitHub if you want it fixed)"
+        )
+        r = {**r, "dropped_go": True, "dropped_go_why": "agent"}
+    elif r.get("dropped_go"):
         said += (
             " (without go: this repository's .github/repo-factory.yml does not let repo-factory fix "
             "issues)"
@@ -1094,17 +1101,6 @@ def w_repo(s):
     """The repo actions are checked by the ``App`` method behind them; the page shows its
     refusal in words."""
     return None
-
-
-def r_maintain_merge_policy(ctx, f, s):
-    r = ctx.app.maintain_merge_policy(
-        f["repo"], bool(f.get("on")), list(f.get("kinds") or []), origin=ctx.origin
-    )
-    return {
-        "result": {"id": r["repo"]},
-        "say": r["say"],
-        "what": f"started the merge policy PR of {r['repo']}",
-    }
 
 
 def r_maintain_recheck(ctx, f, s):
@@ -1570,363 +1566,9 @@ _add(
         "repo-factory maintain recheck {repo}",
     )
 )
-# the owner's switch: repo-factory merging its own fixes on green CI is the repo's policy, so
-# the switch is one small pull request on .github/repo-factory.yml that the owner merges; repo-factory never
-# merges a .github/ change
-_add(
-    Action(
-        "maintain_merge_policy",
-        "Merge repo-factory's fixes when CI is green…",
-        "Opens one small "
-        "pull request on a product's .github/repo-factory.yml that turns repo-factory's merging of its own "
-        "fix pull requests on (merge.factory_patch: ci-green, for the kinds you choose) or "
-        "off. You merge it on GitHub; repo-factory never merges a .github/ change. Once it is on, "
-        "repo-factory merges one fix a poll, oldest first, only when every check on it is green, "
-        "it is up to date with main and under merge.max_lines. Never a feature, a change "
-        "to .github/, a licence or a lockfile, one labelled hold or needs-you, one with "
-        "changes requested, or one you pushed to.",
-        ("new",),
-        (
-            REPO,
-            Field("on", "bool", True, help="true: ci-green; false: never"),
-            Field(
-                "kinds",
-                "list",
-                False,
-                4,
-                choices=("bug", "docs", "security", "dependency"),
-                help="what repo-factory may merge (default bug, docs); feature never",
-            ),
-        ),
-        "confirm",
-        None,
-        w_repo,
-        r_maintain_merge_policy,
-        "repo-factory maintain merge-policy {repo} --on --kinds bug,docs --detach --yes",
-    )
-)
-REPO_KINDS = ("maintain_recheck", "maintain_merge_policy")
+REPO_KINDS = ("maintain_recheck",)
 
 
-# -- projects (off and unlisted): the project is a field, as the repo is; the App method behind each
-# is the authority. None waits on a model: a draft or a run starts in the background.
-def w_project(s):
-    return None
-
-
-def r_edit_charter(ctx, f, s):
-    r = ctx.app.charter_edit(f["project"], f["charter"], f.get("note") or "", origin=ctx.origin)
-    return {
-        "result": {"id": r["id"]},
-        "say": f"Saved: charter v{r['charter_v']}. The next check for ideas reads it.",
-        "what": f"edited the charter of {r['name']} (v{r['charter_v']})",
-    }
-
-
-def r_redraft_charter(ctx, f, s):
-    r = ctx.app.charter_redraft(f["project"], origin=ctx.origin)
-    return {
-        "result": {"id": r["id"]},
-        "say": f"Drafting {r['name']}'s charter again from the "
-        "repo, in the background; your versions stay under Versions.",
-        "what": f"asked for a new draft of {r['name']}'s charter",
-    }
-
-
-def r_restore_charter(ctx, f, s):
-    r = ctx.app.charter_restore(f["project"], int(f["v"]), origin=ctx.origin)
-    return {
-        "result": {"id": r["id"]},
-        "say": f"Charter v{f['v']} is in use again, as v{r['charter_v']}.",
-        "what": f"restored charter v{f['v']} of {r['name']}",
-    }
-
-
-PROJECT = Field("project", "line", True, 9, 9, help="the project's id (p…)")
-_add(
-    Action(
-        "edit_charter",
-        "Edit charter",
-        "Saves your text of the project's charter as a "
-        "new version. Earlier versions stay, and any can be used again. Nothing runs; the "
-        "next check for ideas reads it.",
-        ("new",),
-        (
-            PROJECT,
-            Field(
-                "charter", "text", True, 12000, 40, help="the charter's text, one heading per field"
-            ),
-            Field("note", "line", max=80),
-        ),
-        "click",
-        None,
-        w_project,
-        r_edit_charter,
-        "repo-factory projects charter {project} --file -",
-    )
-)
-_add(
-    Action(
-        "redraft_charter",
-        "Redraft charter",
-        "Drafts the charter again from the repo as it "
-        "is now (one model call, in the background). It becomes a new version; your edits "
-        "stay in the earlier versions.",
-        ("new",),
-        (PROJECT,),
-        "click",
-        None,
-        w_project,
-        r_redraft_charter,
-        "repo-factory projects charter {project}",
-    )
-)
-_add(
-    Action(
-        "restore_charter",
-        "Use this version",
-        "Makes an earlier version of the charter the current one again, as a new version.",
-        ("new",),
-        (PROJECT, Field("v", "int", True, min=1, max=10**6)),
-        "click",
-        None,
-        w_project,
-        r_restore_charter,
-        "repo-factory projects charter {project} --restore {v}",
-    )
-)
-PROJECT_KINDS = ["edit_charter", "redraft_charter", "restore_charter"]
-
-
-def r_evolve_now(ctx, f, s):
-    r = ctx.app.evolve_now(f["project"], origin=ctx.origin)
-    return {
-        "result": {"id": r["id"]},
-        "say": f"Checking {r['name']} for ideas in the background; the page shows what it finds.",
-        "what": f"asked for ideas on {r['name']}",
-    }
-
-
-def r_accept_change(ctx, f, s):
-    r = ctx.app.change_accept(f["change"], origin=ctx.origin)
-    filed = r.get("filed") or {}
-    where = f" {filed.get('where')}" if filed.get("where") else ""
-    until = ((r.get("card") or {}).get("undo") or {}).get("until")
-    return {
-        "result": {"id": r["id"]},
-        "url": filed.get("url"),
-        "say": f"Accepted: {r['title']}."
-        + (f" Filed{where}." if filed else " It is filed on the loop's next tick."),
-        "what": f"accepted {r['title']}",
-        **(
-            {"undoable": {"of": "accept_change", "until": until, "change": r["id"]}}
-            if until
-            else {}
-        ),
-    }
-
-
-def r_decline_change(ctx, f, s):
-    r = ctx.app.change_decline(f["change"], f["how"], f.get("why") or "", origin=ctx.origin)
-    return {
-        "result": {"id": r["id"]},
-        "say": "Not now: it sleeps a while."
-        if f["how"] == "not_now"
-        else "Declined for good: a later check that proposes it again is counted, not shown.",
-        "what": f"declined ({f['how']}): {r['title']}",
-    }
-
-
-def r_charter_change(ctx, f, s):
-    yes = f["answer"] == "accept"
-    r = ctx.app.change_charter(f["change"], yes, f.get("why") or "", origin=ctx.origin)
-    return {
-        "result": {"id": r["id"]},
-        "say": "Accepted: the charter has a new version and the change is filed."
-        if yes
-        else "Declined for good.",
-        "what": f"{'accepted' if yes else 'declined'} the scope change {r['title']}",
-    }
-
-
-CHANGE = Field("change", "line", True, 9, 9, help="the change idea's id (c…)")
-_add(
-    Action(
-        "evolve_now",
-        "Check for ideas now",
-        "Asks what can improve this project now (one "
-        "model call, in the background), even when nothing changed since the last check.",
-        ("new",),
-        (PROJECT,),
-        "click",
-        None,
-        w_project,
-        r_evolve_now,
-        "repo-factory projects evolve {project} --force",
-    )
-)
-_add(
-    Action(
-        "accept_change",
-        "Accept: repo-factory fixes it",
-        "Accepts a proposed change: its issue is filed on the "
-        "repo (with go when the repo's policy lets repo-factory fix it), or a request is kept in "
-        "repo-factory for a repo you do not own, and the fix opens a draft pull request. The merge "
-        "stays yours.",
-        ("new",),
-        (CHANGE,),
-        "click",
-        None,
-        w_project,
-        r_accept_change,
-        "repo-factory projects accept {change}",
-    )
-)
-_add(
-    Action(
-        "decline_change",
-        "Decline",
-        "Not now puts a proposed change to sleep for a while; "
-        "Never declines it for good, with your reason, so it does not come back as new.",
-        ("new",),
-        (
-            CHANGE,
-            Field("how", "enum", True, choices=("not_now", "never")),
-            Field("why", "line", max=MAX_NOTE),
-        ),
-        "click",
-        None,
-        w_project,
-        r_decline_change,
-        "repo-factory projects decline {change} --how {how}",
-    )
-)
-_add(
-    Action(
-        "charter_change",
-        "Decide",
-        "Answers a change that would change what "
-        "the project is: Accept writes the charter's new version and files the change; "
-        "Decline declines it for good with your reason.",
-        ("new",),
-        (
-            CHANGE,
-            Field("answer", "enum", True, choices=("accept", "decline")),
-            Field("why", "line", max=MAX_NOTE),
-        ),
-        "confirm",
-        None,
-        w_project,
-        r_charter_change,
-        "repo-factory projects scope {change} --accept|--decline",
-    )
-)
-PROJECT_KINDS += ["evolve_now", "accept_change", "decline_change", "charter_change"]
-
-
-def r_undo_change(ctx, f, s):
-    r = ctx.app.change_undo(f["change"], origin=ctx.origin)
-    return {
-        "result": {"id": r["id"]},
-        "say": f"Undone: {r['title']} is a proposal again; its issue is closed unworked.",
-        "what": f"undid the accept: {r['title']}",
-    }
-
-
-_add(
-    Action(
-        "undo_change",
-        "Undo",
-        "Undoes Accept: repo-factory fixes it within a few seconds of it: the issue just "
-        "filed is closed unworked (or the request withdrawn) and the idea is proposed "
-        "again.",
-        ("new",),
-        (CHANGE,),
-        "click",
-        None,
-        w_project,
-        r_undo_change,
-        "repo-factory projects undo {change}",
-    )
-)
-PROJECT_KINDS.append("undo_change")
-
-
-def r_pause_project(ctx, f, s):
-    r = ctx.app.project_state(f["project"], f["state"], origin=ctx.origin)
-    word = {"active": "Resumed", "paused": "Paused", "archived": "Archived"}[r["state"]]
-    return {
-        "result": {"id": r["id"]},
-        "say": f"{word}: {r['name']}."
-        + (
-            " No check for ideas, charter draft or filing runs until you resume it; maintenance "
-            "of its repo goes on (Pause maintenance stops it)."
-            if r["state"] != "active"
-            else ""
-        ),
-        "what": f"{word.lower()} {r['name']}",
-    }
-
-
-def r_pause_maintenance(ctx, f, s):
-    paused = f["state"] == "paused"
-    r = ctx.app.maintenance_state(f["project"], paused, origin=ctx.origin)
-    if paused:
-        say = (
-            f"Maintenance paused on {r['name']}: no fix, merge, release, label, comment or "
-            "model call on its repo until you resume it"
-            + (
-                f"; the running fix of #{r['running']} goes on (Stop round on its row stops it)"
-                if r.get("running")
-                else ""
-            )
-            + "."
-        )
-    else:
-        say = f"Maintenance resumed on {r['name']}: it picks up from the next poll."
-    return {
-        "result": {"id": r["id"]},
-        "say": say,
-        "what": f"{'paused' if paused else 'resumed'} maintenance on {r['name']}",
-    }
-
-
-_add(
-    Action(
-        "pause_project",
-        "Pause project",
-        "Pauses a project's ideas (no check for ideas, no "
-        "charter draft, nothing filed), resumes it, or archives it (it leaves the list; its "
-        "record stays). Maintenance of its repo goes on: Pause maintenance stops that.",
-        ("new",),
-        (PROJECT, Field("state", "enum", True, choices=("active", "paused", "archived"))),
-        "click",
-        None,
-        w_project,
-        r_pause_project,
-        "repo-factory projects state {project} {state}",
-    )
-)
-PROJECT_KINDS.append("pause_project")
-# the owner, 2026-10-29: pause maintenance on one project, in repo-factory, at once (maintain/pauses.py)
-_add(
-    Action(
-        "pause_maintenance",
-        "Pause maintenance",
-        "Pauses maintenance of a project's repo "
-        "in repo-factory, at once: no fix run, merge, release, label, comment or model call on it "
-        "until you resume it (a fix already running goes on). No pull request; the repo's "
-        ".github/repo-factory.yml is left as it is. state on resumes it from the next poll.",
-        ("new",),
-        (PROJECT, Field("state", "enum", True, choices=("paused", "on"))),
-        "click",
-        None,
-        w_project,
-        r_pause_maintenance,
-        "repo-factory projects maintenance {project} {state}",
-    )
-)
-PROJECT_KINDS.append("pause_maintenance")
 # the flash's Undo after Stop round or Cancel: nothing is killed or asked
 _add(
     Action(
@@ -2204,7 +1846,7 @@ def _loop_cfg(ctx):
 
 
 def r_github_connect(ctx, f, s):
-    """Start GitHub's device flow (WZ-DESIGN §3.6): the code and the page come back; the
+    """Start GitHub's device flow: the code and the page come back; the
     page then polls ``api/github/user/poll``. Nothing is written on GitHub."""
     from . import github_user as U
     from .github_app import AppError
@@ -2350,12 +1992,6 @@ def agent_default_actions() -> tuple[str, ...]:
     return tuple(k for k in ACTIONS if k not in AGENT_HIDDEN)
 
 
-OWNER_REFUSAL = (
-    "{kind} is the owner's: it opens a pull request on your repository; start "
-    "it from the page or the command line"
-)
-
-
 def door_refuses(
     origin: str, kind: str, actions: list | None = None, cfg: dict | None = None
 ) -> str | None:
@@ -2368,8 +2004,6 @@ def door_refuses(
     if AGENT_ORIGIN.fullmatch(str(origin or "")):
         if kind in GITHUB_KINDS:
             return f"{kind} is the owner's: repo-factory's GitHub App is set up from Settings › Publishing › GitHub"
-        if kind in OWNER_KINDS:
-            return OWNER_REFUSAL.format(kind=kind)
         if kind in CLAUDE_KINDS:
             return CLAUDE_REFUSAL.format(kind=kind)
         allowed = agent_default_actions() if actions is None else tuple(actions)
@@ -2472,7 +2106,7 @@ def check(kind: str, subject: Subject) -> str | None:
     a = ACTIONS.get(kind)
     if a is None:
         return "unknown action"
-    if kind in REPO_KINDS or kind in PROJECT_KINDS:  # a field names it: any thread may ask
+    if kind in REPO_KINDS:  # a field names it: any thread may ask
         return a.when(subject)
     # an idea and its build are one subject (both rows are resolved); a new thread is not
     if subject.kind == "new" and "new" not in a.subjects:

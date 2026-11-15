@@ -1,4 +1,4 @@
-"""How every ``claude`` repo-factory starts gets its Claude login (TS.REVIEW R1, for builds, fixes,
+"""How every ``claude`` repo-factory starts gets its Claude login (for builds, fixes,
 repairs, chat, the no-tools prompts and Open in Claude Code alike): through a pipe, never in an
 environment or on a command line.
 

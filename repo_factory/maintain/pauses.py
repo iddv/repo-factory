@@ -1,15 +1,10 @@
-"""Maintenance paused on a repository, in repo-factory, at once (the owner, 2026-10-29: "a simple way
-to pause maintenance on a project").
+"""Maintenance paused on a repository, in repo-factory, at once (the repository's **Pause** on
+its page, ``api/maintenance/pause``).
 
-A product repo-factory built keeps its policy in its own ``.github/repo-factory.yml``, and until now the only
-switch there was ``status:`` (a pull request the owner merges). An adopted repo has its
-profile's ``paused`` status, which the poll honours. Pausing maintenance on a project writes
-one line here for each of its repositories, products and adopted ones alike, and for an adopted
-one also sets its profile's ``paused`` status as **Pause** on Build › Repos does. While a
-repository is here, the poll (``poll.targets(polling=True)``) skips it: no fix run, merge,
-release, label, comment or model call on it; a fix already running goes on (Stop round on its
-row stops it). Resuming removes the line and maintenance picks up from the next poll. The
-repo's ``.github/repo-factory.yml`` is never touched.
+While a repository is here, the poll (``watch.targets``) skips it: no fix run, merge, release
+or model call on it; a fix already running stops before its next session or its push.
+Resuming removes the line and maintenance picks up from the next poll. The repo's
+``.github/repo-factory.yml`` is never touched.
 
 ``<loop home>/maintain/paused.json`` (0600): ``{"<owner>/<name>": {"at", "by", "project",
 "profile"}}``; ``profile`` is True when this pause set an adopted repo's profile to paused (so

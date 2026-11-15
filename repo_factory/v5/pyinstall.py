@@ -1,4 +1,4 @@
-"""The exam's install phase for a Python product's packaging (EX-PLAN §3.1, §5.1).
+"""The exam's install phase for a Python product's packaging.
 
 The exam drives the product as a user would, and a user installs it: ``pip install .`` or
 ``pipx install .`` builds the package in an isolated environment, and that fetches the build

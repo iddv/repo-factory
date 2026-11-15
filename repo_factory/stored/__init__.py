@@ -41,8 +41,7 @@ __all__ = [
     "projects",
 ]
 
-#: TEXT columns that hold JSON, by name (the inventory of CTR-DESIGN §1.6, checked against the
-#: writers).
+#: TEXT columns that hold JSON, by name (an inventory checked against the writers).
 JSON_NAMES = frozenset(
     {
         "urls",

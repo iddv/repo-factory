@@ -2,23 +2,18 @@
 // Do not edit: change the Python side and run `python3 scripts/gen_ts.py`;
 // a test fails when this file is stale.
 export type ActionKind =
-  | "accept_change"
   | "accept_claim"
   | "add_idea"
   | "answer"
   | "build_anyway"
   | "cancel"
-  | "charter_change"
   | "claude_login_forget"
   | "claude_login_keep"
   | "close"
   | "cut_ticket"
-  | "decline_change"
   | "edit_brief"
-  | "edit_charter"
   | "edit_claim"
   | "edit_release_text"
-  | "evolve_now"
   | "github_app_cancel"
   | "github_app_create"
   | "github_app_key"
@@ -29,19 +24,14 @@ export type ActionKind =
   | "github_disconnect"
   | "keep"
   | "later"
-  | "maintain_merge_policy"
   | "maintain_recheck"
   | "make_public"
-  | "pause_maintenance"
-  | "pause_project"
   | "pitch_again"
   | "publish"
   | "publish_anyway"
   | "recheck"
-  | "redraft_charter"
   | "reject"
   | "restart_revise"
-  | "restore_charter"
   | "resume_build"
   | "retry"
   | "revise"
@@ -49,28 +39,22 @@ export type ActionKind =
   | "stop"
   | "stop_round"
   | "undo"
-  | "undo_change"
 ;
 
 /** Each action's fields, as api/act takes them in `fields`. */
 export interface ActionFields {
-  "accept_change": { change: string; };
   "accept_claim": { claim: string; };
   "add_idea": { text: string; };
   "answer": { qid: string; text?: string; };
   "build_anyway": Record<string, never>;
   "cancel": Record<string, never>;
-  "charter_change": { change: string; answer: "accept" | "decline"; why?: string; };
   "claude_login_forget": Record<string, never>;
   "claude_login_keep": { token: string; };
   "close": { reason: string; };
   "cut_ticket": { issue: string; text: string; labels: ("bug" | "feature" | "docs" | "security" | "question" | "p1" | "p2" | "p3" | "go")[]; };
-  "decline_change": { change: string; how: "not_now" | "never"; why?: string; };
   "edit_brief": { text: string; };
-  "edit_charter": { project: string; charter: string; note?: string; };
   "edit_claim": { claim: string; text: string; default?: string; };
   "edit_release_text": { text: string; };
-  "evolve_now": { project: string; };
   "github_app_cancel": Record<string, never>;
   "github_app_create": { host: string; port?: number; mount?: string; org?: string; };
   "github_app_key": { pem: string; };
@@ -81,19 +65,14 @@ export interface ActionFields {
   "github_disconnect": Record<string, never>;
   "keep": Record<string, never>;
   "later": { days?: number; };
-  "maintain_merge_policy": { repo: string; on: boolean; kinds?: ("bug" | "docs" | "security" | "dependency")[]; };
   "maintain_recheck": { repo: string; };
   "make_public": Record<string, never>;
-  "pause_maintenance": { project: string; state: "paused" | "on"; };
-  "pause_project": { project: string; state: "active" | "paused" | "archived"; };
   "pitch_again": Record<string, never>;
   "publish": Record<string, never>;
   "publish_anyway": { reason: string; holds?: string[]; };
   "recheck": Record<string, never>;
-  "redraft_charter": { project: string; };
   "reject": { reasons?: ("wrong idea" | "wrong scope" | "bugs" | "install or README" | "security" | "not for me")[]; note?: string; };
   "restart_revise": { instructions: string; mode?: "auto" | "docs" | "code"; };
-  "restore_charter": { project: string; v: number; };
   "resume_build": Record<string, never>;
   "retry": { note?: string; };
   "revise": { instructions: string; mode?: "auto" | "docs" | "code"; };
@@ -101,7 +80,6 @@ export interface ActionFields {
   "stop": Record<string, never>;
   "stop_round": Record<string, never>;
   "undo": { of?: "stop_round" | "cancel"; };
-  "undo_change": { change: string; };
 }
 
 /** The actions that run only with `confirm: true`. */
@@ -109,7 +87,6 @@ export const CONFIRM = [
   "accept_claim",
   "build_anyway",
   "cancel",
-  "charter_change",
   "claude_login_forget",
   "close",
   "github_app_create",
@@ -117,7 +94,6 @@ export const CONFIRM = [
   "github_app_link",
   "github_app_remove",
   "github_disconnect",
-  "maintain_merge_policy",
   "make_public",
   "publish",
   "publish_anyway",
@@ -129,23 +105,18 @@ export type ConfirmKind = (typeof CONFIRM)[number];
 
 /** What each action can act on. */
 export const SUBJECTS: Record<ActionKind, readonly string[]> = {
-  "accept_change": ["new"],
   "accept_claim": ["idea", "build"],
   "add_idea": ["new"],
   "answer": ["build"],
   "build_anyway": ["idea"],
   "cancel": ["idea", "build"],
-  "charter_change": ["new"],
   "claude_login_forget": ["loop"],
   "claude_login_keep": ["loop"],
   "close": ["idea", "build"],
   "cut_ticket": ["idea", "build"],
-  "decline_change": ["new"],
   "edit_brief": ["idea"],
-  "edit_charter": ["new"],
   "edit_claim": ["idea", "build"],
   "edit_release_text": ["idea", "build"],
-  "evolve_now": ["new"],
   "github_app_cancel": ["loop"],
   "github_app_create": ["loop"],
   "github_app_key": ["loop"],
@@ -156,19 +127,14 @@ export const SUBJECTS: Record<ActionKind, readonly string[]> = {
   "github_disconnect": ["loop"],
   "keep": ["idea", "build"],
   "later": ["idea"],
-  "maintain_merge_policy": ["new"],
   "maintain_recheck": ["new"],
   "make_public": ["idea", "build"],
-  "pause_maintenance": ["new"],
-  "pause_project": ["new"],
   "pitch_again": ["idea"],
   "publish": ["idea", "build"],
   "publish_anyway": ["idea", "build"],
   "recheck": ["idea", "build"],
-  "redraft_charter": ["new"],
   "reject": ["build"],
   "restart_revise": ["idea", "build"],
-  "restore_charter": ["new"],
   "resume_build": ["idea", "build"],
   "retry": ["idea", "build"],
   "revise": ["idea", "build"],
@@ -176,5 +142,4 @@ export const SUBJECTS: Record<ActionKind, readonly string[]> = {
   "stop": ["build"],
   "stop_round": ["idea", "build"],
   "undo": ["idea", "build"],
-  "undo_change": ["new"],
 };

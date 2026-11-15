@@ -62,31 +62,24 @@ def test_the_maintenance_package_and_its_templates_are_clean():
     an e-mail address). Checked whether or not the files are tracked yet."""
     pkg = ROOT / "repo_factory" / "maintain"
     files = [p for p in pkg.rglob("*") if p.is_file() and "__pycache__" not in p.parts]
-    files.append(ROOT / "repo_factory" / "loop" / "prompts" / "triage.md")
-    # M4: what publishing writes into a new repo, and the lesson read's comment and prompt
-    files += [
-        ROOT / "repo_factory" / "loop" / "prompts" / "lesson_issue.md",
-        ROOT / "repo_factory" / "loop" / "publish.py",
-        ROOT / "repo_factory" / "lessons" / "postmortem.py",
-    ]
+    # what publishing writes into a new repo
+    files += [ROOT / "repo_factory" / "loop" / "publish.py"]
     revise = ROOT / "policies" / "v5-revise"
     files += [p for p in revise.rglob("*") if p.is_file()]
     assert any(p.parent.name == "templates" for p in files) and len(files) > 20
-    # what repo-factory posts on a product's GitHub: the templates, triage's, the poll's, a fix's
-    # and a release's comments and pull requests (and the prompts that read the issue), what
-    # publishing writes, and the learning job's lesson-read comment
+    # what repo-factory posts on a product's GitHub: the templates, the poll's, a fix's and a
+    # release's pull requests and issues (and the prompts that read the issue), and what
+    # publishing writes
     posted = {
-        "triage.py",
-        "poll.py",
-        "triage.md",
+        "watch.py",
+        "words.py",
+        "proposals.py",
         "revise.py",
         "release.py",
         "fix.md",
         "reproduce.md",
         "rules.yaml",
         "publish.py",
-        "postmortem.py",
-        "lesson_issue.md",
         "doctor.py",
         "identity.py",
     }

@@ -2,6 +2,7 @@
   // Builds: the list, and the selected build beside it (on a phone, one or the other). With
   // nothing built yet: one line and one button, New task.
   import { items, STATE, type State } from "../../lib/builds";
+  import { dur, usd } from "../../lib/format";
   import { read } from "../../lib/reads.svelte";
   import { href, type Route } from "../../lib/router.svelte";
   import { pendingItems } from "../../lib/tasks.svelte";
@@ -16,6 +17,7 @@
   const have = $derived(new Set([...(s?.ideas || []).map((t) => t.id), ...(s?.builds || []).map((b) => b.idea || "")]));
   const rows = $derived([...pendingItems(have), ...items(s)]);
   const sel = $derived(r.id);
+  const rec = $derived(s?.record);
   // a task's address (#/builds/task:<id>, where New task lands) follows it into its build once
   // its brief is written and the build has a row of its own
   const open = $derived(
@@ -31,6 +33,12 @@
       <h1 id="builds-h">Builds</h1>
       {#if rows.length}<a class="btn primary" id="new-task" href={href("builds", "new")} aria-current={sel === "new" ? "page" : undefined}>New task</a>{/if}
     </header>
+    {#if rec && rec.builds > 0}
+      <p class="muted small record" id="record">
+        Your record: {rec.builds} build{rec.builds === 1 ? "" : "s"}, {rec.published} published, {rec.held} held; a build took {dur(rec.median_s)} and cost {usd(rec.median_usd)} at the median, {usd(rec.total_usd)} in all.
+        {#if rec.lean}<span class="lean" id="record-lean">Of these, {rec.lean.builds} by the lean flow (unproven): {dur(rec.lean.median_s)} and {usd(rec.lean.median_usd)} at the median.</span>{/if}
+      </p>
+    {/if}
     {#if !s && got.error}
       <p class="err" role="alert">The builds could not be read: {got.error}</p>
     {:else if !s}

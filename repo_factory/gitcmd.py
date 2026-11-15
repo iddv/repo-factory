@@ -16,16 +16,26 @@ credential helper. So no module runs ``git`` itself (``tests/test_gitcmd.py`` ch
 - refuses a repo whose ``.git`` is a file pointing elsewhere, whose config moves the work
   tree (``core.worktree``) or rewrites remote URLs (``url.<x>.insteadOf``): the host would
   commit files outside the tree or push somewhere else;
+- refuses a repo whose own config sets anything under ``http.`` (a proxy, TLS checks off,
+  extra headers, a cookie file) or a remote's ``proxy``: the host's git would hand the
+  owner's GitHub credential to whatever address that names;
+- for what reads a remote's address (fetch, push, ls-remote, pull), refuses a repo whose
+  ``remote.<x>.url``/``pushurl`` is not what the host itself wrote right after its clone
+  (``pin``): a session that points ``origin`` at a repository in its workspace would make the
+  host's push run that repository's hooks, on the host;
 - reads no system config (``GIT_CONFIG_NOSYSTEM``), never prompts, and never walks up out of
   ``cwd`` looking for a repo unless asked (``discover=True``, for the trees repo_factory ships);
 - times out: 60 s, or 300 s for what talks to a remote (clone, fetch, push, ls-remote).
 
 A session that still runs while the host reads its tree could change ``.git`` between the
-check and the call; the host runs git on a session's tree after the session ends.
+check and the call; the host runs git on a session's tree after the session ends. Maintenance
+goes further: it never runs a network git in a tree a session could write
+(``maintain/carry.py``).
 """
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 from pathlib import Path
@@ -57,6 +67,8 @@ HARDEN = (
 # diff, show and log never run an external diff or a textconv driver
 NO_EXT_DIFF = {c: ("--no-ext-diff", "--no-textconv") for c in ("diff", "show", "log")}
 NETWORK = {"clone", "fetch", "push", "pull", "ls-remote", "archive"}
+# the subcommands that may read a remote's address from the repo's own config
+REMOTE_READS = {"fetch", "push", "pull", "ls-remote", "submodule"}
 TIMEOUT_S, NETWORK_TIMEOUT_S = 60, 300
 
 # Keys a repo's own config may set that make git run a command (lower case; a subsection
@@ -81,6 +93,43 @@ _REFUSE = {
     "core.worktree": "it moves the work tree outside the repo",
     "extensions.worktreeconfig": "it reads a second, per-worktree config",
 }
+
+
+def pin_path(cwd: Path | str) -> Path:
+    """Where ``pin`` keeps a tree's remotes: beside the tree, never inside it (a session's
+    workspace is the tree; the folder that holds it is not bound into the sandbox)."""
+    cwd = Path(cwd).resolve()
+    return cwd.parent / f".{cwd.name}.git-remotes.json"
+
+
+def _remotes(pairs: list[tuple[str, str]]) -> dict[str, list[str]]:
+    """The ``remote.<x>.url`` and ``pushurl`` values among a config's pairs (the key
+    lower-cased but the remote's name; every value, in order)."""
+    out: dict[str, list[str]] = {}
+    for key, v in pairs:
+        section, _, rest = key.partition(".")
+        name, _, leaf = rest.rpartition(".")
+        if section.lower() == "remote" and name and leaf.lower() in ("url", "pushurl"):
+            out.setdefault(f"remote.{name}.{leaf.lower()}", []).append(v)
+    return out
+
+
+def pin(cwd: Path | str, env: dict | None = None) -> dict[str, list[str]]:
+    """Call right after the host's own clone, before anything else touches the tree: the
+    remotes its config holds now are the ones the host wrote. A later fetch or push in that
+    tree is refused when its config says anything else."""
+    cwd = Path(cwd)
+    got = _remotes(_local_config(cwd, environ(cwd, False, env)))
+    pin_path(cwd).write_text(json.dumps(got, sort_keys=True))
+    return got
+
+
+def _pinned(cwd: Path) -> dict | None:
+    try:
+        got = json.loads(pin_path(cwd).read_text())
+    except (OSError, ValueError):
+        return None
+    return got if isinstance(got, dict) else None
 
 
 class GitRefused(RuntimeError):
@@ -145,9 +194,50 @@ def _global(pattern: str, env: dict) -> list[tuple[str, str]]:
     return out
 
 
-def overrides(cwd: Path | str | None, env: dict | None = None, discover: bool = False) -> list[str]:
+def _refuse_transport(cwd: Path, pairs: list[tuple[str, str]], sub: str | None) -> None:
+    """``GitRefused`` for a tree whose own config would send the host's git (and the
+    credential it carries) somewhere the host did not choose."""
+    for key, _ in pairs:
+        section, _, rest = key.partition(".")
+        name, _, leaf = rest.rpartition(".")
+        if section.lower() == "http":
+            raise GitRefused(
+                f"{cwd}: the repo's config sets {key}: an http setting in a tree's own config "
+                "could send the GitHub credential through a proxy or past a false certificate; "
+                "the host's git refuses it"
+            )
+        if section.lower() == "remote" and name and leaf.lower() in ("proxy", "proxyauthmethod"):
+            raise GitRefused(
+                f"{cwd}: the repo's config sets {key}: a remote's proxy in a tree's own config "
+                "could take the GitHub credential; the host's git refuses it"
+            )
+    if sub not in REMOTE_READS:
+        return
+    have = _remotes(pairs)
+    if not have:
+        return
+    pinned = _pinned(cwd)
+    if pinned is None or have != pinned:
+        odd = sorted(
+            k for k in set(have) | set(pinned or {}) if (pinned or {}).get(k) != have.get(k)
+        )
+        raise GitRefused(
+            f"{cwd}: the repo's config sets {', '.join(odd)} to an address the host did not "
+            "write (a session may have changed it); the host's git never fetches from or "
+            "pushes to it"
+        )
+
+
+def overrides(
+    cwd: Path | str | None,
+    env: dict | None = None,
+    discover: bool = False,
+    sub: str | None = None,
+) -> list[str]:
     """The ``-c`` arguments that neutralise what ``cwd``'s repo config would run; raises
-    ``GitRefused`` for a tree whose git would act outside it."""
+    ``GitRefused`` for a tree whose git would act outside it. ``sub``: the subcommand (one
+    that reads a remote's address is also refused when the tree's remotes are not the ones
+    ``pin`` kept)."""
     if cwd is None or not Path(cwd).is_dir():
         return []
     cwd = Path(cwd)
@@ -160,7 +250,9 @@ def overrides(cwd: Path | str | None, env: dict | None = None, discover: bool = 
     out: list[str] = []
     seen: set[str] = set()
     helpers = False
-    for key, _ in _local_config(cwd, e):
+    pairs = _local_config(cwd, e)
+    _refuse_transport(cwd, pairs, sub)
+    for key, _ in pairs:
         if key in seen:
             continue
         seen.add(key)
@@ -214,7 +306,8 @@ def argv(
     i = _subcommand(args)
     if i is not None and args[i] in NO_EXT_DIFF:
         args[i + 1 : i + 1] = NO_EXT_DIFF[args[i]]
-    return ["git", *HARDEN, *overrides(cwd, env, discover), *args]
+    sub = args[i] if i is not None else None
+    return ["git", *HARDEN, *overrides(cwd, env, discover, sub), *args]
 
 
 def run(

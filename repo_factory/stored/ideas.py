@@ -1,4 +1,4 @@
-"""The loop ledger's ideas and their history (CTR-DESIGN §2.4): ``ideas.urls``, ``.card``,
+"""The loop ledger's ideas and their history: ``ideas.urls``, ``.card``,
 ``.pitch``, ``.build``, ``.gate``, ``.publish``, ``.signals`` and ``history.data``.
 
 Each type names the fields its writers store and readers format or compare, with the type

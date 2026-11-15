@@ -155,7 +155,7 @@ Rules:
 Return JSON only: {{"results": {{"<rule id>": {{"verdict": "agree", "reason": "one sentence"}}, ...}}}}"""
 
 
-# Build v4 hardening (V4-D): the second reading of the design's known-critical rules
+# Build v4 hardening: the second reading of the design's known-critical rules
 # (``RulesEngine.mine_design``). Their interface came from a design that left exactly these
 # rules uncovered, so it mustn't settle what behaviour the spec requires.
 DESIGN_CHECK_SUFFIX = """

@@ -67,8 +67,16 @@
   <article class="build" data-title={item.title}>
     <header>
       <h2 class="title">{item.title}</h2>
-      <p class="status"><span class={"pill t-" + item.tone}>{item.word}</span>{#if b?.url}{" "}<a href={b.url} target="_blank" rel="noopener noreferrer">{b.repo || "the repository"} ↗</a>{/if}</p>
+      <p class="status"><span class={"pill t-" + item.tone}>{item.word}</span>{#if b?.flow === "lean"}<span class="pill t-amber flowtag" id="flow-lean" title="Built by the lean flow, which has no record yet">lean (unproven)</span>{/if}{#if b?.url}{" "}<a href={b.url} target="_blank" rel="noopener noreferrer">{b.repo || "the repository"} ↗</a>{/if}</p>
       {#if b?.desc}<p class="muted">{b.desc}</p>{/if}
+      {#if b?.issue?.ref}<p class="muted small" id="from-issue">From GitHub issue {#if b.issue.url}<a href={b.issue.url} target="_blank" rel="noopener noreferrer">{b.issue.ref} ↗</a>{:else}{b.issue.ref}{/if}{#if b.issue.why}{" "}({b.issue.why}){/if}; its text is quoted in the brief as data.</p>{/if}
+      {#if b?.lessons?.length}
+        <details class="carried" id="carried-lessons">
+          <summary class="small">Its brief carries {b.lessons.length} lesson{b.lessons.length === 1 ? "" : "s"} from earlier builds</summary>
+          <ul class="small">{#each b.lessons as x, i (i)}<li><span class="muted">{x.id}</span> {x.text}</li>{/each}</ul>
+          <p class="small"><a href="#/lessons">Lessons</a> switches each on or off.</p>
+        </details>
+      {/if}
     </header>
     <section class="sec" id="s-now" aria-labelledby="now-h">
       <h3 id="now-h">What now</h3>

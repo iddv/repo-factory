@@ -36,8 +36,6 @@ BRIEF_IDS = {
     "fix",
     "pitch",
     "honesty",
-    "triage",
-    "lesson_issue",
     "build",
     "change",
     "product",
@@ -102,7 +100,7 @@ def test_the_defaults_compose_to_the_files_without_their_slot_lines(st):
         assert eff.text == cp.SLOT.sub("", raw)
         assert eff.template == "default" and not eff.custom and eff.n == 0
     # the build stage: a spec that passes through gets exactly the brief and the vanilla
-    # suffix, as before; a scoped build also gets what ships with the product (EX-PLAN §4),
+    # suffix, as before; a scoped build also gets what ships with the product,
     # just before the suffix
     md = "# Scope: X\n\n## Definition of done\n- [ ] F1: a — b\n"
     for m in (md, None):

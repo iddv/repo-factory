@@ -151,7 +151,7 @@ def compare(was: dict, new: dict) -> list[dict]:
 
 
 def clears(g: dict, rec: dict) -> dict | None:
-    """AU1 #3: a re-check that turned holds into passes and turned nothing into a failure is
+    """A re-check that turned holds into passes and turned nothing into a failure is
     the verdict: the held gate ``g`` with the re-check's results for its checks and
     ``judged_by`` the re-checking version. The goalposts that moved in the product's favour
     are on the record (``judged_by``), never against it: a re-check that finds a new failure,
@@ -193,8 +193,8 @@ def judge(idea: dict, rec: dict, quick: dict | None, root: Path, at: Path) -> tu
     record's checks where it has none), and the installed version's on this run: the record
     judged by the installed gate, the exam's checks again (``recompute``), and the quick start
     measured again (``quick``, in a copy of the round's records at ``at``). A hold that the
-    installed version no longer makes, from a fixed harness or gate, differs as a pass (AU1
-    #3: Repo Recall's F5, a flow its sandbox could not measure, held it 105 h)."""
+    installed version no longer makes, from a fixed harness or gate, differs as a pass
+    (Repo Recall's F5, a flow its sandbox could not measure, held it 105 h)."""
     g = idea.get("gate") or {}
     task = Path(idea["task_dir"])
     old = gate_mod.evaluate(task, build=g.get("round"))

@@ -1,4 +1,4 @@
-"""A fix that stopped says so in a sentence (UC-DESIGN §2 F8, §4 "One attempt at a product"):
+"""A fix that stopped says so in a sentence:
 "Run 1 stopped in tests: …", and without a stage nothing reads "stopped in None"."""
 
 from repo_factory.maintain import revise

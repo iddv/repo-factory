@@ -80,10 +80,10 @@ ROLES = [
         "loop",
     ),
     (
-        "triage",
-        "Triage",
-        "Labels new issues on the published repos and writes one comment; no tools.",
-        ("maintain", "triage_model"),
+        "lessons",
+        "Lessons",
+        "Reads a held build's holds and writes at most one lesson for the next briefs; no tools.",
+        ("lessons", "model"),
         "loop",
     ),
     # the models that were set on other pages, beside the rest

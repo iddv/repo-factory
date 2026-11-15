@@ -1,15 +1,15 @@
-"""The GitHub side of maintenance (MAINTAIN.md §1, §5): one product repository read and written
+"""The GitHub side of maintenance: one product repository read and written
 through the ``gh`` CLI's REST calls, and the poll's disposable cache.
 
-``Repo`` reads issues, pull requests, labels, collaborators, the latest release and the CI state
-of a commit, and writes labels and marker comments. Every write is idempotent: labels are added
-or removed only when that changes something, and a comment is found by its ``<!-- repo-factory:… -->``
-marker before one is posted. The ``gh`` is ``publish.Gh`` (its ``_run(args, cwd)`` is
-replaceable), so tests use a fake and never the network.
+``Repo`` reads issues, pull requests, labels, the latest release and the CI state of a commit,
+and writes what maintenance writes: labels (added or removed only when that changes something),
+a fix's pull request, an issue you asked for, a merge and a release. It posts no comment. The
+``gh`` is ``publish.Gh`` (its ``_run(args, cwd)`` is replaceable), so tests use a fake and never
+the network.
 
 ``Cache`` is ``<loop home>/maintain/cache.json``: when each repo was last polled and what the
-poll saw (the rows Today shows). It holds nothing that GitHub does not: delete it and the next
-poll reads the last 30 days again and arrives at the same labels and comments."""
+poll saw (the rows the pages show). It is disposable: delete it and the next poll writes it
+again."""
 
 from __future__ import annotations
 
@@ -85,7 +85,7 @@ def issue(x: dict) -> dict:
 
 
 def _commit(c: dict) -> dict:
-    """A commit as the REST API returns it, in the fields ``current.py`` reads."""
+    """A commit as the REST API returns it, in the fields ``automerge.known_head`` reads."""
     com = c.get("commit") or {}
     return {
         "sha": c.get("sha") or "",
@@ -105,6 +105,23 @@ class Repo:
             raise GitHubError(f"not a repository name: {full!r}")
         self.gh, self.full = gh, full
         self.owner = full.split("/")[0]
+        # the default branch every read and write below means by default (RFREV2 S9):
+        # ``default_branch`` reads it once; "main" until then
+        self.base = "main"
+
+    def default_branch(self) -> str:
+        """The repository's default branch, read once (``repos/<full>``) and kept in
+        ``self.base``; "main" when GitHub's answer does not say (a read that fails raises)."""
+        got = self.get(f"repos/{self.full}") or {}
+        name = got.get("default_branch") if isinstance(got, dict) else None
+        if (
+            isinstance(name, str)
+            and name.strip()
+            and "/" not in name.strip(".")
+            and ".." not in name
+        ):
+            self.base = name.strip()
+        return self.base
 
     # -- the transport ---------------------------------------------------------------------
     def api(
@@ -117,7 +134,7 @@ class Repo:
         raw: bool = False,
     ) -> str:
         if SECRETS.search(path.split("?")[0]):
-            # MX-PLAN §3.6: repository and organisation secrets are never read, whoever asks
+            # repository and organisation secrets are never read, whoever asks
             raise GitHubError(f"repo-factory never reads secrets: {path.split('?')[0]}")
         args = ["api"]
         if method != "GET":
@@ -206,9 +223,10 @@ class Repo:
             else None
         )
 
-    def ci_status(self, ref: str = "main") -> dict:
+    def ci_status(self, ref: str | None = None) -> dict:
         """The check runs on ``ref`` folded into one word: ``success`` (every run finished
         green), ``failure``, ``pending`` or ``none`` (no CI ran, e.g. Actions is off)."""
+        ref = ref or self.base
         r = (
             self.get(f"repos/{self.full}/commits/{quote(ref, safe='')}/check-runs?per_page=100")
             or {}
@@ -264,8 +282,9 @@ class Repo:
             )
         return out[:limit]
 
-    def tree(self, ref: str = "main") -> list[dict]:
+    def tree(self, ref: str | None = None) -> list[dict]:
         """Every path on ``ref``: ``[{"path", "type": blob|tree}]`` (one call)."""
+        ref = ref or self.base
         r = self.get(f"repos/{self.full}/git/trees/{quote(ref, safe='')}?recursive=1") or {}
         return [
             {"path": x.get("path"), "type": x.get("type")}
@@ -273,8 +292,19 @@ class Repo:
             if x.get("path")
         ]
 
-    def file(self, path: str, ref: str = "main") -> str | None:
+    def modes(self, ref: str) -> dict[str, str]:
+        """Every path on ``ref`` with its git mode (``120000`` a link, ``160000`` a
+        submodule), from one tree read."""
+        r = self.get(f"repos/{self.full}/git/trees/{quote(ref, safe='')}?recursive=1") or {}
+        return {
+            str(x.get("path")): str(x.get("mode") or "")
+            for x in r.get("tree") or []
+            if isinstance(x, dict) and x.get("path")
+        }
+
+    def file(self, path: str, ref: str | None = None) -> str | None:
         """One file's text on ``ref``; None when it is not there."""
+        ref = ref or self.base
         try:
             return self.api(
                 f"repos/{self.full}/contents/{quote(path)}?ref={quote(ref, safe='')}", raw=True
@@ -284,11 +314,12 @@ class Repo:
                 return None
             raise
 
-    def head(self, branch: str = "main", etag: str | None = None) -> dict:
+    def head(self, branch: str | None = None, etag: str | None = None) -> dict:
         """The branch's head commit, asked conditionally: ``{"sha", "etag", "changed"}``. With
         the ``etag`` of the last answer, an unchanged branch is GitHub's 304, which costs no
         rate limit (``sha`` None, ``changed`` False). GitHub cannot push to a loopback-only
         repo-factory, so this is how every poll learns that main moved."""
+        branch = branch or self.base
         args = ["api", "-i", "-H", "Accept: application/vnd.github.sha"]
         if etag:
             args += ["-H", f"If-None-Match: {etag}"]
@@ -420,57 +451,45 @@ class Repo:
                     raise
         return {"added": add, "removed": remove}
 
+    def events(self, number: int) -> list[dict]:
+        """An issue's events, oldest first: who put a label on (``loop.from_issue.labelled_by``)."""
+        got = self.get(f"repos/{self.full}/issues/{int(number)}/events?per_page=100", paginate=True)
+        return [e for e in got if isinstance(e, dict)] if isinstance(got, list) else []
+
     def issue(self, number: int) -> dict:
         return issue(self.get(f"repos/{self.full}/issues/{int(number)}"))
 
-    def find_marker(self, number: int, marker: str, comments: list | None = None) -> dict | None:
-        for c in comments if comments is not None else self.comments(number):
-            if marker in c["body"]:
-                return c
-        return None
-
-    def comment_with_marker(
-        self,
-        number: int,
-        marker: str,
-        body: str,
-        *,
-        edit: bool = True,
-        comments: list | None = None,
-    ) -> dict:
-        """The one comment carrying ``marker`` on the issue: edited when it exists (or left
-        alone with ``edit=False``), posted when it does not. ``body`` must contain the
-        marker, so the next call finds it."""
-        if marker not in body:
-            raise ValueError("the comment must carry its marker")
-        old = self.find_marker(number, marker, comments)
-        if old:
-            if edit and old["body"].strip() != body.strip():
-                self.api(
-                    f"repos/{self.full}/issues/comments/{old['id']}",
-                    method="PATCH",
-                    payload={"body": body},
-                )
-                return {"id": old["id"], "action": "edited"}
-            return {"id": old["id"], "action": "unchanged"}
-        r = json.loads(
-            self.api(
-                f"repos/{self.full}/issues/{int(number)}/comments",
-                method="POST",
-                payload={"body": body},
-            )
-            or "{}"
+    def last_edit(self, number: int) -> dict:
+        """When an issue's body was last edited and by whom (GraphQL ``lastEditedAt``,
+        ``editor``; a read): ``{"at": epoch or None, "by": login or None}``. A title's
+        change is a ``renamed`` event (``events``)."""
+        owner, name = self.full.split("/")
+        q = (
+            "query($owner:String!,$name:String!,$n:Int!){repository(owner:$owner,name:$name)"
+            "{issue(number:$n){lastEditedAt editor{login}}}}"
         )
-        return {"id": r.get("id"), "action": "posted"}
-
-    def delete_comment(self, comment_id: int) -> None:
+        out = self.api(
+            "graphql",
+            method="POST",
+            payload={"query": q, "variables": {"owner": owner, "name": name, "n": int(number)}},
+        )
         try:
-            self.api(f"repos/{self.full}/issues/comments/{int(comment_id)}", method="DELETE")
-        except GitHubError as e:  # already gone: the end state is the same
-            if "404" not in str(e) and "Not Found" not in str(e):
-                raise
+            data = json.loads(out or "null")
+        except ValueError:
+            raise GitHubError("gh api graphql: the answer could not be read") from None
+        got = ((data or {}).get("data") or {}).get("repository") or {}
+        got = got.get("issue") if isinstance(got, dict) else None
+        if not isinstance(got, dict):
+            raise GitHubError("gh api graphql: no issue in the answer")
+        editor = got.get("editor")
+        return {
+            "at": epoch(got.get("lastEditedAt")),
+            "by": editor.get("login") if isinstance(editor, dict) else None,
+        }
 
     def close(self, number: int, reason: str = "not_planned") -> None:
+        """Close an issue (only ``projects/filing.py``'s undo calls it; nothing reaches that
+        in this version)."""
         self.api(
             f"repos/{self.full}/issues/{int(number)}",
             method="PATCH",
@@ -490,7 +509,7 @@ class Repo:
             },
         )
 
-    # -- repo-factory's own pull requests: kept current, and merged on green (current.py, automerge.py)
+    # -- repo-factory's own pull requests: judged and merged (automerge.judge, watch.merge_step)
     def pull(self, number: int) -> dict:
         """One pull request with what the REST list leaves out: the head commit and branch,
         whose repository the branch is in, mergeability and the diff's size."""
@@ -542,8 +561,9 @@ class Repo:
     def commit(self, sha: str) -> dict:
         return _commit(self.get(f"repos/{self.full}/commits/{quote(sha, safe='')}") or {})
 
-    def behind(self, head: str, base: str = "main") -> int:
+    def behind(self, head: str, base: str | None = None) -> int:
         """How many commits ``base`` has that ``head`` does not (0: up to date)."""
+        base = base or self.base
         r = (
             self.get(
                 f"repos/{self.full}/compare/{quote(base, safe='')}..."
@@ -553,79 +573,7 @@ class Repo:
         )
         return int(r.get("behind_by") or 0)
 
-    def update_branch(self, number: int, expected_head: str) -> None:
-        """GitHub's *Update branch*: main merged into the pull request's branch, only while
-        ``expected_head`` is its head. A conflict is a 422."""
-        self.api(
-            f"repos/{self.full}/pulls/{int(number)}/update-branch",
-            method="PUT",
-            payload={"expected_head_sha": expected_head},
-        )
-
-    def edit_pr(self, number: int, **fields) -> None:
-        """``body``, ``title`` or ``state`` (``closed``) of a pull request."""
-        self.api(f"repos/{self.full}/pulls/{int(number)}", method="PATCH", payload=fields)
-
-    def put_file(
-        self,
-        path: str,
-        text: str,
-        branch: str,
-        message: str,
-        sha: str | None = None,
-        author: dict | None = None,
-    ) -> dict:
-        """One file written on ``branch`` through the contents API (a commit)."""
-        import base64
-
-        r = json.loads(
-            self.api(
-                f"repos/{self.full}/contents/{quote(path)}",
-                method="PUT",
-                payload={
-                    "message": message,
-                    "branch": branch,
-                    "content": base64.b64encode(text.encode()).decode(),
-                    **({"sha": sha} if sha else {}),
-                    **({"author": author, "committer": author} if author else {}),
-                },
-            )
-            or "{}"
-        )
-        return {"commit": ((r.get("commit") or {}).get("sha")) or None}
-
-    def blob_sha(self, path: str, ref: str) -> str | None:
-        try:
-            r = self.get(f"repos/{self.full}/contents/{quote(path)}?ref={quote(ref, safe='')}")
-        except GitHubError as e:
-            if "404" in str(e) or "Not Found" in str(e):
-                return None
-            raise
-        return (r or {}).get("sha")
-
-    def set_branch(self, branch: str, sha: str) -> None:
-        """``refs/heads/<branch>`` at ``sha``: created, or moved there (forced) when it
-        exists. Only ever a branch repo-factory owns (``repo-factory/…``)."""
-        if not branch.startswith("repo-factory/"):
-            raise GitHubError(
-                f"repo-factory only writes its own repo-factory/ branches, not {branch}"
-            )
-        try:
-            self.api(
-                f"repos/{self.full}/git/refs",
-                method="POST",
-                payload={"ref": f"refs/heads/{branch}", "sha": sha},
-            )
-        except GitHubError as e:
-            if "already exists" not in str(e) and "422" not in str(e):
-                raise
-            self.api(
-                f"repos/{self.full}/git/refs/heads/{quote(branch, safe='/')}",
-                method="PATCH",
-                payload={"sha": sha, "force": True},
-            )
-
-    # -- revise and release (M3) -----------------------------------------------------------
+    # -- a fix's pull request, Open issue, a proposal's issue, a release -------------------
     def create_issue(self, title: str, body: str, labels=()) -> dict:
         r = json.loads(
             self.api(
@@ -638,33 +586,23 @@ class Repo:
         return {"number": r.get("number"), "url": r.get("html_url")}
 
     def create_pr(
-        self, title: str, head: str, body: str, base: str = "main", draft: bool = False
+        self, title: str, head: str, body: str, base: str | None = None, draft: bool = False
     ) -> dict:
         r = json.loads(
             self.api(
                 f"repos/{self.full}/pulls",
                 method="POST",
-                payload={"title": title, "head": head, "base": base, "body": body, "draft": draft},
+                payload={
+                    "title": title,
+                    "head": head,
+                    "base": base or self.base,
+                    "body": body,
+                    "draft": draft,
+                },
             )
             or "{}"
         )
         return {"number": r.get("number"), "url": r.get("html_url")}
-
-    def ready(self, number: int) -> None:
-        """A draft pull request marked ready for review (``gh pr ready``: GraphQL's
-        ``markPullRequestReadyForReview``)."""
-        code, out, err = self.gh._run(["pr", "ready", str(int(number)), "--repo", self.full], None)
-        if code != 0:
-            raise GitHubError(f"gh pr ready {int(number)}: {(err or out or '').strip()[:300]}")
-
-    def request_reviewers(self, number: int, who: list[str]) -> None:
-        users = [x for x in who if "/" not in x]
-        teams = [x.split("/", 1)[1] for x in who if "/" in x]
-        self.api(
-            f"repos/{self.full}/pulls/{int(number)}/requested_reviewers",
-            method="POST",
-            payload={"reviewers": users, "team_reviewers": teams},
-        )
 
     def tags(self) -> list[dict]:
         return [
@@ -672,8 +610,9 @@ class Repo:
             for t in self.get(f"repos/{self.full}/tags?per_page=100", paginate=True)
         ]
 
-    def compare(self, base: str, head: str = "main") -> list[dict]:
+    def compare(self, base: str, head: str | None = None) -> list[dict]:
         """The commits on ``head`` since ``base``, oldest first: ``[{"sha", "message"}]``."""
+        head = head or self.base
         r = (
             self.get(f"repos/{self.full}/compare/{quote(base, safe='')}...{quote(head, safe='')}")
             or {}
@@ -687,7 +626,7 @@ class Repo:
         """The merged pull requests a commit on main came from."""
         return [issue(x) for x in self.get(f"repos/{self.full}/commits/{sha}/pulls") or []]
 
-    def create_release(self, tag: str, target: str = "main") -> dict:
+    def create_release(self, tag: str, target: str | None = None) -> dict:
         r = json.loads(
             self.api(
                 f"repos/{self.full}/releases",
@@ -695,7 +634,7 @@ class Repo:
                 payload={
                     "tag_name": tag,
                     "name": tag,
-                    "target_commitish": target,
+                    "target_commitish": target or self.base,
                     "generate_release_notes": True,
                 },
             )

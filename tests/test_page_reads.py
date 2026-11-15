@@ -43,9 +43,7 @@ PAGE_GETS = [
     "/api/state",
     "/api/header",
     "/api/projects",
-    "/api/maintain/summary",
-    "/api/maintain/lessons",
-    "/api/maintain/repos",
+    "/api/maintenance",
     "/api/capabilities",
     "/api/extensions",
     "/api/models",
@@ -115,35 +113,37 @@ def gh_calls(out: Path) -> list:
 
 
 def test_no_page_waits_on_a_process_or_the_network_after_the_first_open(world):
+    """The pages read what the poll and repo-factory's own files hold: Projects, a project's
+    page and Settings › Maintenance never start a process or ask GitHub in the request."""
     lp, iid, out = world
-    gets = [*PAGE_GETS, f"/api/maintain/{iid}"]
+    gets = [(g, None) for g in PAGE_GETS] + [("/api/project", {"id": iid})]
     first = app_for(lp)
-    for path in gets:  # the first open ever fills the caches
-        code, _, _ = api.handle("GET", path, None, None, app=first)
+    for path, query in gets:  # the first open ever fills the caches
+        code, _, _ = api.handle("GET", path, query, None, app=first)
         assert code < 500, path
     settle()
-    asked = len(gh_calls(out))
-    assert asked >= 3  # the user, the repo's reach, its policy
-    assert (lp.cfg.home / "maintain" / "reads.json").exists()
-
     again = app_for(lp)  # a restart: only the files are kept
     times = {}
     _WATCH["seen"], _WATCH["thread"] = [], threading.get_ident()
     try:
-        for path in gets:
+        for path, query in gets:
             t = time.monotonic()
-            code, _, body = api.handle("GET", path, None, None, app=again)
+            code, _, body = api.handle("GET", path, query, None, app=again)
             times[path] = time.monotonic() - t
             assert code < 500, path
             assert not _WATCH["seen"], (path, _WATCH["seen"])
     finally:
         _WATCH["thread"] = None
-    d = json.loads(api.handle("GET", "/api/maintain/summary", None, None, app=again)[2])
-    assert d["identity"]["github"]["login"] == "owner"  # the last answer, not "asking"
-    assert d["identity"]["github"]["reach"] == [1, 1]
+    before = len(gh_calls(out))
+    for path, query in (
+        ("/api/maintenance", None),
+        ("/api/projects", None),
+        ("/api/project", {"id": iid}),
+    ):
+        assert api.handle("GET", path, query, None, app=again)[0] == 200, path
     settle()
-    assert len(gh_calls(out)) > asked  # and GitHub was asked again, behind it
-    assert max(times.values()) < 5, times  # nothing waited on GitHub (2 s at most)
+    assert len(gh_calls(out)) == before  # maintenance's pages never ask GitHub
+    assert max(times.values()) < 5, times
 
 
 def test_a_read_never_seen_waits_a_moment_then_says_it_is_still_asking(world, monkeypatch):
@@ -157,12 +157,6 @@ def test_a_read_never_seen_waits_a_moment_then_says_it_is_still_asking(world, mo
     gate.set()
     settle()
     assert rd.cached(("o/plots", "slow"), lambda: "never asked", default=mgh.PENDING) == "late"
-    monkeypatch.setattr(a, "maint_identity_read", lambda: gate.wait(10) or {})
-    gate.clear()
-    rd._hits.clear()
-    assert a.maint_identity()["pending"] is True
-    gate.set()
-    settle()
 
 
 def test_the_hand_gate_is_kept_beside_the_build_and_read_after_a_restart(world, monkeypatch):

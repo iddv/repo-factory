@@ -1,4 +1,4 @@
-# v5-revise: a maintenance fix of a published product (MAINTAIN.md §5.2). Run by
+# v5-revise: a maintenance fix of a published product (docs/maintain.md). Run by
 # repo_factory/maintain/revise.py on a fresh clone of the product's main, one issue at a time.
 #
 # reproduce: one session writes the failing acceptance test (or names the open-item test that

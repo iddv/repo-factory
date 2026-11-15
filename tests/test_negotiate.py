@@ -1,4 +1,4 @@
-"""What a claim means (NG-PLAN.md): read at build start, never negotiated at publish.
+"""What a claim means: read at build start, never negotiated at publish.
 
 Beliefline's case (2026-10-11) replayed from fixtures: the pitch's one-liner said it "records
 every change an AI agent makes to its memory … so you can rebuild exactly what the agent

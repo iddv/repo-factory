@@ -16,4 +16,7 @@ added to it after you. So it ships with what a maintainer and a user need:
 - **`SECURITY.md`**: how to report a security problem privately (the repository host's
   private vulnerability reporting), and the product's known limits.
 - **`.github/workflows/test.yml`**, which installs it as the README says and runs its tests
-  on push and pull request; a **`.gitignore`**; a **`CHANGELOG.md`** that starts at 0.1.0.
+  on push and pull request: one job on `ubuntu-latest`, one language version, `permissions:
+  contents: read`, and only first-party actions (`actions/...`) or actions pinned to a commit;
+  never a self-hosted runner, `pull_request_target` or a token that may write (publishing
+  holds such a workflow). A **`.gitignore`**; a **`CHANGELOG.md`** that starts at 0.1.0.

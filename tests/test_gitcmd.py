@@ -197,3 +197,83 @@ def test_the_hardening_works_without_a_cwd_and_in_a_fresh_dir(tmp_path):
     env = gitcmd.environ(tmp_path)
     assert env["GIT_CONFIG_NOSYSTEM"] == "1" and env["GIT_TERMINAL_PROMPT"] == "0"
     assert env["GIT_CEILING_DIRECTORIES"] == str(tmp_path.resolve().parent)
+
+
+# -- a tree's own config never chooses where the host's git goes ------------------
+def cloned(tmp_path: Path) -> tuple[Path, Path]:
+    """A bare origin and the host's clone of it, its remotes pinned as the host wrote them."""
+    src = tmp_path / "src"
+    src.mkdir()
+    subprocess.run(["git", "init", "-q", "-b", "main"], cwd=src, check=True)
+    (src / "a.txt").write_text("a\n")
+    subprocess.run(["git", "add", "-A"], cwd=src, check=True)
+    subprocess.run(
+        ["git", "-c", "user.name=t", "-c", "user.email=t@localhost", "commit", "-qm", "one"],
+        cwd=src,
+        check=True,
+    )
+    origin = tmp_path / "origin.git"
+    subprocess.run(["git", "clone", "-q", "--bare", str(src), str(origin)], check=True)
+    ws = tmp_path / "work" / "repo"
+    ws.parent.mkdir()
+    gitcmd.git("clone", "-q", str(origin), str(ws), cwd=ws.parent)
+    gitcmd.pin(ws)
+    return origin, ws
+
+
+@pytest.mark.parametrize(
+    "key,value",
+    [
+        ("http.proxy", "http://127.0.0.1:9"),
+        ("http.sslVerify", "false"),
+        ("http.https://github.com/.extraHeader", "X-Evil: 1"),
+        ("http.cookieFile", "/etc/hostname"),
+        ("remote.origin.proxy", "http://127.0.0.1:9"),
+    ],
+)
+def test_a_trees_http_or_proxy_setting_is_refused_with_words(tmp_path, key, value):
+    _, ws = cloned(tmp_path)
+    subprocess.run(["git", "config", key, value], cwd=ws, check=True)
+    for args in (["ls-remote", "--heads", "origin"], ["status", "--short"]):
+        p = gitcmd.run(args, cwd=ws, capture_output=True, text=True)
+        assert p.returncode == 128, p
+        assert key.split(".")[0] in p.stderr and "credential" in p.stderr
+    with pytest.raises(RuntimeError, match="refuses it"):
+        gitcmd.git("fetch", "-q", "origin", cwd=ws)
+
+
+@pytest.mark.parametrize("key", ["remote.origin.url", "remote.origin.pushurl", "remote.evil.url"])
+def test_a_remote_the_host_did_not_write_is_refused_for_what_talks_to_it(tmp_path, key):
+    origin, ws = cloned(tmp_path)
+    evil = ws / ".repo-factory" / "e.git"  # what a session could make in its workspace
+    evil.parent.mkdir()
+    subprocess.run(["git", "init", "-q", "--bare", str(evil)], check=True)
+    marker = tmp_path / "RAN_ON_HOST"
+    hook = evil / "hooks" / "pre-receive"
+    hook.write_text(f"#!/bin/sh\ntouch {marker}\n")
+    hook.chmod(0o755)
+    subprocess.run(["git", "config", key, str(evil)], cwd=ws, check=True)
+    for args in (
+        ["push", "-q", "origin", "HEAD:refs/heads/repo-factory/1-x"],
+        ["ls-remote", "--heads", "origin"],
+        ["fetch", "-q", "origin"],
+    ):
+        p = gitcmd.run(args, cwd=ws, capture_output=True, text=True)
+        assert p.returncode == 128 and "did not write" in p.stderr, (args, p)
+        assert key in p.stderr
+    assert not marker.exists()
+    # what never talks to a remote still works on the tree
+    assert gitcmd.run(["status", "--short"], cwd=ws).returncode == 0
+
+
+def test_a_tree_with_no_pin_is_never_pushed_from_and_a_pinned_one_is(tmp_path):
+    origin, ws = cloned(tmp_path)
+    gitcmd.pin_path(ws).unlink()
+    p = gitcmd.run(
+        ["push", "-q", "origin", "HEAD:refs/heads/x"], cwd=ws, capture_output=True, text=True
+    )
+    assert p.returncode == 128 and "did not write" in p.stderr
+    gitcmd.pin(ws)
+    assert gitcmd.pin_path(ws).parent == ws.parent  # beside the tree, never inside it
+    gitcmd.git("push", "-q", "origin", "HEAD:refs/heads/x", cwd=ws)
+    assert gitcmd.git("rev-parse", "x", cwd=origin).strip()

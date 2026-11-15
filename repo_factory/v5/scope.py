@@ -60,13 +60,21 @@ SPEC_INTERFACES = 2  # a short task that names its functions or files is a spec 
 SHAPE = re.compile(r"^Shape:\s*(.+?)\s*$", re.M)
 GROUNDING = re.compile(r"^Grounding:\s*\n(?:[ \t]*[-*][^\n]*(?:\n|$))+", re.M)
 # the pitch's "How the claims are read" (``claims.spec_section``): readings, not a spec's rules
+# the issue a task came from, quoted (loop/from_issue.spec_quote), and the lessons from earlier
+# builds (lessons/home.pack): context the brief carries, never requirements of its own
+ISSUE = re.compile(
+    r"^From GitHub issue [^\n]*, quoted as the person wrote it:\n\n(?:>[^\n]*(?:\n|$))*", re.M
+)
+LESSONS = re.compile(r"^Lessons from earlier builds \([^\n]*\):\n(?:- [^\n]*(?:\n|$))*", re.M)
 CLAIMS = re.compile(r"^## How the claims are read\n.*?(?=^#{1,2}\s|\Z)", re.M | re.S)
 
 
 def carried(text: str) -> dict:
     """What the pitch carries in ``spec.md`` beside the brief (``pitch.spec_text``):
-    ``{"core": the text without them (nor the claims' readings), "shape": the Shape line's
-    value or None, "grounding": [lines]}``."""
+    ``{"core": the text without them (nor the claims' readings, the issue a task came from as
+    quoted, the lessons from earlier builds), "shape": the Shape line's value or None,
+    "grounding": [lines]}``. The definition of done and the scope's heuristic read ``core``
+    only, so quoted text never becomes a flow."""
     t = text or ""
     m = SHAPE.search(t)
     g = GROUNDING.search(t)
@@ -74,6 +82,7 @@ def carried(text: str) -> dict:
         [re.sub(r"^\s*[-*]\s*", "", x).strip() for x in g.group(0).splitlines()[1:]] if g else []
     )
     core = CLAIMS.sub("", GROUNDING.sub("", SHAPE.sub("", t, count=1), count=1), count=1)
+    core = LESSONS.sub("", ISSUE.sub("", core, count=1), count=1)
     return {
         "core": re.sub(r"\n{3,}", "\n\n", core),
         "shape": m.group(1) if m else None,
@@ -252,7 +261,7 @@ def parse(text: str) -> dict:
     return out
 
 
-# -- the word budget (PE2 §6.4), enforced in code ------------------------------------------------
+# -- the word budget, enforced in code ------------------------------------------------------------
 # rules.yaml ``scope_size``: the limit for a single-user tool or a library, and for a team or a
 # business; trim_max_usd: what the one shortening pass may cost (estimated before it starts from
 # the first call's cost: its input is the first reply, so it costs no more than that call);
@@ -481,7 +490,7 @@ def build_prompt(
         return spec + "\n\n" + suffix + "\n"
     text = custom_text("build").replace("<<spec>>", spec)
     if md and product_rules and policy_entry(policy, "product") is not None:
-        # EX-PLAN §4: a scoped build's product ships as the builder leaves it, so it is told
+        # A scoped build's product ships as the builder leaves it, so it is told
         # what a product carries (its own tests, AGENTS.md, SECURITY.md, CI ...)
         rules = custom_text("product").strip()
         at = text.rfind(suffix)
@@ -489,8 +498,8 @@ def build_prompt(
     return text
 
 
-# -- a spec's own definition of done (EV7): a spec that passes through gets flows too -----------
-# Without one, completeness could not be scored and every precise spec was held for it (EVI).
+# -- a spec's own definition of done: a spec that passes through gets flows too -----------------
+# Without one, completeness could not be scored and every precise spec was held for it.
 # Drawn from the spec's text, no model: its acceptance lines, else its numbered or bulleted
 # requirements, else its sentences that state a behaviour (split at "; " when the parts name
 # their own commands or endpoints), in the spec's order.

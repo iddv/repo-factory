@@ -1,4 +1,4 @@
-"""When the rule set mines (build v3 §2): the ``mining:`` settings and the mine points.
+"""When the rule set mines (build v3): the ``mining:`` settings and the mine points.
 
 Settings come from the policy's ``rules.yaml`` under ``mining:`` (``DEFAULTS``). The
 defaults reproduce v2: mine after every milestone, synchronously, on the critical path.
@@ -22,7 +22,7 @@ defaults reproduce v2: mine after every milestone, synchronously, on the critica
 - ``promote_held``: a held rule the arbiter says caught a real bug becomes visible for
   the fix loop, and a held replacement is mined in the same area.
 
-Mining that scales with the task (build v3 §7c; all off by default, as in v2):
+Mining that scales with the task (build v3; all off by default, as in v2):
 
 - ``coalesce``: at most one pass waits behind the running one. A new request replaces the
   waiting one (modes merged), and the pass mines against the latest kept head when it
