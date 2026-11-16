@@ -59,15 +59,16 @@ V5_MODELS_ENV = "REPO_FACTORY_V5_MODELS"
 ROLES = [
     (
         "pitch",
-        "Pitch",
-        "Grades an idea and writes its pitch; decides whether it is buildable.",
+        "Brief",
+        "Reads your task and writes its brief: who it is for and what the first version does; "
+        "refuses a task it cannot build.",
         ("pitch", "model"),
         "loop",
     ),
     (
         "summary",
         "Link summaries",
-        "Summarises the pages an idea links to before the pitch.",
+        "Summarises the pages your task links to, before the brief is written.",
         ("pitch", "summary_model"),
         "loop",
     ),
@@ -86,33 +87,25 @@ ROLES = [
         ("lessons", "model"),
         "loop",
     ),
-    # the models that were set on other pages, beside the rest
     (
-        "charter",
-        "Charter",
-        "Drafts a project's charter from its idea, its claims and the repo's own documents.",
-        ("projects", "charter", "model"),
-        "loop",
-    ),
-    (
-        "evolve",
-        "Checks for ideas",
-        "A project's check for what could improve it, given its "
-        "charter, its repo, its issues and its topic.",
-        ("projects", "evolve", "model"),
+        "proposals",
+        "Weekly proposals",
+        "Reads a maintained product's README and its open issues' titles once a week and "
+        "suggests a few improvements; no tools.",
+        ("maintain", "proposals_model"),
         "loop",
     ),
     (
         "build",
         "Builder",
-        "The build session itself, and the v1 brief (SCOPE.md) for a short idea.",
+        "The build session itself, and the plan (SCOPE.md) for a short task.",
         ("build", "models", "build"),
         "build",
     ),
     (
         "claims",
         "Claims",
-        "Lists what the spec promises and where it is ambiguous.",
+        "Lists what the brief promises and where it is unclear.",
         ("build", "models", "claims"),
         "build",
     ),
@@ -125,7 +118,7 @@ ROLES = [
     ),
     (
         "oracle",
-        "Oracle panel",
+        "Failure votes",
         "Votes on whether each failing scenario is a real defect.",
         ("build", "models", "oracle"),
         "build",

@@ -200,6 +200,27 @@ def ledger_tokens(den: Path) -> tuple[dict | None, dict]:
     return total, by
 
 
+def ledger_build(den: Path) -> tuple[float | None, float | None]:
+    """The whole build from its cost ledger, every round (the first build, the automatic
+    repair, each Ask for changes): ``(dollars, seconds)``. A round's time runs from its first
+    call's start to its last call's end (calls in parallel are not counted twice; the time
+    between rounds, waiting for a person, is not counted). None when no line says."""
+    from ..costs import ledger
+
+    usd: float | None = None
+    spans: dict = {}
+    for r in ledger.read(den):
+        u = r.get("usd")
+        if isinstance(u, (int, float)) and not isinstance(u, bool):
+            usd = (usd or 0.0) + float(u)
+        ts, w = r.get("ts"), r.get("wall_s")
+        if isinstance(ts, (int, float)) and isinstance(w, (int, float)):
+            lo, hi = spans.get(r.get("build"), (ts - w, ts))
+            spans[r.get("build")] = (min(lo, ts - w), max(hi, ts))
+    wall = sum(hi - lo for lo, hi in spans.values()) if spans else None
+    return usd, wall
+
+
 def iso_ts(s: str | None) -> float | None:
     """An ISO time as epoch seconds."""
     from datetime import datetime
@@ -2233,6 +2254,7 @@ class App:
             src, title = "fix", f"Fix #{fix.get('issue')}: {fix.get('title') or ''}"
             gate = None  # a fix's gate is the owner's review on GitHub
         toks, by_round = ledger_tokens(self.den(d))
+        all_usd, all_s = ledger_build(self.den(d))
         last_round = ((idea or {}).get("build") or {}).get("round")
         last_toks = by_round.get(last_round) if last_round is not None else None
         fail = self._fail_of(d, s, status, idea, v5)
@@ -2249,6 +2271,9 @@ class App:
             "source": src,
             "cost_usd": round(cost, 4) if cost else None,
             "wall_s": round(wall) if wall else None,
+            # the whole build, every round, from its ledger (Builds' head counts these)
+            "build_usd": round(all_usd, 4) if all_usd else None,
+            "build_s": round(all_s) if all_s else None,
             "updated": s["updated"],
             "live": live,
             "idea": (idea or {}).get("id"),

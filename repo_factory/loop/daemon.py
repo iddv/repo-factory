@@ -101,6 +101,14 @@ def _setting(section: dict, key: str, default):
     return default if v is None else v
 
 
+# where a repair round (the automatic one, or Ask for changes) stopped, in a person's words
+REPAIR_STAGE_WORDS = {
+    "build": "while it made the change",
+    "verify": "at the check",
+    "repair": "while it repaired",
+    "reverify": "at the check after the change",
+}
+
 SANDBOX_HOLD = (
     "Builds need bubblewrap, and it is missing or cannot make a sandbox here: install "
     "it (repo-factory doctor says how); held builds start again by themselves."
@@ -133,6 +141,9 @@ class Loop:
         self._charter = charter_model
         self._gh = gh
         self._stop_flag = False
+        # the models made here from Settings (never those handed in): forgotten when the
+        # settings are re-read, so a model changed on Settings is used from its next call on
+        self._made: set[str] = set()
         self._spawned: dict[str, int] = {}  # pre-push checks this loop started: idea -> pid
 
     # -- collaborators (real ones made on first use) -------------------------------------------
@@ -142,6 +153,7 @@ class Loop:
             from .models import claude
 
             self._model = claude(self.cfg["pitch"].get("model"), "pitch", timeout_s=900)
+            self._made.add("_model")
         return self._model
 
     @property
@@ -150,6 +162,7 @@ class Loop:
             from .models import claude
 
             self._summary = claude(self.cfg["pitch"].get("summary_model"), "summary")
+            self._made.add("_summary")
         return self._summary
 
     @property
@@ -158,6 +171,7 @@ class Loop:
             from .models import claude
 
             self._honesty = claude(self.cfg["publish"].get("honesty_model"), "honesty")
+            self._made.add("_honesty")
         return self._honesty
 
     @property
@@ -173,6 +187,7 @@ class Loop:
             from ..projects.charter import model_for
 
             self._charter = model_for(self.cfg)
+            self._made.add("_charter")
         return self._charter
 
     @property
@@ -938,7 +953,7 @@ class Loop:
         delivered = ((g.get("checks") or {}).get("delivered") or {}).get("ok")
         if not delivered or base_round(task / ".den") is None:
             raise LoopError(
-                f"{idea['id']}: its build delivered nothing to change (Retry builds it again)"
+                f"{idea['id']}: its build delivered nothing to change (Build again builds it once more)"
             )
         rec = dict(idea.get("build") or {})
         cap = rv.get("max_per_build")
@@ -1200,7 +1215,8 @@ class Loop:
             stage, _, why = why.partition(": ")
         else:
             stage = out.get("stage") or "the round"
-        reason = f"revise failed in {stage}: {why}"
+        where = REPAIR_STAGE_WORDS.get(stage, stage)
+        reason = f"the repair round did not fix it ({where}): {why}"
         reason += "" if "the build is as it was" in reason else "; the build is as it was"
         log(f"{idea['id']} {idea['title']}: held: {reason}")
         return self.ledger.update(
@@ -1266,6 +1282,7 @@ class Loop:
             self._lessons = claude(
                 les.get("model"), "lessons", timeout_s=300, max_usd=cap_of(les.get("max_usd"))
             )
+            self._made.add("_lessons")
         return self._lessons
 
     def _lesson(self, idea: dict, g: dict) -> dict | None:
@@ -1313,7 +1330,9 @@ class Loop:
         product = (idea.get("pitch") or {}).get("product") or idea.get("title")
         try:
             data = lessons.load(self.cfg.home)
-            if idea.get("state") != "held" or lessons.looked_at(data, idea["id"], rnd):
+            # the held round's gate, not the state of the moment: the automatic repair round
+            # starts in the same tick as this process, and leaves that gate as it was
+            if g.get("verdict") in (None, "ready") or lessons.looked_at(data, idea["id"], rnd):
                 return None
             reasons = lessons.learnable(list(g.get("reasons") or []))
             if not reasons:
@@ -1691,7 +1710,9 @@ class Loop:
         if (idea.get("publish") or {}).get("url"):
             raise LoopError(f"{idea['id']} is published: its stopped round is history now")
         if not builds.resumable(task, rnd, stopped_ok=True):
-            raise LoopError(f"round {rnd} can no longer be resumed: Retry builds it again")
+            raise LoopError(
+                f"round {rnd} can no longer be resumed: Build again builds it once more"
+            )
         self._snapshot(idea, rec)
         (task / ".den" / "v5" / f"r{int(rnd)}" / builds.STOPPED).unlink(
             missing_ok=True
@@ -1788,7 +1809,7 @@ class Loop:
                 + (f" (its task folder is kept in {moved[0]})" if moved else ""),
                 history=hist,
             )
-        reason = f"cancelled by the owner ({origin}) before it started again: Retry builds it"
+        reason = f"cancelled by the owner ({origin}) before it started again: Build again builds it"
         return self.ledger.update(
             idea["id"],
             state="held",
@@ -1832,7 +1853,7 @@ class Loop:
                 return self._requeue_as_was(
                     self.ledger.must(idea["id"]), u["was"], "Stop round", u.get("origin") or "cli"
                 )
-            said = f"undo: the round could not continue ({e}); Retry builds it again"
+            said = f"undo: the round could not continue ({e}); Build again builds it once more"
             log(f"{idea['id']} {idea['title']}: {said}")
             return self.ledger.update(idea["id"], note=said, history={"failure": True})
 
@@ -1888,7 +1909,7 @@ class Loop:
                 + ("; Resume continues the stopped round" if resumable else ""),
                 history=hist,
             )
-        reason = f"{said}: Retry builds it again" + (
+        reason = f"{said}: Build again builds it once more" + (
             "; Resume continues the stopped round" if resumable else ""
         )
         return self.ledger.update(
@@ -2644,10 +2665,19 @@ class Loop:
             ],
         }
 
+    def forget_models(self) -> None:
+        """Drop the models made from the settings (the pitch's, the summary's, the honesty
+        check's, the charter's, the lessons'): each is made again from the settings as they are
+        now at its next use. A model handed in (the tests' fakes) is kept."""
+        for name in self._made:
+            setattr(self, name, None)
+        self._made.clear()
+
     def tick(self, only: list[str] | None = None) -> dict:
         """One pass of the loop."""
         if self.cfg.changed():  # Settings or a hand edit: from the next brief or build on
             self.cfg = self.cfg.reread().ensure()
+            self.forget_models()
         out: dict = {"watched": [i["id"] for i in self.watch()]}
         if time.time() - float(self.ledger.meta("activity_pruned") or 0) > 86400:
             try:  # the loop's marks past their keep, daily

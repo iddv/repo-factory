@@ -74,6 +74,8 @@ NO_BUILD_WORDS = (
     "You've hit your",
     "the build process died",
 )
+# the gate's spend hold when the cap stopped a build before or while its code was written
+CUT_BEFORE_THE_CODE = re.compile(r"^spend: .*before the (scope|plan|build|harden) stage")
 MAX_USD = 0.25  # the post-mortem call's own cap (``lessons.max_usd``)
 ADDRESS = re.compile(r"(?i)\b(?:https?://|www\.)|[\w.+-]+@[\w-]+\.[\w.]+")
 # a host or an address: a dotted name ending in letters (example.com, api.example.org), an IP
@@ -373,7 +375,11 @@ def _today() -> str:
 
 # -- which holds a lesson may come from -------------------------------------------------------
 def learnable(reasons: list[str]) -> list[str]:
-    """The gate's reasons a builder could have avoided (see ``NOT_THE_BUILDERS``)."""
+    """The gate's reasons a builder could have avoided (see ``NOT_THE_BUILDERS``). A build the
+    spend cap stopped before its code was written has none: what else held it (no README, no
+    tests, nothing measured) is where the cap cut it off, not what the builder chose."""
+    if any(isinstance(r, str) and CUT_BEFORE_THE_CODE.search(r) for r in reasons or []):
+        return []
     out = []
     for r in reasons or []:
         if not isinstance(r, str) or not r.strip():

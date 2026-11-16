@@ -49,6 +49,9 @@ Each stage shows its time, its cost and **Open the log**.
 - **Ask for changes** sends what should change; a new round of the build makes the change.
 - **Publish**: a build that passed its checks waits at "Ready: publish?". Nothing is on GitHub
   until you press Publish, which creates a **private** repository under your account.
+- **Publish anyway**, on a held build: publishes it privately over the holds that may be
+  overridden, which its confirm names; its NOTICE and release notes say which checks did not
+  pass.
 - **Make public** makes a published repository public. It is a separate press, on each build.
 
 Publish's confirm says whose name the repository's licence and NOTICE will carry, and the
@@ -91,7 +94,8 @@ stands. **Maintenance is off until you switch it on for a repository**, on its p
   `.github/repo-factory.yml`, AGENTS.md and CI) and creates its labels; nothing else changes on
   GitHub, and no repository setting. A product repo-factory published already carries the
   policy file, so the next poll may fix an issue you labelled `go` before you merge it; any other
-  repository waits for that merge.
+  repository waits for that merge. The CI it adds runs on your account's GitHub Actions
+  minutes: four Linux jobs on every pull request and push to the default branch, and once a week.
 - Then, every 15 minutes, it reads the repository's open issues. **Only an issue whose `go`
   label you put on yourself is fixed** (GitHub's own record says who put a label on). Anyone
   else's issue, a `go` someone else put on, and anyone else's pull request are listed under

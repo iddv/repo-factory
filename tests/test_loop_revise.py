@@ -179,7 +179,8 @@ def test_a_failed_revise_holds_with_the_gate_it_revised(tmp_path):
     out = finish(lp, iid)
     assert out["state"] == "held"
     assert out["reason"] == (
-        "revise failed in reverify: 4 own tests still fail; the build is as it was"
+        "the repair round did not fix it (at the check after the change): 4 own tests still "
+        "fail; the build is as it was"
     )
     assert out["gate"]["round"] == 1 and out["gate"]["verdict"] == before["gate"]["verdict"]
     assert out["build"]["change"] and out["build"]["round"] == 2  # Retry resumes it

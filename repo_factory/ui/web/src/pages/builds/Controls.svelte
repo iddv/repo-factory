@@ -4,7 +4,7 @@
   // Each is a registry action (api/act) on the build, offered by the server (b.actions); a
   // press that changes something on GitHub, or ends a build, asks first.
   import { act, post } from "../../api/client";
-  import { offer, published, type Build } from "../../lib/builds";
+  import { checkWord, offer, published, type Build } from "../../lib/builds";
   import { stale } from "../../lib/reads.svelte";
   import Press from "../../ui/Press.svelte";
 
@@ -36,6 +36,21 @@
   }
   async function publish(): Promise<string> {
     return done(await act("publish", subject), "Publishing to a private repository under your account.");
+  }
+  // Publish anyway: a held build, over the holds the server says may be overridden (security,
+  // secrets, nothing delivered and listening beyond loopback never are); it sends the holds it
+  // showed, and the server refuses when they changed since
+  interface Hold {
+    check: string;
+    label: string;
+    may: boolean;
+  }
+  const anywayPlan = $derived((offer(b, "publish_anyway") as unknown as { plan?: { holds?: Hold[] } } | null)?.plan);
+  const anywayHolds = $derived<Hold[]>((anywayPlan?.holds || []).filter((h) => h.may));
+  const canAnyway = $derived(!running && !canPublish && anywayHolds.length > 0);
+  async function publishAnyway(): Promise<string> {
+    const holds = anywayHolds.map((h) => h.check);
+    return done(await act("publish_anyway", subject, { reason: "published from the page after reading its holds", holds }), "Publishing to a private repository under your account, over its holds.");
   }
   // offered by the server only: Resume continues a round you stopped; Build again a held build
   const canResume = $derived(!running && !!offer(b, "resume_build"));
@@ -70,6 +85,9 @@
 <div class="controls" id="build-controls">
   {#if canPublish}
     <Press id="publish" label="Publish" primary run={publish} confirm={"Create a private repository under your GitHub account and push this build to it? Its own CI then runs there, on your account's GitHub Actions minutes." + (b.publish_as ? ` Its licence and NOTICE name ${b.publish_as.name}${b.publish_as.email ? `, and its commit is made as ${b.publish_as.email}` : ""}.` : "")} />
+  {/if}
+  {#if canAnyway}
+    <Press id="publish-anyway" label="Publish anyway" run={publishAnyway} confirm={`Publish it to a private repository under your GitHub account although these checks did not pass: ${anywayHolds.map((h) => checkWord(h.check).toLowerCase()).join("; ")}? Its NOTICE and release notes say which checks did not pass, and its own CI then runs on your account's GitHub Actions minutes.`} yes="Publish anyway" />
   {/if}
   {#if canPublic}
     <Press id="make-public" label="Make public" run={makePublic} confirm="Make the repository public? Anyone can then read it." yes="Make public" />

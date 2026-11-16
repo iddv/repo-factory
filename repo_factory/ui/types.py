@@ -287,7 +287,7 @@ class BuildRow(TypedDict):
     key: str
     dir: str
     status: str
-    # "revise can't fix this: …": a held build's hold is repo-factory's own sandbox (ASKF), else None
+    # "a repair round can't fix this: …": a held build's hold is repo-factory's own sandbox (ASKF), else None
     cant_revise: str | None
     state: str | None
     title: str

@@ -70,7 +70,7 @@
 
 <section class="page lessons" aria-labelledby="lessons-h">
   <h1 id="lessons-h">Lessons</h1>
-  <p class="muted lead">When the checks hold a build, repo-factory writes down what went wrong, in one line, A new lesson waits for you: no brief carries it until you switch it on. A lesson that names a package, a host or an address, or a command-line flag is not kept. Switch off a lesson you do not want carried.</p>
+  <p class="muted lead">When the checks hold a build, repo-factory writes down what went wrong, in one line. A new lesson waits for you: no brief carries it until you switch it on. A lesson that names a package, a host or an address, or a command-line flag is not kept. Switch off a lesson you do not want carried.</p>
   {#if got.data && !got.data.enabled}<p class="muted" id="lessons-off">Lessons are off (<code>lessons.enabled: false</code> in loop.yaml): no lesson is written or carried.</p>{/if}
   {#if got.error && !got.data}
     <p class="err" role="alert">The lessons could not be read: {got.error}</p>

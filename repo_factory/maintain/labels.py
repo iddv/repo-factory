@@ -24,7 +24,7 @@ LABELS: list[tuple[str, str, str, str]] = [
     ("triage", "fef2c0", "flow", "Nobody has classified this yet"),
     ("needs-info", "fbca04", "flow", "Waiting for the reporter to answer a question"),
     ("go", "e99c1b", "flow", "Approved: money may be spent fixing this"),
-    ("needs-you", "d93f0b", "flow", "repo-factory tried and could not; the owner must look"),
+    ("needs-you", "d93f0b", "flow", "Tried and could not: the owner must look"),
     ("p1", "b60205", "priority", "Now: data loss, security, install broken"),
     ("p2", "e11d21", "priority", "Soon: a documented flow is wrong"),
     ("p3", "f9a5a5", "priority", "Later: cosmetic, nice to have"),

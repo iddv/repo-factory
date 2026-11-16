@@ -363,8 +363,11 @@ def cmd_setup(args) -> None:
             why = f"{type(e).__name__}: {e}"
     if not why and not res.get("ok"):
         chk = res.get("check") or {}
+        failed = "; ".join(sorted(revise.problems(chk) - {chk.get("summary")})) if chk else ""
         why = res.get("stopped") or (
-            "the check of AGENTS.md failed in the sandbox: " + (chk.get("summary") or "")
+            "the check of AGENTS.md failed in the sandbox: "
+            + (chk.get("summary") or "")
+            + (f": {failed}" if failed else "")
             if chk and not chk.get("ok")
             else "the drift doctor found: " + "; ".join(res.get("doctor") or [])
         )

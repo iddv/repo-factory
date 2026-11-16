@@ -196,8 +196,12 @@ def run_agents_check(root: Path, venv: Path, timeout_s: int = 1800) -> dict:
     from ..harness.isolation import sandbox_cmd
     with tempfile.TemporaryDirectory(prefix="repo-factory-check-") as tmp:
         work = Path(tmp) / "a"
-        shutil.copytree(root, work, ignore=shutil.ignore_patterns(".git", "__pycache__",
-                                                                  ".pytest_cache", ".repo-factory"))
+        # a session's own virtual environments stay out (the check makes its own); a link is
+        # copied as a link, so one that leads nowhere (a venv's python) is no error
+        shutil.copytree(root, work, symlinks=True,
+                        ignore=shutil.ignore_patterns(".git", "__pycache__", ".pytest_cache",
+                                                      ".repo-factory", ".venv", "venv",
+                                                      "node_modules"))
         script = work / ".github" / "scripts" / "check_agents_md.py"
         if not script.is_file():
             script.parent.mkdir(parents=True, exist_ok=True)

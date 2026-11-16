@@ -541,7 +541,7 @@ def test_a_review_that_did_not_run_holds_and_publish_anyway_refuses_it(tmp_path,
     assert [r.split(":")[0] for r in g["reasons"]] == ["security", "tests"]
     assert g["reasons"][0] == (
         f"security: the security review did not run ({why}); raise the cap in Settings › "
-        "Spend, then Retry"
+        "Spend, then press Build again"
     )
     assert g["gaps"] == []
     with pytest.raises(LoopError, match="the security review did not run"):

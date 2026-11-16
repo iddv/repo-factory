@@ -253,7 +253,7 @@ def test_a_build_whose_security_review_did_not_run_is_held_and_never_published(f
     assert row["state"] == "held", row.get("reason")
     sec = [r for r in row["gate"]["reasons"] if r.startswith("security:")]
     assert sec and sec[0].startswith("security: the security review did not run ("), sec
-    assert sec[0].endswith("raise the cap in Settings › Spend, then Retry")
+    assert sec[0].endswith("raise the cap in Settings › Spend, then press Build again")
     assert not any(g.startswith("security") for g in row["gate"]["gaps"])
     # neither press publishes it
     p = factory("loop", "publish", task, may_fail=True)

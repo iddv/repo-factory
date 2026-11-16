@@ -225,16 +225,21 @@ def serve(cmd, note, env):
     )
     try:
         deadline = time.time() + 90
+        gone = 0  # polls in a row that found nothing this line started still running
         while time.time() < deadline:
             if answers(port):
                 print(f"ok    {cmd}  (answered on 127.0.0.1:{port})")
                 return None
             # the line has ended: a failure, or a start that detached (`start -d` exits 0 at
-            # once); the second waits while what it started is still running
-            if p.poll() is not None and (
-                p.returncode or not [x for x in marked(mark) if not _zombie(x)]
-            ):
-                break
+            # once); the second waits while what it started is still running. A process in
+            # the middle of exec shows no environment for a moment, so "nothing left" must be
+            # seen three times in a row
+            if p.poll() is not None:
+                if p.returncode:
+                    break
+                gone = 0 if [x for x in marked(mark) if not _zombie(x)] else gone + 1
+                if gone >= 3:
+                    break
             time.sleep(0.5)
         log.seek(0)
         return f"`{cmd}` did not answer on 127.0.0.1:{port}:\n" + log.read()[-2000:]

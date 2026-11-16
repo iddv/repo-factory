@@ -17,13 +17,23 @@ def section(changelog: str, version: str) -> str:
     return m.group(1).strip() if m else "See CHANGELOG.md."
 
 
+def absolute(text: str, repo: str, tag: str) -> str:
+    """A link to a file of the repository ("](SECURITY.md)", "](docs/x.md)") as its address at
+    the tag: on the Releases page a relative link leads nowhere."""
+    return re.sub(
+        r"\]\((?!https?://|#|mailto:)([^)\s]+)\)",
+        lambda m: f"](https://github.com/{repo}/blob/{tag}/{m.group(1)})",
+        text,
+    )
+
+
 def main(argv: list[str]) -> int:
     tag = argv[0]
     version = tag.removeprefix("v")
     repo = os.environ.get("GITHUB_REPOSITORY", "iddv/repo-factory")
     wheel = f"repo_factory-{version}-py3-none-any.whl"
     url = f"https://github.com/{repo}/releases/download/{tag}/{wheel}"
-    body = section((ROOT / "CHANGELOG.md").read_text(), version)
+    body = absolute(section((ROOT / "CHANGELOG.md").read_text(), version), repo, tag)
     print(f"""{body}
 
 ## Install

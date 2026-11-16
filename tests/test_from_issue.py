@@ -103,7 +103,7 @@ def test_an_issue_a_stranger_opened_is_refused_in_words():
         from_issue.read(gh, "someone/ideas#9")
     assert str(e.value) == (
         "someone/ideas#9 was opened by stranger, not by you (octo-owner): repo-factory builds "
-        "only from an issue you opened, or one you labelled `build` yourself"
+        "only from an issue you opened, or one you labelled build yourself"
     )
 
 

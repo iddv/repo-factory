@@ -76,6 +76,13 @@ export function buildSaid(b: Build): Said {
   const r = latest(b);
   if (b.question) return { word: "Asks you", tone: "amber" };
   if (b.control?.what) return { word: "Stopping", tone: "grey" };
+  // a maintenance fix: its pull request on GitHub, never "published" (its address is the issue)
+  if (b.kind === "fix") {
+    if (b.status === "running") return { word: "Fixing", tone: "blue" };
+    if (b.status === "fixed") return { word: "Waits for your review", tone: "amber" };
+    if (b.status === "closed") return { word: "Closed", tone: "grey" };
+    return { word: "Tried", tone: "red" };
+  }
   switch (b.status) {
     case "running":
       return { word: sixName(r?.stage || (b.pipeline as { stage: string; status: string }[] | undefined)?.find((s) => s.status === "running")?.stage) || "Building", tone: "blue" };
@@ -100,6 +107,8 @@ export function buildSaid(b: Build): Said {
   // published to a private repository (whatever the server calls the state): say so
   if (published(b)) return { word: "Published privately", tone: "green" };
   if (r?.outcome === "stopped") return { word: "Stopped", tone: "red" };
+  // a repair round that failed leaves the build as it was: still held by its checks
+  if (r?.outcome === "failed" && r.kind === "revision" && b.idea_state === "held") return { word: "Held by the checks", tone: "red" };
   if (r?.outcome === "failed") return { word: "Failed", tone: "red" };
   if (b.gate && b.gate.verdict !== "ready") return { word: "Held by the checks", tone: "red" };
   return { word: "Needs you", tone: "amber" };

@@ -50,6 +50,20 @@ def test_doctor_passes_without_gh(monkeypatch):
     assert doctor.run(said.append) == 0
 
 
+def test_little_memory_is_a_warning_not_a_missing_thing(monkeypatch, tmp_path):
+    said = []
+    meminfo = tmp_path / "meminfo"
+    meminfo.write_text("MemTotal: 16000000 kB\nMemAvailable: 2097152 kB\n")
+    monkeypatch.setattr(doctor, "claude_line", lambda: (True, "Claude Code, signed in"))
+    monkeypatch.setattr(doctor, "bwrap_line", lambda: (True, "bubblewrap"))
+    monkeypatch.setattr(doctor, "git_line", lambda: (True, "git"))
+    monkeypatch.setattr(doctor, "gh_line", lambda: (True, "gh is logged in"))
+    real = doctor.mem_available
+    monkeypatch.setattr(doctor, "mem_available", lambda: real(str(meminfo)))
+    assert doctor.run(said.append) == 0
+    assert said[4].startswith("warning: only 2.0 GB of memory is available"), said[4]
+
+
 def _claude_here(monkeypatch, on):
     from repo_factory.harness import handoff
 

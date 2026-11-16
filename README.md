@@ -7,8 +7,8 @@ to a private GitHub repository on your own Linux machine, then keeps maintaining
 > GitHub account. It costs real money or plan usage: about $10 and an hour a build on our
 > record. Its own checks are not proof. Read what it builds.
 
-**Status:** the engine, the page and the checks are here; there is no release yet, so for
-now you install it from a checkout (below). The [changelog](CHANGELOG.md) says what has landed.
+**Status:** the first release is v0.1.0. Its [changelog](CHANGELOG.md) says what it is, what
+it is not, and what is unproven.
 
 ## What it does
 
@@ -95,14 +95,22 @@ logged in.
 
 ## Install
 
-There is no release yet. Until there is, from a checkout (it needs Node once, to build the
+From the [Releases page](https://github.com/iddv/repo-factory/releases) (v0.1.0 and later),
+three commands:
+
+```
+uv tool install --python 3.12 https://github.com/iddv/repo-factory/releases/download/v0.1.0/repo_factory-0.1.0-py3-none-any.whl
+repo-factory doctor      # one line each: Claude Code, bubblewrap, git, gh, memory
+repo-factory ui          # the page on 127.0.0.1:8790, and a sign-in link
+```
+
+The release's `SHA256SUMS` lists the wheel's checksum. Open the link `repo-factory ui` prints
+(`--port` picks another port). To run from a checkout instead (it needs Node once, to build the
 page):
 
 ```
 git clone https://github.com/iddv/repo-factory && cd repo-factory
 python3 scripts/build_ui.py && uv tool install --python 3.12 .
-repo-factory doctor      # one line each: Claude Code, bubblewrap, git, gh, memory
-repo-factory ui          # the page on 127.0.0.1:8790, and a sign-in link
 ```
 
 Before your first build, if you signed in to Claude Code with its own sign-in, run
@@ -117,9 +125,8 @@ build, it writes one lesson about what went wrong; the lesson waits for you, and
 carry it once you switch it on (the page's **Lessons**). A lesson that names a package, a host
 or a command-line flag is not kept.
 
-With a release, it will be three commands: `uv tool install <the wheel's address on the
-Releases page>`, `repo-factory doctor`, `repo-factory ui`. Then read
-[docs/first-build.md](docs/first-build.md): what each stage does, the press, and spend.
+Then read [docs/first-build.md](docs/first-build.md): what each stage does, the press, and
+spend.
 
 ## The defaults
 
